@@ -5,7 +5,7 @@
 FROM ubuntu:22.04
 LABEL maintainer="AbdullahGM1 <agm.musalami@gmail.com>"
 
-#
+##
 # Install ROS2 Humble Desktop Full
 #
 ENV DEBIAN_FRONTEND=noninteractive
@@ -13,38 +13,56 @@ ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
 # Update and install basic dependencies
-RUN apt update && apt install -y curl software-properties-common && add-apt-repository universe \
-	&& apt-get -y autoremove \
-	&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+RUN apt update && apt install -y curl software-properties-common && add-apt-repository universe
 
 # Add ROS2 repository
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
-# Verify the repository was added correctly
-RUN cat /etc/apt/sources.list.d/ros2.list && \
-    apt update
+# Update apt again after adding ROS2 repository
+RUN apt update
 
-# Install ROS2 Humble Desktop Full and verify
-RUN apt install -y ros-humble-desktop-full ros-dev-tools && \
-    apt-get -y autoremove && \
-    apt-get clean autoclean && \
-    rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+# Install ROS2 Humble Desktop Full
+RUN apt install -y ros-humble-desktop-full ros-dev-tools
 
-# Verify ROS2 installation immediately after
-RUN echo "Checking ROS2 installation..." && \
-    ls -la /opt/ros/ && \
-    ls -la /opt/ros/humble/ && \
-    echo "CHECKING SETUP SCRIPT" && \
-    if [ -f "/opt/ros/humble/setup.bash" ]; then \
-        echo "ROS2 Humble successfully installed"; \
-        cat /opt/ros/humble/setup.bash | head -5; \
-    else \
-        echo "ROS2 Humble installation failed"; \
-        echo "Files in /opt/ros/humble:"; \
-        ls -la /opt/ros/humble/; \
+# Verify ROS2 installation and then clean
+RUN if [ ! -f "/opt/ros/humble/setup.bash" ]; then \
+        echo "ERROR: ROS2 Humble setup.bash not found!"; \
+        echo "Let's check what was installed:"; \
+        dpkg -l | grep ros-humble || echo "No ROS2 packages found"; \
+        ls -la /opt/ros/ 2>/dev/null || echo "ROS directory doesn't exist"; \
         exit 1; \
+    else \
+        echo "ROS2 Humble successfully installed!"; \
+        echo "Setup script found at /opt/ros/humble/setup.bash"; \
+    fi
+
+# Clean up after successful installation
+RUN apt-get -y autoremove && \
+    apt-get clean autoclean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Debug check - Let's see what's actually happening
+RUN echo "=== CHECKING ROS2 INSTALLATION ===" && \
+    echo "Directory contents:" && \
+    ls -la /opt/ && \
+    echo "ROS directory contents:" && \
+    ls -la /opt/ros/ 2>/dev/null || echo "ROS directory doesn't exist" && \
+    echo "Humble directory contents:" && \
+    ls -la /opt/ros/humble/ 2>/dev/null || echo "Humble directory doesn't exist" && \
+    echo "Environment variables:" && \
+    echo "ROS_DISTRO=${ROS_DISTRO}" && \
+    echo "=== END CHECK ==="
+
+# Now check specifically for setup.bash
+RUN if [ ! -f "/opt/ros/humble/setup.bash" ]; then \
+        echo "ROS2 Humble is not installed properly!"; \
+        echo "Let's find where ROS files might be:"; \
+        find /opt -name "*ros*" -type d 2>/dev/null; \
+        find /opt -name "*.bash" -type f 2>/dev/null | grep -i ros; \
+        exit 1; \
+    else \
+        echo "ROS2 Humble found at /opt/ros/humble/setup.bash"; \
     fi
 
 #
