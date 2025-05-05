@@ -8,8 +8,9 @@
 GITHUB_REPO="https://github.com/AbdullahGM1/px4_ros2_humble.git"
 UPSTREAM_REPO="https://github.com/mzahana/px4-dev-ros2-humble.git"  # Original repository
 LOCAL_REPO_DIR="px4_ros2_humble"  
-DOCKER_REPO="px4-dev-simulation-ubuntu22"  
+DOCKER_REPO="ros2-agent-sim:latest"  
 CONTAINER_NAME="ros2_agent_sim"
+WORKSPACE_DIR=~/${CONTAINER_NAME}_shared_volume
 
 # Check if repository exists, if not clone it
 if [ ! -d "$LOCAL_REPO_DIR" ]; then
