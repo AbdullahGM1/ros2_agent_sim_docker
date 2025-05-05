@@ -228,11 +228,11 @@ RUN /bin/bash -c "ollama serve &" && \
     sleep 10 && \
     ollama pull qwen3:8b || echo "Failed to pull model during build, will try in container runtime"
 
-# Change ownership of workspaces
-RUN chown -R user:user /home/user/rosa_ws /home/user/ros2_ws
+# Change ownership of workspace
+RUN chown -R user:user /home/user/ros2_ws
 
-# Source ROS2 and ROSA in bashrc
-RUN echo "source /home/user/rosa_ws/install/setup.bash" >> /home/user/.bashrc
+# Source ROS2 in bashrc
+RUN echo "source /home/user/ros2_ws/install/setup.bash" >> /home/user/.bashrc
 
 # create and start as LOCAL_USER_ID
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
