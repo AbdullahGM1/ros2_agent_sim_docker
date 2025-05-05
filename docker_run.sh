@@ -152,6 +152,13 @@ echo "Making install.sh executable and running it..."
 docker exec --user user ${CONTAINER_NAME} chmod +x /home/user/shared_volume/ros2_ws/src/install.sh
 docker exec --user user ${CONTAINER_NAME} /bin/bash -c "cd /home/user/shared_volume/ros2_ws/src && ./install.sh"
 
+# Check if install.sh completed successfully
+if [ $? -eq 0 ]; then
+    echo "✓ All dependencies installed successfully!"
+else
+    echo "✗ Installation failed. Please check the install.sh script."
+fi
+
 # Cleanup X server permissions when script exits
 trap 'xhost -local:root' ERR EXIT
 
