@@ -49,9 +49,7 @@ fi
 
 # Build the Docker image
 echo "Building Docker image..."
-cd $LOCAL_REPO_DIR/docker
-make px4-dev-simulation-ubuntu22
-WORKSPACE_DIR=~/${CONTAINER_NAME}_shared_volume
+./build.sh
 CMD=""
 DOCKER_OPTS=""
 
@@ -197,10 +195,10 @@ GitHub Repository: ${GITHUB_REPO}
 Docker Image: ${DOCKER_REPO}
 
 To rebuild the image:
-cd ${LOCAL_REPO_DIR}/docker && make px4-dev-simulation-ubuntu22
+./build.sh
 
 To access your container again, run:
-./run_ros2_px4_container.sh ${CONTAINER_NAME}
+./docker_run.sh ${CONTAINER_NAME}
 
 To stop the container:
 docker stop ${CONTAINER_NAME}
