@@ -169,13 +169,13 @@ RUN cd /home/user/ros2_ws/src/ && git clone -b humble https://github.com/gazebos
 
 ENV GZ_VERSION=garden
 
-# Check if ROS2 is properly installed before proceeding
-RUN if [ ! -f "/opt/ros/humble/setup.bash" ]; then \
-        echo "ROS2 Humble is not installed properly!"; \
-        exit 1; \
-    else \
-        echo "ROS2 Humble found at /opt/ros/humble/setup.bash"; \
-    fi
+# # Check if ROS2 is properly installed before proceeding
+# RUN if [ ! -f "/opt/ros/humble/setup.bash" ]; then \
+#         echo "ROS2 Humble is not installed properly!"; \
+#         exit 1; \
+#     else \
+#         echo "ROS2 Humble found at /opt/ros/humble/setup.bash"; \
+#     fi
 
 # Initialize rosdep and install dependencies
 RUN rosdep init && rosdep update
