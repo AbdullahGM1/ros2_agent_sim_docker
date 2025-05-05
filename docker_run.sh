@@ -4,52 +4,10 @@
 # Authors: Based on Mohammed Abdelkader's script, adapted for ROS2 stack
 # Maintained by: AbdullahGM1 <agm.musalami@gmail.com>
 
-# GitHub repository and Docker image name
-GITHUB_REPO="https://github.com/AbdullahGM1/px4_ros2_humble.git"
-UPSTREAM_REPO="https://github.com/mzahana/px4-dev-ros2-humble.git"  # Original repository
-LOCAL_REPO_DIR="px4_ros2_humble"  
-DOCKER_REPO="ros2-agent-sim:latest"  
+# Docker configuration
+DOCKER_REPO="ros2-agent-sim:latest"
 CONTAINER_NAME="ros2_agent_sim"
 WORKSPACE_DIR=~/${CONTAINER_NAME}_shared_volume
-
-# Check if repository exists, if not clone it
-if [ ! -d "$LOCAL_REPO_DIR" ]; then
-    echo "Cloning repository from $GITHUB_REPO..."
-    git clone $GITHUB_REPO
-    
-    cd $LOCAL_REPO_DIR
-    # Add upstream remote to pull from original repository
-    echo "Adding upstream remote..."
-    git remote add upstream $UPSTREAM_REPO
-    cd ..
-else
-    echo "Repository already exists. Pulling latest changes..."
-    cd $LOCAL_REPO_DIR
-    
-    # Check if upstream remote exists
-    if ! git remote | grep -q upstream; then
-        echo "Adding upstream remote..."
-        git remote add upstream $UPSTREAM_REPO
-    fi
-    
-    # Fetch from upstream
-    echo "Fetching from upstream repository..."
-    git fetch upstream
-    
-    # Merge upstream changes into current branch
-    echo "Merging upstream changes..."
-    git merge upstream/main || git merge upstream/master  # Try both main and master branches
-    
-    # Pull any changes from your fork
-    echo "Pulling changes from your fork..."
-    git pull origin
-    
-    cd ..
-fi
-
-# Build the Docker image
-echo "Building Docker image..."
-./build.sh
 CMD=""
 DOCKER_OPTS=""
 
@@ -115,7 +73,6 @@ echo "Shared WORKSPACE_DIR: $WORKSPACE_DIR";
 # Allow X server connections from docker containers - NOT recommended for security
 xhost +local:root
  
-cd ../..  # Go back to the original directory
 echo "Starting Container: ${CONTAINER_NAME} with image: $DOCKER_REPO"
 
 # Define the command to run inside the container
@@ -182,6 +139,19 @@ else
         bash -c "${CMD}"
 fi
 
+# Copy install.sh to the shared volume if it doesn't exist
+if [ ! -f "$WORKSPACE_DIR/ros2_ws/src/install.sh" ]; then
+    echo "Creating directory structure and copying install.sh..."
+    mkdir -p "$WORKSPACE_DIR/ros2_ws/src"
+    cp scripts/install.sh "$WORKSPACE_DIR/ros2_ws/src/"
+    echo "install.sh copied to shared volume"
+fi
+
+# Make install.sh executable and run it inside the container
+echo "Making install.sh executable and running it..."
+docker exec --user user ${CONTAINER_NAME} chmod +x /home/user/shared_volume/ros2_ws/src/install.sh
+docker exec --user user ${CONTAINER_NAME} /bin/bash -c "cd /home/user/shared_volume/ros2_ws/src && ./install.sh"
+
 # Cleanup X server permissions when script exits
 trap 'xhost -local:root' ERR EXIT
 
@@ -191,7 +161,6 @@ echo "
 Container Name: ${CONTAINER_NAME}
 Shared Volume: ${WORKSPACE_DIR}
 Ollama Port: 11434 (exposed)
-GitHub Repository: ${GITHUB_REPO}
 Docker Image: ${DOCKER_REPO}
 
 To rebuild the image:
