@@ -2,40 +2,30 @@
 # Custom ROS2 Humble + Gazebo Garden + XRCE-DDS + PX4 + MAVROS + ROSA + ChatOllama + Qwen3:8b
 #
 
-FROM ubuntu:22.04
+FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
+#
 LABEL maintainer="AbdullahGM1 <agm.musalami@gmail.com>"
 
 #
-# Install ROS2 Humble Desktop Full
+# Install ROS ros humble-dekptop-full
 #
-ENV DEBIAN_FRONTEND=noninteractive
-ENV LANG=C.UTF-8
-ENV LC_ALL=C.UTF-8
+ENV DEBIAN_FRONTEND noninteractive
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
 
-# Install prerequisites
-RUN apt update && apt install -y \
-    curl \
-    gnupg2 \
-    lsb-release \
-    wget \
-    software-properties-common \
-    && add-apt-repository universe
+RUN apt update && apt install -y curl software-properties-common && add-apt-repository universe \
+	&& apt-get -y autoremove \
+	&& apt-get clean autoclean \
+	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-# Setup ROS2 repository
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
-RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list
+RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
+RUN apt update &&  apt upgrade -y
+RUN apt install -y ros-humble-desktop ros-dev-tools \
+	&& apt-get -y autoremove \
+	&& apt-get clean autoclean \
+	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-# Install ROS2 Humble
-RUN apt update && apt install -y \
-    ros-humble-desktop-full \
-    ros-dev-tools \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set up rosdep
-RUN rosdep init
-
-# Source ROS2 setup in bashrc
-RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc
 
 #
 # Setup XRCE-DDS Agent & Client
@@ -169,13 +159,6 @@ RUN cd /home/user/ros2_ws/src/ && git clone -b humble https://github.com/gazebos
 
 ENV GZ_VERSION=garden
 
-# # Check if ROS2 is properly installed before proceeding
-# RUN if [ ! -f "/opt/ros/humble/setup.bash" ]; then \
-#         echo "ROS2 Humble is not installed properly!"; \
-#         exit 1; \
-#     else \
-#         echo "ROS2 Humble found at /opt/ros/humble/setup.bash"; \
-#     fi
 
 # Initialize rosdep and install dependencies
 RUN rosdep init && rosdep update
