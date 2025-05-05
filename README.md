@@ -229,7 +229,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Abdullah GM - [@AbdullahGM1](https://github.com/AbdullahGM1) - agm.musalami@gmail.com
 
-Project Link: [https://github.com/AbdullahGM1/ros2-agent-sim-docker](https://github.com/AbdullahGM1/ros2-agent-sim-docker)
 
 <!-- ## 🚦 Roadmap
 
@@ -251,7 +250,6 @@ Project Link: [https://github.com/AbdullahGM1/ros2-agent-sim-docker](https://git
 - [NASA ROSA Repository](https://github.com/nasa-jpl/rosa)
 - [Ollama Documentation](https://github.com/ollama/ollama)
 - [LangChain Documentation](https://python.langchain.com/)
-
 
 
 ---
