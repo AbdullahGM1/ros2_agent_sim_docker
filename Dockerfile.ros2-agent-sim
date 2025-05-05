@@ -22,12 +22,30 @@ RUN apt update && apt install -y curl software-properties-common && add-apt-repo
 RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
 RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
-# Install ROS2 Humble Desktop Full
-RUN apt update && apt upgrade -y
-RUN apt install -y ros-humble-desktop-full ros-dev-tools \
-	&& apt-get -y autoremove \
-	&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+# Verify the repository was added correctly
+RUN cat /etc/apt/sources.list.d/ros2.list && \
+    apt update
+
+# Install ROS2 Humble Desktop Full and verify
+RUN apt install -y ros-humble-desktop-full ros-dev-tools && \
+    apt-get -y autoremove && \
+    apt-get clean autoclean && \
+    rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+
+# Verify ROS2 installation immediately after
+RUN echo "Checking ROS2 installation..." && \
+    ls -la /opt/ros/ && \
+    ls -la /opt/ros/humble/ && \
+    echo "CHECKING SETUP SCRIPT" && \
+    if [ -f "/opt/ros/humble/setup.bash" ]; then \
+        echo "ROS2 Humble successfully installed"; \
+        cat /opt/ros/humble/setup.bash | head -5; \
+    else \
+        echo "ROS2 Humble installation failed"; \
+        echo "Files in /opt/ros/humble:"; \
+        ls -la /opt/ros/humble/; \
+        exit 1; \
+    fi
 
 #
 # Setup XRCE-DDS Agent & Client
@@ -131,6 +149,18 @@ ENV ROS_DISTRO humble
 
 # Update package list and install Gazebo Garden first
 RUN apt-get update && apt-get install -y \
+    wget \
+    lsb-release \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add Gazebo repository
+RUN wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | \
+    tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+
+# Install Gazebo Garden
+RUN apt-get update && apt-get install -y \
     gz-garden \
     gz-sim7-cli \
     libgz-transport12-dev \
@@ -149,12 +179,21 @@ RUN cd /home/user/ros2_ws/src/ && git clone -b humble https://github.com/gazebos
 
 ENV GZ_VERSION=garden
 
+# Check if ROS2 is properly installed before proceeding
+RUN if [ ! -f "/opt/ros/humble/setup.bash" ]; then \
+        echo "ROS2 Humble is not installed properly!"; \
+        exit 1; \
+    else \
+        echo "ROS2 Humble found at /opt/ros/humble/setup.bash"; \
+    fi
+
 # Initialize rosdep and install dependencies
 RUN rosdep init && rosdep update
 
 # Install dependencies and build
-RUN cd /home/user/ros2_ws/ && \
-    /bin/bash -c "source /opt/ros/humble/setup.bash && \
+WORKDIR /home/user/ros2_ws
+
+RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
     rosdep install -r --from-paths src -i -y --ignore-src --rosdistro humble && \
     colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
