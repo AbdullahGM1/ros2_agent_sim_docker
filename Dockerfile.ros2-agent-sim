@@ -209,27 +209,7 @@ RUN pip3 install future
 #
 # Install ROSA (ROS Agent) - NASA JPL Task Planning Framework
 #
-RUN apt-get update && apt-get install -y \
-		python3-colcon-common-extensions \
-		python3-vcstool \
-	&& rm -rf /var/lib/apt/lists/*
-
-# Clone and build ROSA
-RUN mkdir -p /home/user/rosa_ws/src && \
-    cd /home/user/rosa_ws/src && \
-    git clone https://github.com/nasa-jpl/rosa.git && \
-    cd rosa && \
-    git submodule update --init --recursive
-
-# Install ROSA dependencies
-RUN cd /home/user/rosa_ws && \
-    /bin/bash -c "source /opt/ros/humble/setup.bash && \
-    rosdep install --from-paths src --ignore-src -r -y"
-
-# Build ROSA
-RUN cd /home/user/rosa_ws && \
-    /bin/bash -c "source /opt/ros/humble/setup.bash && \
-    colcon build"
+RUN pip3 install jpl-rosa
 
 #
 # Install Ollama for local LLM support
