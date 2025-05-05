@@ -211,15 +211,15 @@ docker build --no-cache -f Dockerfile.ros2-agent-sim -t ros2-agent-sim:latest .
 ```
 
 
-## 🎉 Acknowledgments
+### 🎉 Acknowledgments
 
 This project builds upon the excellent work of:
 
-- [smart_track Docker Environment](https://github.com/mzahana/smart_track/tree/main/docker) by Mohammed Abdelkader
-- [PX4 ROS2 Humble Integration](https://github.com/mzahana/px4_ros2_humble) by Mohammed Abdelkader
+- [smart_track Docker Environment](https://github.com/mzahana/smart_track/tree/main/docker) by [Mohammed Abdelkader](https://github.com/mzahana)
+- [PX4 ROS2 Humble Integration](https://github.com/mzahana/px4_ros2_humble) by [Mohammed Abdelkader](https://github.com/mzahana)
 - [ROSA (NASA JPL)](https://github.com/nasa-jpl/rosa) - ROS Agent task planning framework
 
-Special thanks to Mohammed Abdelkader for providing the foundational Docker configurations and ROS2-PX4 integration scripts that made this project possible.
+Special thanks to [Mohammed Abdelkader](https://github.com/mzahana) for providing the foundational Docker configurations and ROS2-PX4 integration scripts that made this project possible.
 
 ## 📝 License
 
