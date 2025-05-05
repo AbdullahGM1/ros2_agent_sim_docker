@@ -262,6 +262,15 @@ sleep 5\n\
 exec "$@"' > /entrypoint.sh && \
 chmod +x /entrypoint.sh
 
+# create and start as LOCAL_USER_ID
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Copy middleware profiles
+RUN mkdir -p /usr/local/share/middleware_profiles
+COPY middleware_profiles/*profile.xml /usr/local/share/middleware_profiles/
+ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+
 # Copy middleware profiles
 RUN mkdir -p /usr/local/share/middleware_profiles
 COPY middleware_profiles/*profile.xml /usr/local/share/middleware_profiles/
@@ -269,8 +278,6 @@ ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
 # Expose Ollama default port
 EXPOSE 11434
-
-ENTRYPOINT ["/entrypoint.sh"]
 
 WORKDIR /home/user
 CMD ["/bin/bash"]
