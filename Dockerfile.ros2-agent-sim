@@ -162,7 +162,7 @@ RUN cd /home/user/ros2_ws/ && \
 RUN echo "source /home/user/ros2_ws/install/setup.bash" >> /home/user/.bashrc
 
 # Set correct workspace directory
-WORKDIR /home/user/ros2_ws
+WORKDIR /home/user
 
 #
 # Install rqt_tf
@@ -242,34 +242,9 @@ RUN chown -R user:user /home/user/rosa_ws /home/user/ros2_ws
 # Source ROS2 and ROSA in bashrc
 RUN echo "source /home/user/rosa_ws/install/setup.bash" >> /home/user/.bashrc
 
-# Create entrypoint script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-\n\
-# Source ROS2\n\
-source "/opt/ros/humble/setup.bash"\n\
-\n\
-# Source ROSA\n\
-source "/home/user/rosa_ws/install/setup.bash"\n\
-\n\
-# Start Ollama service in background\n\
-ollama serve &\n\
-\n\
-# Wait for Ollama to start\n\
-sleep 5\n\
-\n\
-# Execute the command\n\
-exec "$@"' > /entrypoint.sh && \
-chmod +x /entrypoint.sh
-
 # create and start as LOCAL_USER_ID
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Copy middleware profiles
-RUN mkdir -p /usr/local/share/middleware_profiles
-COPY middleware_profiles/*profile.xml /usr/local/share/middleware_profiles/
-ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
 # Copy middleware profiles
 RUN mkdir -p /usr/local/share/middleware_profiles
