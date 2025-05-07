@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs a docker container for Custom ROS2 Humble + Gazebo Garden + PX4 + MAVROS + ROSA + ChatOllama + Qwen3 dev environment
+# Runs a docker container for Custom ROS2 Humble + Gazebo Garden + PX4 + MAVROS + ChatOllama + Qwen3 dev environment
 #
 # Authors: Based on Mohammed Abdelkader's script, adapted for ROS2 stack
 # Maintained by: AbdullahGM1 <agm.musalami@gmail.com>
@@ -129,7 +129,6 @@ echo "Starting Container: ${CONTAINER_NAME} with image: $DOCKER_REPO"
 CMD="export DEV_DIR=/home/user/shared_volume && \
     export PX4_DIR=\$DEV_DIR/PX4-Autopilot &&\
     export ROS2_WS=/home/user/ros2_ws &&\
-    export ROSA_WS=/home/user/rosa_ws &&\
     source /home/user/.bashrc &&\
     if [ -f "/home/user/shared_volume/ros2_ws/install/setup.bash" ]; then
         source /home/user/shared_volume/ros2_ws/install/setup.bash
@@ -164,11 +163,10 @@ if [ -n "$CONTAINER_EXISTS" ]; then
 else
     echo "Running new container ${CONTAINER_NAME}..."
     
-    # Define ROS2/ROSA specific command for first run
+    # Define ROS2 specific command for first run
     CMD="export DEV_DIR=/home/user/shared_volume &&\
         export PX4_DIR=\$DEV_DIR/PX4-Autopilot &&\
         export ROS2_WS=/home/user/ros2_ws &&\
-        export ROSA_WS=/home/user/rosa_ws &&\
         export GZ_VERSION=garden &&\
         source /home/user/.bashrc &&\
         if [ -f "/home/user/shared_volume/ros2_ws/install/setup.bash" ]; then
@@ -233,12 +231,6 @@ Container Name: ${CONTAINER_NAME}
 Shared Volume: ${WORKSPACE_DIR}
 Ollama Port: $(echo $PORT_MAPPING | cut -d':' -f1) (mapped to 11434 inside container)
 Docker Image: ${DOCKER_REPO}
-
-To rebuild the image:
-./build.sh
-
-To access your container again, run:
-./docker_run.sh ${CONTAINER_NAME}
 
 To stop the container:
 docker stop ${CONTAINER_NAME}
