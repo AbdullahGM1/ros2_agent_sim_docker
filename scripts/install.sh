@@ -107,6 +107,33 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+#
+# MAVROS
+#
+echo "Cloning mavlink package ... " && sleep 1
+if [ ! -d "$ROS2_SRC/mavlink" ]; then
+    cd $ROS2_SRC
+    git clone  https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink
+    cd $ROS2_SRC/mavlink && git checkout release/humble/mavlink/2023.9.9-1
+fi
+# Custom mavros pkg is required to handle TF issues in multi-vehicle simulation
+echo "Cloning custom mavros package ... " && sleep 1
+if [ ! -d "$ROS2_SRC/mavros" ]; then
+    cd $ROS2_SRC
+    git clone https://github.com/AbdullahGM1/mavros.git
+    cd $ROS2_SRC/mavros && git checkout ros2_humble
+fi
+
+cd $ROS2_WS && rosdep init && rosdep update && rosdep install --from-paths src --ignore-src -r -y
+
+cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon  build --packages-up-to mavros --executor sequential
+
+cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential
+
+cd $ROS2_WS && colcon build
+
+echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
+
 # Function to run commands with sudo
 run_sudo() {
     sudo "$@"
