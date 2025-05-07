@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf version='1.9'>
+  <model name='x500_lidar_camera'>
+    <include merge='true'>
+      <uri>x500</uri>
+    </include>
+
+    <include merge='true'>
+      <uri>model://gimbal_small_3d</uri>
+      <pose>0.1 0 0.13 1.5708 0 1.5708</pose>
+    </include>
+    <joint name="CameraJoint_gimbal_camera" type="fixed">
+      <parent>base_link</parent>
+      <child>base_link_gimbal</child>
+    </joint>
+   
+    <include merge='true'>
+      <uri>model://lidar</uri>
+      <pose>0 0 0.295 0 0 0</pose>
+    </include>
+    <joint name="LidarJoint" type="fixed">
+      <parent>base_link</parent>
+      <child>lidar_link</child>
+    </joint>
+    
+  </model>
+</sdf>

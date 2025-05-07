@@ -71,6 +71,13 @@ The build process includes:
 ./docker_run.sh
 ```
 
+## Inside the container
+### 4. Run the `install.sh` file to install all the dependences 
+```bash
+cd /ros2_ws/src/
+./install.sh
+```
+
 The container will start with all services running, including:
 - ROS2 Humble environment
 - Gazebo Garden simulator
@@ -82,16 +89,59 @@ The container will start with all services running, including:
 
 ```
 ros2-agent-sim-docker/
-├── Dockerfile.ros2-agent-sim  # Main Dockerfile
-├── docker_run.sh              # Container runner script
-├── build.sh                   # Image builder script
-├── scripts/
-│   ├── entrypoint.sh         # Container entry point
-│   ├── px4_dev.sh            # PX4 development setup
-│   └── requirements.txt      # Python dependencies
-├── middleware_profiles/
-│   └── rtps_udp_profile.xml  # Middleware configuration
-└── README.md
+├── build.sh
+├── Dockerfile.ros2-agent-sim
+├── docker_run.sh
+├── middleware_profiles
+│   └── rtps_udp_profile.xml
+├── PX4_config
+│   ├── 4022_gz_x500_lidar_camera
+│   ├── CMakeLists.txt
+│   ├── models
+│   │   ├── gimbal_small_3d
+│   │   │   ├── meshes
+│   │   │   │   ├── base_plate.dae
+│   │   │   │   ├── camera_enclosure.dae
+│   │   │   │   ├── roll_arm.dae
+│   │   │   │   └── yaw_arm.dae
+│   │   │   ├── model.config
+│   │   │   └── model.sdf
+│   │   ├── lidar
+│   │   │   ├── model.config
+│   │   │   └── model.sdf
+│   │   ├── x500
+│   │   │   ├── materials
+│   │   │   │   └── textures
+│   │   │   │       ├── CF.png
+│   │   │   │       ├── nxp.png
+│   │   │   │       └── rd.png
+│   │   │   ├── meshes
+│   │   │   │   ├── 1345_prop_ccw.stl
+│   │   │   │   ├── 1345_prop_cw.stl
+│   │   │   │   ├── 5010Base.dae
+│   │   │   │   ├── 5010Bell.dae
+│   │   │   │   ├── CF.png
+│   │   │   │   └── NXP-HGD-CF.dae
+│   │   │   ├── model.config
+│   │   │   ├── model.sdf
+│   │   │   └── thumbnails
+│   │   │       ├── 1.png
+│   │   │       ├── 2.png
+│   │   │       ├── 3.png
+│   │   │       ├── 4.png
+│   │   │       └── 5.png
+│   │   └── x500_lidar_camera
+│   │       ├── model.config
+│   │       └── model.sdf
+│   └── worlds
+│       └── default.sdf
+├── README.md
+└── scripts
+    ├── entrypoint.sh
+    ├── install.sh
+    ├── px4_dev.sh
+    └── requirements.txt
+
 ```
 
 <!-- ## 🔨 Usage
