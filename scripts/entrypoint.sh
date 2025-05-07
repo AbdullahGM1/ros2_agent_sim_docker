@@ -20,9 +20,6 @@ if [ -f "/home/user/ros2_ws/install/setup.bash" ]; then
 	source "/home/user/ros2_ws/install/setup.bash"
 fi
 
-# Source ROSA workspace
-source "/home/user/rosa_ws/install/setup.bash"
-
 # Start Ollama service in background
 ollama serve &
 

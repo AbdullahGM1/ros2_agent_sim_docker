@@ -59,6 +59,8 @@ chmod +x build.sh docker_run.sh
 ./build.sh
 ```
 
+| **Note:** The building process is going to take time.
+
 The build process includes:
 - ROS2 Humble installation
 - Gazebo Garden setup
