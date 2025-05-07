@@ -92,6 +92,9 @@ cp -v ${ROS2_SRC}/PX4_config/CMakeLists.txt ${PX4_DIR}/ROMFS/px4fmu_common/init.
 # Force a sync to ensure files are written to disk
 sync
 
+# 
+echo "Fixing CMakeLists.txt for missing airframes..."
+sed -i '/1015_gazebo-classic_iris_obs_avoid/d' ${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/CMakeLists.txt
 # Rebuild after copying files
 cd $PX4_DIR && make px4_sitl
 
