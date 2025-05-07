@@ -42,8 +42,6 @@ A complete Docker-based development environment for autonomous robotics featurin
 - NVIDIA GPU support (optional, for hardware acceleration)
 - X11 server for GUI applications
 - 20GB+ free disk space
-- 8GB+ RAM recommended
-- Internet connection for building (downloads ~2GB of packages)
 
 ## 🔧 Quick Start
 
