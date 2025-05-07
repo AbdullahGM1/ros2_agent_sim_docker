@@ -224,17 +224,12 @@ fi
 # Cleanup X server permissions when script exits
 xhost -local:root
 
-# Optional: Print useful information for the user
-echo "
-=== Container Information ===
-Container Name: ${CONTAINER_NAME}
-Shared Volume: ${WORKSPACE_DIR}
-Ollama Port: $(echo $PORT_MAPPING | cut -d':' -f1) (mapped to 11434 inside container)
-Docker Image: ${DOCKER_REPO}
-
-To stop the container:
-docker stop ${CONTAINER_NAME}
-
-To remove the container:
-docker rm ${CONTAINER_NAME}
-"
+# After exiting the interactive session
+if [ "$FIRST_RUN" = true ] || [ ! -f "$SETUP_MARKER" ]; then
+    echo "Running initial setup..."
+    
+    # Check if container is still running
+    if ! docker ps -q -f name=${CONTAINER_NAME} | grep -q .; then
+        echo "Container stopped. Restarting for setup..."
+        docker start ${CONTAINER_NAME}
+    fi
