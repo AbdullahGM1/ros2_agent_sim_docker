@@ -108,32 +108,80 @@ command_exists() {
 }
 
 #
+#
 # MAVROS
 #
-echo "Cloning mavlink package ... " && sleep 1
+echo "Setting up MAVROS and dependencies..."
+
+# Check and create the src directory if it doesn't exist
+if [ ! -d "$ROS2_SRC" ]; then
+    echo "Creating ROS2 source directory..."
+    mkdir -p "$ROS2_SRC"
+    sudo chown -R $(id -u):$(id -g) "$ROS2_SRC"
+fi
+
+# Clone mavlink with better error handling
+echo "Cloning mavlink package..." 
 if [ ! -d "$ROS2_SRC/mavlink" ]; then
-    cd $ROS2_SRC
-    git clone  https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink
-    cd $ROS2_SRC/mavlink && git checkout release/humble/mavlink/2023.9.9-1
+    cd "$ROS2_SRC"
+    echo "Current directory: $(pwd)"
+    echo "Cloning from: https://github.com/ros2-gbp/mavlink-gbp-release.git"
+    
+    git clone https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink || {
+        echo "${RED}Failed to clone mavlink repository${NC}"
+        echo "Error code: $?"
+        echo "Current directory: $(pwd)"
+        echo "Directory contents: $(ls -la)"
+    }
+    
+    if [ -d "$ROS2_SRC/mavlink" ]; then
+        cd "$ROS2_SRC/mavlink" 
+        git checkout release/humble/mavlink/2023.9.9-1
+    else
+        echo "${RED}Mavlink directory not created, skipping checkout${NC}"
+    fi
+else
+    echo "${YELLOW}Mavlink directory already exists, skipping clone${NC}"
 fi
-# Custom mavros pkg is required to handle TF issues in multi-vehicle simulation
-echo "Cloning custom mavros package ... " && sleep 1
+
+# Clone custom mavros with better error handling
+echo "Cloning custom mavros package..." 
 if [ ! -d "$ROS2_SRC/mavros" ]; then
-    cd $ROS2_SRC
-    git clone https://github.com/AbdullahGM1/mavros.git
-    cd $ROS2_SRC/mavros && git checkout ros2_humble
+    cd "$ROS2_SRC"
+    echo "Current directory: $(pwd)"
+    echo "Cloning from: https://github.com/AbdullahGM1/mavros.git"
+    
+    git clone https://github.com/AbdullahGM1/mavros.git || {
+        echo "${RED}Failed to clone mavros repository${NC}"
+        echo "Error code: $?"
+        echo "Current directory: $(pwd)"
+        echo "Directory contents: $(ls -la)"
+    }
+    
+    if [ -d "$ROS2_SRC/mavros" ]; then
+        cd "$ROS2_SRC/mavros"
+        git checkout ros2_humble
+    else
+        echo "${RED}Mavros directory not created, skipping checkout${NC}"
+    fi
+else
+    echo "${YELLOW}Mavros directory already exists, skipping clone${NC}"
 fi
 
-cd $ROS2_WS && rosdep init && rosdep update && rosdep install --from-paths src --ignore-src -r -y
+# Initialize rosdep if needed and install dependencies
+echo "Running rosdep..."
+cd "$ROS2_WS"
+rosdep init || echo "Rosdep already initialized"
+rosdep update
+rosdep install --from-paths src --ignore-src -r -y
 
-cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon  build --packages-up-to mavros --executor sequential
+# Build packages
+echo "Building mavros packages..."
+cd "$ROS2_WS" && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros --executor sequential
+cd "$ROS2_WS" && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential
+cd "$ROS2_WS" && colcon build
 
-cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential
-
-cd $ROS2_WS && colcon build
-
-echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
-
+echo "DONE. Packages are built. Models and airframe config files are copied to the respective folders in the ${PX4_DIR} directory"
 # Function to run commands with sudo
 run_sudo() {
     sudo "$@"
