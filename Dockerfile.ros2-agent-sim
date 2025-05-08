@@ -122,61 +122,37 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /home/user/.bashrc
 RUN apt remove -y ros-humble-ros-gz-bridge
 
 #
-# Update package list and install Gazebo Garden
+# Build ros-humble-ros-gz-bridge from source
 #
-RUN apt-get update && apt-get install -y \
-    wget \
-    lsb-release \
-    gnupg \
-    && rm -rf /var/lib/apt/lists/*
-
-# Add Gazebo repository
-RUN wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | \
-    tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
-
-# Install Gazebo Garden
-RUN apt-get update && apt-get install -y \
-    gz-garden \
-    gz-sim7-cli \
-    libgz-transport12-dev \
-    libgz-math7-dev \
-    libgz-cmake3-dev \
-    libignition-cmake2-dev \
-    && apt-get -y autoremove \
-    && apt-get clean autoclean \
-    && rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
-	
-# Build ros-humble-ros-gz-bridge
 ENV ROS_DISTRO humble
-ENV GZ_VERSION garden
+RUN apt-get install gz-sim7-cli libgz-transport12-dev libgz-math7-dev libgz-cmake3-dev libignition-cmake2-dev -y \
+	&& apt-get -y autoremove \
+	&& apt-get clean autoclean \
+	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-# Create and navigate to workspace
+# RUN rosdep init
 RUN mkdir -p /home/user/ros2_ws/src/
-
-# Clone the ros_gz repository
 RUN cd /home/user/ros2_ws/src/ && git clone -b humble https://github.com/gazebosim/ros_gz.git
 
-# Initialize rosdep and install dependencies
-RUN rosdep init && rosdep update
-
-# Install dependencies and build
-WORKDIR /home/user/ros2_ws
-
-RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
-    rosdep install -r --from-paths src -i -y --ignore-src --rosdistro humble && \
-    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release"
-
-# Source the workspace in bashrc
+# USER user
+ENV GZ_VERSION=garden
+RUN rosdep init &&  rosdep update \
+	&& bash -c "source /opt/ros/humble/setup.bash" \
+	&& cd /home/user/ros2_ws/ \
+	&& rosdep install -r --from-paths src -i -y --ignore-src --rosdistro humble
+WORKDIR /home/user/ros_ws
+RUN bash -c "source /opt/ros/humble/setup.bash && cd /home/user/ros2_ws && export MAKEFLAGS='-j 4' &&  colcon build"
+	
+# USER root
 RUN echo "source /home/user/ros2_ws/install/setup.bash" >> /home/user/.bashrc
-
+	
 #
 # Install rqt_tf
 #
-RUN apt update && apt install -y ros-humble-rqt-tf-* \
+RUN apt update &&  apt install -y ros-humble-rqt-tf-* \
 	&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/*
-
+	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+	
 #
 # MAVROS dependencies
 #
@@ -222,9 +198,6 @@ RUN /bin/bash -c "ollama serve &" && \
     sleep 10 && \
     ollama pull qwen3:8b || echo "Failed to pull model during build, will try in container runtime"
 
-# Change ownership of workspace
-RUN chown -R user:user /home/user/ros2_ws
-
 # create and start as LOCAL_USER_ID
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
@@ -233,9 +206,6 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 RUN mkdir -p /usr/local/share/middleware_profiles
 COPY middleware_profiles/*profile.xml /usr/local/share/middleware_profiles/
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-
-# Expose Ollama default port
-EXPOSE 11434
 
 WORKDIR /home/user
 
