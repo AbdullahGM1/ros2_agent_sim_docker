@@ -154,63 +154,63 @@ RUN apt update &&  apt install -y ros-humble-rqt-tf-* \
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-# ENV ROS_DISTRO humble
+ENV ROS_DISTRO humble
 
-# # Update package list and install Gazebo Garden first
-# RUN apt-get update && apt-get install -y \
-#     wget \
-#     lsb-release \
-#     gnupg \
-#     && rm -rf /var/lib/apt/lists/*
+# Update package list and install Gazebo Garden first
+RUN apt-get update && apt-get install -y \
+    wget \
+    lsb-release \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
 
-# # Add Gazebo repository
-# RUN wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
-#     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | \
-#     tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+# Add Gazebo repository
+RUN wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | \
+    tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
 
-# # Install Gazebo Garden
-# RUN apt-get update && apt-get install -y \
-#     gz-garden \
-#     gz-sim7-cli \
-#     libgz-transport12-dev \
-#     libgz-math7-dev \
-#     libgz-cmake3-dev \
-#     libignition-cmake2-dev \
-#     && apt-get -y autoremove \
-#     && apt-get clean autoclean \
-#     && rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+# Install Gazebo Garden
+RUN apt-get update && apt-get install -y \
+    gz-garden \
+    gz-sim7-cli \
+    libgz-transport12-dev \
+    libgz-math7-dev \
+    libgz-cmake3-dev \
+    libignition-cmake2-dev \
+    && apt-get -y autoremove \
+    && apt-get clean autoclean \
+    && rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-# # Create and navigate to workspace
-# RUN mkdir -p /home/user/ros2_ws/src/
+# Create and navigate to workspace
+RUN mkdir -p /home/user/ros2_ws/src/
 
-# # Clone the ros_gz repository
-# RUN cd /home/user/ros2_ws/src/ && git clone -b humble https://github.com/gazebosim/ros_gz.git
+# Clone the ros_gz repository
+RUN cd /home/user/ros2_ws/src/ && git clone -b humble https://github.com/gazebosim/ros_gz.git
 
-# ENV GZ_VERSION=garden
+ENV GZ_VERSION=garden
 
 
 # # Initialize rosdep and install dependencies
-# RUN rosdep init && rosdep update
+RUN rosdep init && rosdep update
 
-# # Install dependencies and build
-# WORKDIR /home/user/ros2_ws
+# Install dependencies and build
+WORKDIR /home/user/ros2_ws
 
-# RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
-#     rosdep install -r --from-paths src -i -y --ignore-src --rosdistro humble && \
-#     colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release"
+RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
+    rosdep install -r --from-paths src -i -y --ignore-src --rosdistro humble && \
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
-# # Source the workspace in bashrc
-# RUN echo "source /home/user/ros2_ws/install/setup.bash" >> /home/user/.bashrc
+# Source the workspace in bashrc
+RUN echo "source /home/user/ros2_ws/install/setup.bash" >> /home/user/.bashrc
 
-# # Set correct workspace directory
-# WORKDIR /home/user
+# Set correct workspace directory
+WORKDIR /home/user
 
 # #
 # # Install rqt_tf
-# #
-# RUN apt update && apt install -y ros-humble-rqt-tf-* \
-# 	&& apt-get clean autoclean \
-# 	&& rm -rf /var/lib/apt/lists/*
+#
+RUN apt update && apt install -y ros-humble-rqt-tf-* \
+	&& apt-get clean autoclean \
+	&& rm -rf /var/lib/apt/lists/*
 
 #
 # MAVROS dependencies
