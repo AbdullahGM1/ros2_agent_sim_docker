@@ -77,15 +77,21 @@ echo "Shared WORKSPACE_DIR: $WORKSPACE_DIR";
 echo "GIT_USER=$GIT_USER"
 echo "GIT_TOKEN=$GIT_TOKEN"
 
-CMD="export DEV_DIR=/home/user/shared_volume && \
+# Base command to set environment variables
+BASE_CMD="export DEV_DIR=/home/user/shared_volume && \
     export PX4_DIR=\$DEV_DIR/PX4-Autopilot &&\
     export ROS2_WS=\$DEV_DIR/ros2_ws &&\
     export OSQP_SRC=\$DEV_DIR &&\
-        source /home/user/.bashrc &&\
-        if [ -f "/home/user/shared_volume/ros2_ws/install/setup.bash" ]; then
-            source /home/user/shared_volume/ros2_ws/install/setup.bash
-        fi &&\
-         /bin/bash"
+    cd /home/user/shared_volume &&\
+    source /home/user/.bashrc &&\
+    if [ -f \"/home/user/shared_volume/ros2_ws/install/setup.bash\" ]; then
+        source /home/user/shared_volume/ros2_ws/install/setup.bash
+    fi"
+
+# Command for existing container
+CMD="$BASE_CMD && /bin/bash"
+
+# Add additional environment variables if needed
 if [[ -n "$GIT_TOKEN" ]] && [[ -n "$GIT_USER" ]]; then
     CMD="export GIT_USER=$GIT_USER && export GIT_TOKEN=$GIT_TOKEN && $CMD"
 fi
@@ -94,39 +100,32 @@ if [[ -n "$SUDO_PASSWORD" ]]; then
     CMD="export SUDO_PASSWORD=$SUDO_PASSWORD && $CMD"
 fi
 
-# echo $CMD
-
+# Check if container already exists
 if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
     if [ "$(docker ps -aq -f status=exited -f name=${CONTAINER_NAME})" ]; then
-        # cleanup
+        # Restart stopped container
         echo "Restarting the container..."
         docker start ${CONTAINER_NAME}
     fi
 
+    # Connect to existing container
+    echo "Connecting to existing container..."
     docker exec --user user -it ${CONTAINER_NAME} env TERM=xterm-256color bash -c "${CMD}"
 
 else
-
-CMD="export DEV_DIR=/home/user/shared_volume &&\
-        export PX4_DIR=\$DEV_DIR/PX4-Autopilot &&\
-        export ROS2_WS=\$DEV_DIR/ros2_ws &&\
-        export OSQP_SRC=\$DEV_DIR &&\
-        source /home/user/.bashrc &&\
-        if [ -f "/home/user/shared_volume/ros2_ws/install/setup.bash" ]; then
-            source /home/user/shared_volume/ros2_ws/install/setup.bash
-        fi &&\
-        /bin/bash"
-
+    # Command for new container
+    CMD="$BASE_CMD && /bin/bash"
+    
     if [[ -n "$GIT_TOKEN" ]] && [[ -n "$GIT_USER" ]]; then
-    CMD="export GIT_USER=$GIT_USER && export GIT_TOKEN=$GIT_TOKEN && $CMD"
+        CMD="export GIT_USER=$GIT_USER && export GIT_TOKEN=$GIT_TOKEN && $CMD"
     fi
 
     if [[ -n "$SUDO_PASSWORD" ]]; then
         CMD="export SUDO_PASSWORD=$SUDO_PASSWORD && $CMD"
     fi
 
+    # Run new container
     echo "Running container ${CONTAINER_NAME}..."
-
     docker run -it \
         --network host \
         --env="DISPLAY=${DISPLAY}" \
