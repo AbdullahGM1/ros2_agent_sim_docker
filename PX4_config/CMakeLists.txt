@@ -76,8 +76,8 @@ px4_add_romfs_files(
 	4005_gz_x500_vision
 	4006_gz_px4vision
 	4020_gz_x500_d435
-	4021_gz_x3_uav
 	4022_gz_x500_lidar_camera
+	4023_gz_x3_uav
 
 	6011_gazebo-classic_typhoon_h480
 	6011_gazebo-classic_typhoon_h480.post
