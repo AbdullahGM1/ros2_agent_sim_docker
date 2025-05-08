@@ -196,7 +196,13 @@ RUN pip3 install langchain langchain-community ollama
 #
 RUN /bin/bash -c "ollama serve &" && \
     sleep 10 && \
-    (ollama list | grep -q "qwen3:8b" || ollama pull qwen3:8b || echo "Failed to pull model during build, will try in container runtime")
+    MODELS=$(ollama list) && \
+    if echo "$MODELS" | grep -q "qwen3:8b"; then \
+        echo "Model qwen3:8b already exists, skipping download" ; \
+    else \
+        echo "Model qwen3:8b not found, pulling now..." && \
+        ollama pull qwen3:8b || echo "Failed to pull model during build, will try in container runtime" ; \
+    fi
 	
 # create and start as LOCAL_USER_ID
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
