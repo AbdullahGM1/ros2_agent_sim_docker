@@ -96,6 +96,7 @@ ros2-agent-sim-docker/
 │   └── rtps_udp_profile.xml
 ├── PX4_config
 │   ├── 4022_gz_x500_lidar_camera
+│   ├── 4023_gz_x3_uav
 │   ├── CMakeLists.txt
 │   ├── models
 │   │   ├── gimbal_small_3d
@@ -172,75 +173,7 @@ ollama run qwen3:8b
 #It will run the model 
 ```
 
-<!-- ### Running Gazebo Simulation
-```bash
-# Inside the container
-gz sim
-
-# With specific world
-gz sim worlds/empty.sdf
-```
-
-### Starting PX4 SITL
-```bash
-# Clone and build PX4 if not already done
-cd shared_volume
-git clone https://github.com/PX4/PX4-Autopilot.git --recursive
-cd PX4-Autopilot
-
-# Run SITL
-make px4_sitl gazebo
-```
-
-### Using ROSA (NASA JPL Task Planning)
-```bash
-# Source ROSA workspace
-source ~/rosa_ws/install/setup.bash
-
-# Run ROSA examples
-cd ~/rosa_ws/src/rosa
-# Follow ROSA documentation for specific usage
-```
-
-### Starting XRCE-DDS Agent
-```bash
-# Start agent for UDP transport
-MicroXRCEAgent udp4 -p 8888
-
-# Start agent for serial transport
-MicroXRCEAgent serial --dev /dev/ttyUSB0 -b 921600
-``` -->
-
-<!-- ## 🛠️ Customization
-
-### Adding New Dependencies
-
-1. **Python Packages:**
-   ```bash
-   # Edit scripts/requirements.txt
-   nano scripts/requirements.txt
-   # Add new package
-   new-package==1.0.0
-   ```
-
-2. **System Packages:**
-   ```bash
-   # Edit scripts/px4_dev.sh
-   nano scripts/px4_dev.sh
-   # Add apt-get install commands
-   ```
-
-3. **ROS2 Packages:**
-   ```bash
-   # Add to Dockerfile
-   RUN apt install -y ros-humble-your-package
-   ```
-
-### Middleware Configuration
-```bash
-# Edit middleware_profiles/rtps_udp_profile.xml
-nano middleware_profiles/rtps_udp_profile.xml
-``` -->
+| Docker Passward: *user* 
 
 ### Container Commands
 ```bash
