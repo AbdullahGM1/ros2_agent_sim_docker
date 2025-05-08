@@ -40,7 +40,6 @@ px4_add_romfs_files(
 	1013_gazebo-classic_iris_vision
 	1013_gazebo-classic_iris_vision.post
 	1015_gazebo-classic_iris_obs_avoid
-	1015_gazebo-classic_iris_obs_avoid.post
 	1017_gazebo-classic_iris_opt_flow_mockup
 	1019_gazebo-classic_iris_dual_gps
 	1021_gazebo-classic_uuv_hippocampus
