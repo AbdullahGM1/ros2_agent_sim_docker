@@ -158,6 +158,6 @@ echo
 echo -e "${YELLOW}Next steps:${NC}"
 echo -e "${GREEN}Installation successful!${NC}"
 
-mv -v $ROS2_SRC/PX4_config $DEV_DIR/ros2_ws/ 2>/dev/null || true
+mv -v $ROS2_SRC/PX4_config $DEV_DIR/ 2>/dev/null || true
 
 cd $HOME
