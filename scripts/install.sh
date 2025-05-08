@@ -257,10 +257,4 @@ ollama pull qwen3:8b
 echo -e "${GREEN}Installation complete!${NC}"
 echo
 echo -e "${YELLOW}Next steps:${NC}"
-echo "1. Build your package:"
-echo "   colcon build --packages-select go2_ros_agent"
-echo
-echo "2. Run the agent:"
-echo "   ros2 run go2_ros_agent go2_agent"
-echo
 echo -e "${GREEN}Installation successful!${NC}"
