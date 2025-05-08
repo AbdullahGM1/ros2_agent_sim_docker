@@ -7,7 +7,9 @@ A complete Docker-based development environment for autonomous robotics featurin
 ![Ubuntu](https://img.shields.io/badge/ubuntu-22.04-orange.svg?style=for-the-badge&logo=ubuntu&logoColor=white)
 ![Gazebo](https://img.shields.io/badge/gazebo-garden-green.svg?style=for-the-badge&logo=gazebo&logoColor=white)
 ![PX4](https://img.shields.io/badge/PX4-autopilot-blue.svg?style=for-the-badge&logo=ardupilot&logoColor=white)
+![ROS Agent](https://img.shields.io/badge/ROS-Agent-red.svg?style=for-the-badge&logo=ros&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-LLM-purple.svg?style=for-the-badge&logo=ollama&logoColor=white)
+
 
 ## 🚀 Features
 
