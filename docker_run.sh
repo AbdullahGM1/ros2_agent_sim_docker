@@ -38,7 +38,7 @@ if [ "$1" != "" ]; then
     CONTAINER_NAME=$1
 fi
 WORKSPACE_DIR=~/${CONTAINER_NAME}_shared_volume
-fi
+
 # Create workspace directory if it doesn't exist
 if [ ! -d $WORKSPACE_DIR ]; then
     mkdir -p $WORKSPACE_DIR
@@ -49,6 +49,7 @@ echo "Container name: $CONTAINER_NAME WORKSPACE DIR: $WORKSPACE_DIR"
 # Check if there's a command parameter
 if [ "$2" != "" ]; then
     CMD=$2
+fi
 
 # Setup X authentication
 XAUTH=/tmp/.docker.xauth
@@ -143,4 +144,3 @@ CMD="export DEV_DIR=/home/user/shared_volume &&\
         ${DOCKER_REPO} \
         bash -c "${CMD}"
 fi
-
