@@ -6,14 +6,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Function to run commands with sudo using the stored password
+# Function to run sudo commands (no password needed with sudoers setup)
 run_sudo() {
-    if [ -n "$SUDO_PASSWORD" ]; then
-        echo "$SUDO_PASSWORD" | sudo -S $@
-    else
-        # Fallback if no password is set
-        sudo $@
-    fi
+    sudo $@
 }
 
 if [ -z "${DEV_DIR}" ]; then

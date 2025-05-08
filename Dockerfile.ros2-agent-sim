@@ -89,7 +89,10 @@ RUN /tmp/px4_dev.sh
 
 # create user with id 1001 (jenkins docker workflow default)
 RUN useradd --shell /bin/bash -u 1000 -c "" -m user && usermod -a -G dialout user && echo "user:user" | chpasswd && adduser user sudo
-
+# Allow user to run sudo without password
+RUN echo "user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/user && \
+    chmod 0440 /etc/sudoers.d/use
+	
 # Some QT-Apps/Gazebo don't not show controls without this
 ENV QT_X11_NO_MITSHM 1
 
