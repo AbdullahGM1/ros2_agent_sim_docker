@@ -6,6 +6,16 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Function to run commands with sudo using the stored password
+run_sudo() {
+    if [ -n "$SUDO_PASSWORD" ]; then
+        echo "$SUDO_PASSWORD" | sudo -S $@
+    else
+        # Fallback if no password is set
+        sudo $@
+    fi
+}
+
 if [ -z "${DEV_DIR}" ]; then
   echo "Error: DEV_DIR environment variable is not set. Set it using export DEV_DIR=<DEV_DIR_deirectory_that_should_contain_PX4-Autopilot_and_ros2_ws>"
   exit 1
@@ -147,5 +157,7 @@ echo -e "${GREEN}Installation complete!${NC}"
 echo
 echo -e "${YELLOW}Next steps:${NC}"
 echo -e "${GREEN}Installation successful!${NC}"
+
+mv -v $ROS2_SRC/PX4_config $DEV_DIR/ros2_ws/ 2>/dev/null || true
 
 cd $HOME
