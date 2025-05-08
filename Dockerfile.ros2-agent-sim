@@ -192,12 +192,12 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 RUN pip3 install langchain langchain-community ollama
 
 #
-# Pull Qwen3:8b model using Ollama
+# Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
 #
 RUN /bin/bash -c "ollama serve &" && \
     sleep 10 && \
-    ollama pull qwen3:8b || echo "Failed to pull model during build, will try in container runtime"
-
+    (ollama list | grep -q "qwen3:8b" || ollama pull qwen3:8b || echo "Failed to pull model during build, will try in container runtime")
+	
 # create and start as LOCAL_USER_ID
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
