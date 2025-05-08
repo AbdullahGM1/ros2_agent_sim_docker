@@ -15,26 +15,6 @@ FIRST_RUN=false
 
 SUDO_PASSWORD="user"
 
-# Process arguments
-if [ "$1" != "" ]; then
-    CONTAINER_NAME=$1
-fi
-
-WORKSPACE_DIR=~/${CONTAINER_NAME}_shared_volume
-SETUP_MARKER="$WORKSPACE_DIR/.setup_complete"
-
-# Check if there's a command parameter
-if [ "$2" != "" ]; then
-    CMD=$2
-fi
-
-# Create workspace directory if it doesn't exist
-if [ ! -d $WORKSPACE_DIR ]; then
-    mkdir -p $WORKSPACE_DIR
-    FIRST_RUN=true
-fi
-echo "Container name: $CONTAINER_NAME WORKSPACE DIR: $WORKSPACE_DIR" 
-
 # Get the current version of docker-ce
 # Strip leading stuff before the version number so it can be compared
 DOCKER_VER=$(dpkg-query -f='${Version}' --show docker-ce | sed 's/[0-9]://')
@@ -52,6 +32,23 @@ else
     DOCKER_OPTS="$DOCKER_OPTS --gpus all"
 fi
 echo "GPU arguments: $DOCKER_OPTS"
+
+# Process arguments
+if [ "$1" != "" ]; then
+    CONTAINER_NAME=$1
+fi
+WORKSPACE_DIR=~/${CONTAINER_NAME}_shared_volume
+fi
+# Create workspace directory if it doesn't exist
+if [ ! -d $WORKSPACE_DIR ]; then
+    mkdir -p $WORKSPACE_DIR
+    FIRST_RUN=true
+fi
+echo "Container name: $CONTAINER_NAME WORKSPACE DIR: $WORKSPACE_DIR" 
+
+# Check if there's a command parameter
+if [ "$2" != "" ]; then
+    CMD=$2
 
 # Setup X authentication
 XAUTH=/tmp/.docker.xauth
@@ -76,109 +73,59 @@ fi
 
 echo "Shared WORKSPACE_DIR: $WORKSPACE_DIR";
 
-# Check if port 11434 is already in use
-if lsof -Pi :11434 -sTCP:LISTEN -t >/dev/null ; then
-    echo "Warning: Port 11434 is already in use. Using port 11435 instead."
-    PORT_MAPPING="11435:11434"
-else
-    PORT_MAPPING="11434:11434"
-fi
+echo "GIT_USER=$GIT_USER"
+echo "GIT_TOKEN=$GIT_TOKEN"
 
-# Check if this is a first-time setup
-if [ "$FIRST_RUN" = true ] || [ ! -f "$SETUP_MARKER" ]; then
-    # This is the first run, so we need to copy files
-    echo "First run detected or setup not yet completed."
-    
-    # Copy files if they don't exist
-    if [ ! -f "$WORKSPACE_DIR/ros2_ws/src/install.sh" ]; then
-        echo "Creating directory structure and copying install.sh..."
-        mkdir -p "$WORKSPACE_DIR/ros2_ws/src"
-        
-        # Copy install.sh
-        echo "Copying install.sh..."
-        cp -v scripts/install.sh "$WORKSPACE_DIR/ros2_ws/src/" || {
-            echo "Error: Failed to copy install.sh"
-            echo "Current directory: $(pwd)"
-            echo "Contents of scripts directory:"
-            ls -la scripts/
-            exit 1
-        }
-        
-        # Copy PX4_config directory
-        echo "Copying PX4_config directory..."
-        cp -rv PX4_config "$WORKSPACE_DIR/ros2_ws/src/" || {
-            echo "Error: Failed to copy PX4_config"
-            echo "PX4_config exists? $([ -d PX4_config ] && echo 'Yes' || echo 'No')"
-            exit 1
-        }
-        
-        echo "Files copied successfully!"
-        echo "Verification after copy:"
-        ls -la "$WORKSPACE_DIR/ros2_ws/src/"
-    fi
-else
-    echo "Setup already completed. Skipping file copy."
-fi
-
-# Allow X server connections from docker containers - NOT recommended for security
-xhost +local:root
- 
-echo "Starting Container: ${CONTAINER_NAME} with image: $DOCKER_REPO"
-
-# Define the command to run inside the container
 CMD="export DEV_DIR=/home/user/shared_volume && \
     export PX4_DIR=\$DEV_DIR/PX4-Autopilot &&\
-    export ROS2_WS=/home/user/ros2_ws &&\
-    source /home/user/.bashrc &&\
-    if [ -f "/home/user/shared_volume/ros2_ws/install/setup.bash" ]; then
-        source /home/user/shared_volume/ros2_ws/install/setup.bash
-    fi &&\
-    /bin/bash"
+    export ROS2_WS=\$DEV_DIR/ros2_ws &&\
+    export OSQP_SRC=\$DEV_DIR &&\
+        source /home/user/.bashrc &&\
+        if [ -f "/home/user/shared_volume/ros2_ws/install/setup.bash" ]; then
+            source /home/user/shared_volume/ros2_ws/install/setup.bash
+        fi &&\
+         /bin/bash"
+if [[ -n "$GIT_TOKEN" ]] && [[ -n "$GIT_USER" ]]; then
+    CMD="export GIT_USER=$GIT_USER && export GIT_TOKEN=$GIT_TOKEN && $CMD"
+fi
 
 if [[ -n "$SUDO_PASSWORD" ]]; then
     CMD="export SUDO_PASSWORD=$SUDO_PASSWORD && $CMD"
 fi
 
-# Check if the container is already running or exists
-CONTAINER_EXISTS=$(docker ps -aq -f name=${CONTAINER_NAME})
-CONTAINER_RUNNING=$(docker ps -q -f name=${CONTAINER_NAME})
+# echo $CMD
 
-if [ -n "$CONTAINER_EXISTS" ]; then
-    # Container exists
-    if [ -z "$CONTAINER_RUNNING" ]; then
-        # Container exists but is not running
+if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
+    if [ "$(docker ps -aq -f status=exited -f name=${CONTAINER_NAME})" ]; then
+        # cleanup
         echo "Restarting the container..."
         docker start ${CONTAINER_NAME}
     fi
 
-    # Configure sudo directly with inline commands
-    echo "Configuring sudo access..."
-    docker exec -u root ${CONTAINER_NAME} bash -c "echo 'user ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/user && chmod 440 /etc/sudoers.d/user"
-    
-    echo "Accessing running container..."
     docker exec --user user -it ${CONTAINER_NAME} env TERM=xterm-256color bash -c "${CMD}"
-    
-    # Just exit after the container session ends
-    echo "Container session ended."
+
 else
-    echo "Running new container ${CONTAINER_NAME}..."
-    
-    # Define ROS2 specific command for first run
-    CMD="export DEV_DIR=/home/user/shared_volume &&\
+
+CMD="export DEV_DIR=/home/user/shared_volume &&\
         export PX4_DIR=\$DEV_DIR/PX4-Autopilot &&\
-        export ROS2_WS=/home/user/ros2_ws &&\
-        export GZ_VERSION=garden &&\
+        export ROS2_WS=\$DEV_DIR/ros2_ws &&\
+        export OSQP_SRC=\$DEV_DIR &&\
         source /home/user/.bashrc &&\
         if [ -f "/home/user/shared_volume/ros2_ws/install/setup.bash" ]; then
             source /home/user/shared_volume/ros2_ws/install/setup.bash
         fi &&\
         /bin/bash"
 
+    if [[ -n "$GIT_TOKEN" ]] && [[ -n "$GIT_USER" ]]; then
+    CMD="export GIT_USER=$GIT_USER && export GIT_TOKEN=$GIT_TOKEN && $CMD"
+    fi
+
     if [[ -n "$SUDO_PASSWORD" ]]; then
         CMD="export SUDO_PASSWORD=$SUDO_PASSWORD && $CMD"
     fi
 
-    # Run the container with all necessary options
+    echo "Running container ${CONTAINER_NAME}..."
+
     docker run -it \
         --network host \
         --env="DISPLAY=${DISPLAY}" \
@@ -192,44 +139,8 @@ else
         --name=${CONTAINER_NAME} \
         --privileged \
         --workdir /home/user/shared_volume \
-        -p $PORT_MAPPING \
         $DOCKER_OPTS \
         ${DOCKER_REPO} \
         bash -c "${CMD}"
-    
-    # If this is the first run, we need to run the installation script
-    if [ "$FIRST_RUN" = true ] || [ ! -f "$SETUP_MARKER" ]; then
-        echo "Running initial setup..."
-        
-        # Configure sudo directly with inline commands
-        echo "Configuring sudo access..."
-        docker exec -u root ${CONTAINER_NAME} bash -c "echo 'user ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/user && chmod 440 /etc/sudoers.d/user"
-        
-        # Make install.sh executable and run it inside the container
-        echo "Making install.sh executable and running it..."
-        docker exec --user user ${CONTAINER_NAME} chmod +x /home/user/shared_volume/ros2_ws/src/install.sh
-        docker exec --user user ${CONTAINER_NAME} /bin/bash -c "cd /home/user/shared_volume/ros2_ws/src && ./install.sh"
-        
-        # Check if install.sh completed successfully
-        if [ $? -eq 0 ]; then
-            echo "✓ All dependencies installed successfully!"
-            # Mark setup as complete
-            touch "$SETUP_MARKER"
-        else
-            echo "✗ Installation failed. Please check the install.sh script."
-        fi
-    fi
 fi
 
-# Cleanup X server permissions when script exits
-xhost -local:root
-
-# After exiting the interactive session
-if [ "$FIRST_RUN" = true ] || [ ! -f "$SETUP_MARKER" ]; then
-    echo "Running initial setup..."
-    
-    # Check if container is still running
-    if ! docker ps -q -f name=${CONTAINER_NAME} | grep -q .; then
-        echo "Container stopped. Restarting for setup..."
-        docker start ${CONTAINER_NAME}
-    fi
