@@ -206,37 +206,33 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 #
 RUN pip3 install langchain langchain-community ollama
 
-#
-# Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
-#
-RUN bash -c "ollama serve & \
-    sleep 10 && \
-    (ollama list | grep -q 'qwen3:8b' && echo 'Model qwen3:8b already exists, skipping download') || \
-    (echo 'Model qwen3:8b not found, pulling now...' && \
-    ollama pull qwen3:8b || echo 'Failed to pull model during build, will try in container runtime') && \
-    pkill ollama || true"
+# #
+# # Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
+# #
+# RUN bash -c "ollama serve & \
+#     sleep 10 && \
+#     (ollama list | grep -q 'qwen3:8b' && echo 'Model qwen3:8b already exists, skipping download') || \
+#     (echo 'Model qwen3:8b not found, pulling now...' && \
+#     ollama pull qwen3:8b || echo 'Failed to pull model during build, will try in container runtime') && \
+#     pkill ollama || true"
 
-# create and start as LOCAL_USER_ID
+# Create necessary directories in the image
+RUN mkdir -p /home/user/backup
+
+# Copy installation scripts and PX4 configs into backup location
+COPY scripts/install.sh /home/user/backup/
+COPY PX4_config /home/user/backup/PX4_config/
+RUN chmod +x /home/user/backup/install.sh
+RUN echo "Files copied successfully to /home/user/backup/"
+
+# Set proper permissions
+RUN chown -R user:user /home/user/backup && \
+    echo "Permissions set successfully for user:user"
+
+# Create and start as LOCAL_USER_ID
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Create necessary directories in the image
-RUN mkdir -p /home/user/shared_volume/ros2_ws/src
-
-# Copy installation scripts and PX4 configs into the image
-COPY scripts/install.sh /home/user/shared_volume/ros2_ws/src/
-COPY PX4_config /home/user/shared_volumeros2_ws/src/PX4_config/
-RUN echo "Files copied successfully to /home/user/shared_volume/ros2_ws/src/"
-
-# Set proper permissions
-RUN chown -R user:user /home/user/shared_volume/ros2_ws && \
-    chmod +x /home/user/shared_volume/ros2_ws/src/install.sh && \
-    echo "Permissions set successfully for user:user"
-
-# Verify the files were copied correctly
-RUN echo "Verification after copy:" && \
-    ls -la /home/user/shared_volume/ros2_ws/src/
 
 # Copy middleware profiles
 RUN mkdir -p /usr/local/share/middleware_profiles
