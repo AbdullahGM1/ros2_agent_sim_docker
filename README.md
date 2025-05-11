@@ -74,9 +74,8 @@ The build process includes:
 ```
 
 ## Inside the container
-### 4. Run the `install.sh` file to install all the dependences 
+### 4. Run the `install.sh` in the `/shared_volume` to install all the dependences 
 ```bash
-cd /ros2_ws/src/
 ./install.sh
 ```
 
