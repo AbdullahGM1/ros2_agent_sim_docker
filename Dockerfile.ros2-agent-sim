@@ -206,15 +206,15 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 #
 RUN pip3 install langchain langchain-community ollama
 
-# #
-# # Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
-# #
-# RUN bash -c "ollama serve & \
-#     sleep 10 && \
-#     (ollama list | grep -q 'qwen3:8b' && echo 'Model qwen3:8b already exists, skipping download') || \
-#     (echo 'Model qwen3:8b not found, pulling now...' && \
-#     ollama pull qwen3:8b || echo 'Failed to pull model during build, will try in container runtime') && \
-#     pkill ollama || true"
+#
+# Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
+#
+RUN bash -c "ollama serve & \
+    sleep 10 && \
+    (ollama list | grep -q 'qwen3:8b' && echo 'Model qwen3:8b already exists, skipping download') || \
+    (echo 'Model qwen3:8b not found, pulling now...' && \
+    ollama pull qwen3:8b || echo 'Failed to pull model during build, will try in container runtime') && \
+    pkill ollama || true"
 
 # Create necessary directories in the image
 RUN mkdir -p /home/user/backup
