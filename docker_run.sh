@@ -148,15 +148,6 @@ else
         bash -c "${CMD}"
 fi
 
-# Fix permissions on host after container exits
-if [ -d "$WORKSPACE_DIR" ]; then
-    echo "Fixing permissions on shared volume..."
-    HOST_UID=$(id -u)
-    HOST_GID=$(id -g)
-    sudo chown -R $HOST_UID:$HOST_GID "$WORKSPACE_DIR" 2>/dev/null || true
-    echo "Permission fix completed."
-fi
-
 # Cleanup X server permissions when script exits
 echo "Reverting X server permissions..."
 xhost -local:root
