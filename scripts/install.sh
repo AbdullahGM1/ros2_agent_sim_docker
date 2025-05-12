@@ -77,9 +77,6 @@ fi
 # Build px4_sitl
 cd $PX4_DIR && make px4_sitl
 
-# Build px4_sitl
-cd $PX4_DIR && make px4_sitl
-
 # Copy files to $PX4_DIR
 echo && echo  "Copying files to ${PX4_DIR}" && echo
 sleep 1
