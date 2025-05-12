@@ -164,6 +164,14 @@ cp -v ${PX4_CONFIG_DIR}/4023_gz_x3_uav ${PX4_DIR}/ROMFS/px4fmu_common/init.d-pos
     exit 1
 }
 
+cp -v ${PX4_CONFIG_DIR}/4024_gz_x500_d435 ${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/ || {
+    echo "${RED}Error: Failed to copy 4024_gz_x500_d435${NC}"
+    echo "Source: ${PX4_CONFIG_DIR}/4024_gz_x500_d435"
+    echo "Destination: ${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
+    ls -la ${PX4_CONFIG_DIR}/
+    exit 1
+}
+
 # Copy worlds models
 cp -rv ${PX4_CONFIG_DIR}/worlds/* ${PX4_DIR}/Tools/simulation/gz/worlds/ || {
     echo "${RED}Error: Failed to copy worlds directory${NC}"
