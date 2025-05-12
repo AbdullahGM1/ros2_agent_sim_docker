@@ -164,6 +164,25 @@ cp -v ${PX4_CONFIG_DIR}/4023_gz_x3_uav ${PX4_DIR}/ROMFS/px4fmu_common/init.d-pos
     exit 1
 }
 
+# Copy worlds models
+cp -rv ${PX4_CONFIG_DIR}/worlds/* ${PX4_DIR}/Tools/simulation/gz/worlds/ || {
+    echo "${RED}Error: Failed to copy worlds directory${NC}"
+    echo "Source: ${PX4_CONFIG_DIR}/worlds/*"
+    echo "Destination: ${PX4_DIR}/Tools/simulation/gz/worlds/"
+    ls -la ${PX4_CONFIG_DIR}/worlds/
+    exit 1
+}
+
+# Copy airframe models
+p -rv ${PX4_CONFIG_DIR}/models/* ${PX4_DIR}/Tools/simulation/gz/models/ || {
+    echo "${RED}Error: Failed to copy worlds directory${NC}"
+    echo "Source: ${PX4_CONFIG_DIR}/worlds/*"
+    echo "Destination: ${PX4_DIR}/Tools/simulation/gz/worlds/"
+    ls -la ${PX4_CONFIG_DIR}/models/
+    exit 1
+}
+
+
 # Replace CMakeLists.txt in airframes directory
 echo && echo "Replacing CMakeLists.txt in airframes directory" && echo
 cp -v ${PX4_CONFIG_DIR}/CMakeLists.txt ${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/ || {
