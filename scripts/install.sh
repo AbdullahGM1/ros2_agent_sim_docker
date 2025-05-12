@@ -51,21 +51,31 @@ if [ ! -d "$PX4_DIR" ]; then
     cd $DEV_DIR
     git clone https://github.com/PX4/PX4-Autopilot.git --recursive
     cd $PX4_DIR
-    git checkout v1.14.0
-    make submodulesclean
-    make clean
+    git fetch --all --tags
+    git checkout -f v1.14.0  # Force checkout
+    git reset --hard v1.14.0  # Reset any changes
+    git submodule update --init --recursive  # Update submodules to match
     make distclean
 else
     echo "PX4_DIR=$PX4_DIR already exists"
     cd $PX4_DIR
-    make submodulesclean
-    make clean
-    make distclean
-    git checkout v1.14.0
-    make submodulesclean
-    make clean
+    git fetch --all --tags
+    git checkout -f v1.14.0  # Force checkout
+    git reset --hard v1.14.0  # Reset any changes
+    git submodule update --init --recursive  # Update submodules to match
     make distclean
 fi
+
+# Verify PX4 version
+PX4_VERSION=$(cd $PX4_DIR && git describe --tags)
+echo "PX4 version: $PX4_VERSION"
+if [[ "$PX4_VERSION" != "v1.14.0" ]]; then
+    echo "Warning: PX4 version is not v1.14.0. Got $PX4_VERSION instead."
+    echo "This may cause compatibility issues."
+fi
+
+# Build px4_sitl
+cd $PX4_DIR && make px4_sitl
 
 # Build px4_sitl
 cd $PX4_DIR && make px4_sitl
