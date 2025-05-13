@@ -110,7 +110,8 @@ pip3 install \
     langchain-ollama \
     langchain-community \
     opencv-python \
-    numpy
+    numpy==1.24.3 --force-reinstall
+
 
 # Check if ollama is installed
 if ! command_exists ollama; then
