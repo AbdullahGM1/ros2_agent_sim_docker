@@ -143,6 +143,7 @@ The ROS2 Agent provides a natural language interface to command the drone. Examp
 > Fly to position x=10, y=5, z=3
 > Land
 > What is your position
+> Show me the camera feed
 ```
 
 ## 📁 Directory Structure
