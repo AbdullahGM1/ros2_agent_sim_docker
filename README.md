@@ -11,10 +11,25 @@ A complete Docker-based development environment for autonomous robotics featurin
 ![Ollama](https://img.shields.io/badge/Ollama-LLM-purple.svg?style=for-the-badge&logo=ollama&logoColor=white)
 
 
+## 📋 Table of Contents
+- [Features](#-features)
+- [Prerequisites](#-prerequisites)
+- [Installation](#-installation)
+- [Setting Up the ROS2 Agent and Simulation](#-setting-up-the-ros2-agent-and-simulation)
+- [Usage](#-usage)
+- [Directory Structure](#-directory-structure)
+- [Container Management](#-container-management)
+- [Using the LLM Capabilities](#-using-the-llm-capabilities)
+- [Acknowledgments](#-acknowledgments)
+- [License](#-license)
+- [Contact](#-contact)
+- [Additional Resources](#-additional-resources)
+
+
 ## 🚀 Features
 
 ### Core Robotics Stack
-- **ROS2 Humble Desktop Full** - Latest Robot Operating System 2 with complete desktop features
+- **ROS2 Humble Desktop** - Latest Robot Operating System 2 with complete desktop features
 - **Gazebo Garden** - Modern 3D robot simulation with physics engine
 - **XRCE-DDS Agent** - Lightweight DDS middleware for embedded systems
 - **MAVROS** - MAVLink communication bridge for PX4/ArduPilot
@@ -41,11 +56,11 @@ A complete Docker-based development environment for autonomous robotics featurin
 
 - Ubuntu 22.04 (host system)
 - Docker installed (version 19.03+)
-- NVIDIA GPU support (optional, for hardware acceleration)
+- NVIDIA GPU support 
 - X11 server for GUI applications
 - 20GB+ free disk space
 
-## 🔧 Quick Start
+## 🔧 Installation
 
 ### 1. Clone the Repository
 ```bash
@@ -59,7 +74,7 @@ chmod +x build.sh docker_run.sh
 ./build.sh
 ```
 
-| **Note:** The building process is going to take time.
+> **Note:** The building process may take 30-60 minutes depending on your system specifications and internet connection.
 
 The build process includes:
 - ROS2 Humble installation
@@ -73,80 +88,95 @@ The build process includes:
 ./docker_run.sh
 ```
 
-## Inside the container
-### 4. Run the `install.sh` in the `/shared_volume` to install all the dependences 
+### 4. Install Dependencies Inside the Container
+Once inside the container, run the installation script to set up all dependencies:
 ```bash
+cd /shared_volume
 ./install.sh
 ```
 
-The container will start with all services running, including:
-- ROS2 Humble environment
-- Gazebo Garden simulator
-- Ollama with Qwen3:8b model
-- VS Code for development
-- XRCE-DDS Agent
+## 🔄 Setting Up the ROS2 Agent and Simulation
+
+After completing the installation steps above, follow these steps to set up the ROS2 Agent and simulation environment:
+
+### 1. Clone the ROS2 Agent Simulation Package
+```bash
+cd ~/ros2_ws/src/
+git clone https://github.com/AbdullahGM1/ros2_agent_sim.git
+```
+
+This package contains:
+- ROS2 Agent Package - For LLM-based robot interaction
+- Simulation environment - Integrated with PX4 for drone simulation
+
+### 2. Build the Package
+```bash
+cd ~/ros2_ws
+colcon build 
+```
+
+### 3. Source the Setup Files
+```bash
+source install/setup.bash
+```
+
+### 4. Launch the Drone Simulation
+```bash
+ros2 launch drone_sim drone.launch.py
+```
+This will launch a drone simulation that is connected to PX4 autopilot.
+
+### 5. Run the ROS2 Agent
+In a new terminal (inside the container), run:
+```bash
+source ~/ros2_ws/install/setup.bash
+ros2 run ros2_agent ros2_agent_node
+```
+This launches the interactive CLI interface to communicate with and control the robots.
+
+## 🔨 Usage
+
+### Interacting with the Drone
+The ROS2 Agent provides a natural language interface to command the drone. Example commands:
+
+```
+> Take off to 2 meters
+> Fly to position x=10, y=5, z=3
+> Land
+```
 
 ## 📁 Directory Structure
 
 ```
 ros2-agent-sim-docker/
-├── build.sh
-├── Dockerfile.ros2-agent-sim
-├── docker_run.sh
-├── middleware_profiles
-│   └── rtps_udp_profile.xml
-├── PX4_config
-│   ├── 4022_gz_x500_lidar_camera
-│   ├── 4023_gz_x3_uav
-│   ├── CMakeLists.txt
-│   ├── models
-│   │   ├── gimbal_small_3d
-│   │   │   ├── meshes
-│   │   │   │   ├── base_plate.dae
-│   │   │   │   ├── camera_enclosure.dae
-│   │   │   │   ├── roll_arm.dae
-│   │   │   │   └── yaw_arm.dae
-│   │   │   ├── model.config
-│   │   │   └── model.sdf
-│   │   ├── lidar
-│   │   │   ├── model.config
-│   │   │   └── model.sdf
-│   │   ├── x500
-│   │   │   ├── materials
-│   │   │   │   └── textures
-│   │   │   │       ├── CF.png
-│   │   │   │       ├── nxp.png
-│   │   │   │       └── rd.png
-│   │   │   ├── meshes
-│   │   │   │   ├── 1345_prop_ccw.stl
-│   │   │   │   ├── 1345_prop_cw.stl
-│   │   │   │   ├── 5010Base.dae
-│   │   │   │   ├── 5010Bell.dae
-│   │   │   │   ├── CF.png
-│   │   │   │   └── NXP-HGD-CF.dae
-│   │   │   ├── model.config
-│   │   │   ├── model.sdf
-│   │   │   └── thumbnails
-│   │   │       ├── 1.png
-│   │   │       ├── 2.png
-│   │   │       ├── 3.png
-│   │   │       ├── 4.png
-│   │   │       └── 5.png
-│   │   └── x500_lidar_camera
-│   │       ├── model.config
-│   │       └── model.sdf
-│   └── worlds
-│       └── default.sdf
+├── build.sh                 # Build script for Docker image
+├── Dockerfile.ros2-agent-sim # Main Dockerfile
+├── docker_run.sh            # Script to run the container
+├── middleware_profiles      # DDS configuration profiles
+│   └── rtps_udp_profile.xml
+├── PX4_config               # PX4 configuration files
+│   ├── 4022_gz_x500_lidar_camera
+│   ├── 4023_gz_x3_uav
+│   ├── CMakeLists.txt
+│   ├── models              # Drone and sensor models
+│   │   ├── gimbal_small_3d
+│   │   ├── lidar
+│   │   ├── x500
+│   │   └── x500_lidar_camera
+│   └── worlds              # Simulation worlds
+│       └── default.sdf
 ├── README.md
-└── scripts
+└── scripts                  # Container initialization scripts
     ├── entrypoint.sh
     ├── install.sh
     ├── px4_dev.sh
     └── requirements.txt
-
 ```
 
-<!-- ## 🔨 Usage
+## 🐳 Container Management
+
+### Container Access and Credentials
+- Default password for the user in the container: **user**
 
 ### Starting the Container
 ```bash
@@ -163,20 +193,9 @@ ros2-agent-sim-docker/
 ### Accessing Running Container
 ```bash
 docker exec -it ros2_agent_sim bash
-``` -->
-
-
-### Testing Qwen3 Model
-```bash
-
-ollama run qwen3:8b
-
-#It will run the model 
 ```
 
-| Docker Passward: *user* 
-
-### Container Commands
+### Container Management Commands
 ```bash
 # Stop container
 docker stop ros2_agent_sim
@@ -194,8 +213,7 @@ docker logs ros2_agent_sim
 docker build --no-cache -f Dockerfile.ros2-agent-sim -t ros2-agent-sim:latest .
 ```
 
-
-### 🎉 Acknowledgments
+## 🎉 Acknowledgments
 
 This project builds upon the excellent work of:
 
@@ -213,19 +231,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Abdullah GM - [@AbdullahGM1](https://github.com/AbdullahGM1) - agm.musalami@gmail.com
 
-
-<!-- ## 🚦 Roadmap
-
-- [ ] Add support for additional LLM models (GPT-4, Claude)
-- [ ] Integrate QGroundControl for flight planning
-- [ ] Add ROS2 navigation stack integration
-- [ ] Support for real hardware testing with USB passthrough
-- [ ] Add CI/CD pipeline for automated testing
-- [ ] Jupyter notebook integration for interactive development
-- [ ] Multi-robot simulation support
-- [ ] Add camera/sensor simulation packages -->
-
-
 ## 📚 Additional Resources
 
 - [ROS2 Documentation](https://docs.ros.org/en/humble/)
@@ -234,7 +239,6 @@ Abdullah GM - [@AbdullahGM1](https://github.com/AbdullahGM1) - agm.musalami@gmai
 - [NASA ROSA Repository](https://github.com/nasa-jpl/rosa)
 - [Ollama Documentation](https://github.com/ollama/ollama)
 - [LangChain Documentation](https://python.langchain.com/)
-
 
 ---
 
