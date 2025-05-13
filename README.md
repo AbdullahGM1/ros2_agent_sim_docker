@@ -12,6 +12,7 @@ A complete Docker-based development environment for autonomous robotics featurin
 
 
 ## 📋 Table of Contents
+- [Demo](#-demo)
 - [Features](#-features)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
@@ -24,6 +25,12 @@ A complete Docker-based development environment for autonomous robotics featurin
 - [Contact](#-contact)
 - [Additional Resources](#-additional-resources)
 
+## 🖼️ Demo
+
+<div align="center">
+  <img src="/images/drone_rosa.gif" alt="ROS2 Agent Simulation Demo" width="800"/>
+  <p><i>Demo of drone simulation with ROS2 Agent and Ollama integration</i></p>
+</div>
 
 ## 🚀 Features
 
