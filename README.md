@@ -19,7 +19,6 @@ A complete Docker-based development environment for autonomous robotics featurin
 - [Usage](#-usage)
 - [Directory Structure](#-directory-structure)
 - [Container Management](#-container-management)
-- [Using the LLM Capabilities](#-using-the-llm-capabilities)
 - [Acknowledgments](#-acknowledgments)
 - [License](#-license)
 - [Contact](#-contact)
