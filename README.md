@@ -104,7 +104,7 @@ cd ~/ros2_ws/src/
 git clone https://github.com/AbdullahGM1/ros2_agent_sim.git
 ```
 
-This package contains:
+This package ([ros2_agent_sim](https://github.com/AbdullahGM1/ros2_agent_sim)) contains:
 - ROS2 Agent Package - For LLM-based robot interaction
 - Simulation environment - Integrated with PX4 for drone simulation
 
@@ -238,6 +238,7 @@ Abdullah GM - [@AbdullahGM1](https://github.com/AbdullahGM1) - agm.musalami@gmai
 - [NASA ROSA Repository](https://github.com/nasa-jpl/rosa)
 - [Ollama Documentation](https://github.com/ollama/ollama)
 - [LangChain Documentation](https://python.langchain.com/)
+- [ROS2 Agent Simulation](https://github.com/AbdullahGM1/ros2_agent_sim) - The simulation and agent package used in this project
 
 ---
 
