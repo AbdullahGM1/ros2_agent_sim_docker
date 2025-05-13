@@ -85,6 +85,11 @@ cp -r ${PX4_config}/worlds/* ${PX4_DIR}/Tools/simulation/gz/worlds/
 cp -r ${PX4_config}/px4/* ${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/
 cd $PX4_DIR && make px4_sitl
 
+# Install MAVROS packages from apt
+echo "Installing MAVROS packages from apt..." && sleep 1
+sudo apt update
+sudo apt install ros-humble-mavros ros-humble-mavros-msgs
+
 #
 # MAVROS
 #
