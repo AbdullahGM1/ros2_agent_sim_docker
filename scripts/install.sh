@@ -1,7 +1,11 @@
-
 #!/bin/bash -e
 
 # This script sets up the Ros2 Agent simulation environment
+
+# Define colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' 
 
 # Function to check if a command exists for Ollama
 command_exists() {
