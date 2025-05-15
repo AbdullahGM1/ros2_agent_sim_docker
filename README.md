@@ -99,13 +99,12 @@ Once inside the container, run the installation script to set up all dependencie
 cd /shared_volume
 ./install.sh
 ```
+> **Note:** If the ros2_agent_sim package did not get automatically cloned to ros2_ws/src/ during installation, follow the next step.
+
 
 ## 🔄 Setting Up the ROS2 Agent and Simulation
 
 After completing the installation steps above, follow these steps to set up the ROS2 Agent and simulation environment:
-
-> **Note:** If the ros2_agent_sim package did not get automatically cloned to ros2_ws/src/ during installation, follow the next step.
-
 
 ### 1. Clone the ROS2 Agent Simulation Package
 ```bash
