@@ -148,8 +148,15 @@ cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --
 cd $ROS2_WS && colcon build
 
 echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
-# echo "Source the ros2_ws and use <ros2 launch smart_track observer.launch.py> to run the simulation"
+
+# Final message
+success "INSTALLATION COMPLETE! Packages are built successfully."
+success "Models and airframe config files are copied to the respective folders in the ${PX4_DIR} directory"
+echo -e "${YELLOW}Next steps:${NC}"
+echo -e "1. Source the workspace:  ${GREEN}source $ROS2_WS/install/setup.bash${NC}"
+echo -e "2. Launch the simulation: ${GREEN}ros2 launch ros2_agent_sim drone.launch.py${NC}"
+echo -e "3. Run the ROS2 agent:    ${GREEN}ros2 run ros2_agent ros2_agent_node${NC}"
 cd $HOME
 
-
 ##############################
+
