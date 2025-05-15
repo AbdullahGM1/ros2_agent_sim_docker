@@ -103,6 +103,16 @@ if [ ! -d "$ROS2_SRC/mavros" ]; then
     cd $ROS2_SRC/mavros && git checkout ros2_humble
 fi
 
+cd $ROS2_WS && rosdep init && rosdep update && rosdep install --from-paths src --ignore-src -r -y
+
+cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon  build --packages-up-to mavros --executor sequential
+
+cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential
+
+cd $ROS2_WS && colcon build
+
+echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
+
 # Installing Python dependencies
 echo -e "${GREEN}Installing Python dependencies...${NC}"
 pip3 install \
@@ -137,15 +147,6 @@ fi
 echo -e "${GREEN}Installation complete!${NC}"
 echo -e "${YELLOW}Next steps:${NC}"
 echo -e "${GREEN}Installation successful!${NC}"
-
-
-cd $ROS2_WS && rosdep init && rosdep update && rosdep install --from-paths src --ignore-src -r -y
-
-cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon  build --packages-up-to mavros --executor sequential
-
-cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential
-
-cd $ROS2_WS && colcon build
 
 echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
