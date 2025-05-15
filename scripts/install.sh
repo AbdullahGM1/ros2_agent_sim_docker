@@ -1,4 +1,3 @@
-
 #!/bin/bash -e
 
 # This script sets up the Ros2 Agent simulation environment
@@ -113,6 +112,10 @@ cd $ROS2_WS && colcon build
 
 echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
+# Add Python local bin to PATH
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
 # Installing Python dependencies
 echo -e "${GREEN}Installing Python dependencies...${NC}"
 pip3 install \
@@ -123,6 +126,10 @@ pip3 install \
     opencv-python \
     numpy==1.24.3 --force-reinstall
 
+# dependency 
+pip3 install rospkg
+pip3 install PyYAML==6.0.1
+pip3 install langchain-community~=0.3.21
 
 # Check if ollama is installed
 if ! command_exists ollama; then
@@ -158,6 +165,3 @@ echo -e "1. Source the workspace:  ${GREEN}source $ROS2_WS/install/setup.bash${N
 echo -e "2. Launch the simulation: ${GREEN}ros2 launch ros2_agent_sim drone.launch.py${NC}"
 echo -e "3. Run the ROS2 agent:    ${GREEN}ros2 run ros2_agent ros2_agent_node${NC}"
 cd $HOME
-
-##############################
-
