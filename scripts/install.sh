@@ -112,24 +112,27 @@ cd $ROS2_WS && colcon build
 
 echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
-# Add Python local bin to PATH
+# Add Python local bin to PATH and make it available in this session
+export PATH="$HOME/.local/bin:$PATH"
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
 
-# Installing Python dependencies
+# Installing Python dependencies - use --no-warn-script-location to suppress warnings
 echo -e "${GREEN}Installing Python dependencies...${NC}"
-pip3 install \
+
+# First, install numpy at the required higher version to satisfy all dependencies
+pip3 install --no-warn-script-location numpy>=1.26.4
+
+# Install rospkg which is needed for rosinstall-generator
+pip3 install --no-warn-script-location rospkg
+
+# Install core packages
+pip3 install --no-warn-script-location \
     rich \
     langchain \
     langchain-ollama \
-    langchain-community \
+    langchain-community==0.3.21 \
     opencv-python \
-    numpy==1.24.3 --force-reinstall
-
-# dependency 
-pip3 install rospkg
-pip3 install PyYAML==6.0.1
-pip3 install langchain-community~=0.3.21
+    PyYAML==6.0.1
 
 # Check if ollama is installed
 if ! command_exists ollama; then
