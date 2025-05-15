@@ -30,20 +30,16 @@ if [ ! -d "$ROS2_WS" ]; then
   mkdir -p $ROS2_SRC
 fi
 
-# SIM_PKG_URL=''
-# if [[ -n "$GIT_USER" ]] && [[ -n "$GIT_TOKEN" ]]; then
-#     SIM_PKG_URL=https://$GIT_USER:$GIT_TOKEN@github.com/mzahana/SMART-TRACK.git
-# else
-#     SIM_PKG_URL=https://github.com/mzahana/SMART-TRACK.git
-# fi
+# Clone the ros2_agent_sim repository if it doesn't exist
+ROS2_AGENT_SIM_URL=https://github.com/AbdullahGM1/ros2_agent_sim.git
 
-# # Clone the SMART-TRACK if it doesn't exist
-# if [ ! -d "$ROS2_SRC/smart_track" ]; then
-#     cd $ROS2_SRC
-#     git clone $SIM_PKG_URL smart_track && cd $ROS2_SRC/smart_track && git pull origin main
-# else
-#     cd $ROS2_SRC/smart_track && git pull origin main
-# fi
+# Clone the ros2_agent_sim if it doesn't exist
+if [ ! -d "$ROS2_SRC/ros2_agent_sim" ]; then
+    cd $ROS2_SRC
+    git clone $ROS2_AGENT_SIM_URL ros2_agent_sim && cd $ROS2_SRC/ros2_agent_sim && git pull origin main
+else
+    cd $ROS2_SRC/ros2_agent_sim && git pull origin main
+fi
 
 # Clone and build PX4-Autopilot if it doesn't exist
 if [ ! -d "$PX4_DIR" ]; then
