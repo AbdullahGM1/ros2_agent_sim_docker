@@ -134,6 +134,9 @@ pip3 install --no-warn-script-location \
     opencv-python \
     PyYAML==6.0.1
 
+#Install NumPy
+pip install numpy==1.24.3 --force-reinstall
+
 # Check if ollama is installed
 if ! command_exists ollama; then
     echo -e "${YELLOW}Installing Ollama...${NC}"
