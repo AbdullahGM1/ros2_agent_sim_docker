@@ -34,7 +34,7 @@ A complete Docker-based development environment for autonomous robotics featurin
 
 🔮 Future Vision
 <div align="center">
-  <img src="/images/multi_robot_system_flow.png" alt="Multi-Robot ROS2 Agent System Architecture" width="900"/>
+  <img src="/images/multi_robot_flowchart.png" alt="Multi-Robot ROS2 Agent System Architecture" width="900"/>
   <p><i>Multi-Robot ROS2 Agent System Architecture - End Goal</i></p>
 </div>
 This represents our ultimate vision for a comprehensive multi-robot coordination system. The current implementation focuses on drone control, while this architecture showcases the planned expansion to include wheeled robots, legged robots (Unitree Go2), and advanced mission coordination capabilities.
