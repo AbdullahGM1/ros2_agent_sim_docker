@@ -119,8 +119,8 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 # Installing Python dependencies - use --no-warn-script-location to suppress warnings
 echo -e "${GREEN}Installing Python dependencies...${NC}"
 
-# First, install numpy at the required higher version to satisfy all dependencies
-pip3 install --no-warn-script-location numpy>=1.26.4
+# Install numpy at the required version to satisfy all dependencies
+pip3 install --no-warn-script-location numpy==1.26.4
 
 # Install rospkg which is needed for rosinstall-generator
 pip3 install --no-warn-script-location rospkg
