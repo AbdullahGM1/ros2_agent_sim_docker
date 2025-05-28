@@ -32,19 +32,47 @@ A complete Docker-based development environment for autonomous robotics featurin
   <p><i>Demo of drone simulation with ROS2 Agent and Ollama integration</i></p>
 </div>
 
-🔮 Future Vision
+## 🔮 Future Vision
 <div align="center">
   <img src="/images/multi_robot_flowchart.png" alt="Multi-Robot ROS2 Agent System Architecture" width="900"/>
   <p><i>Multi-Robot ROS2 Agent System Architecture - End Goal</i></p>
 </div>
-This represents our ultimate vision for a comprehensive multi-robot coordination system. The current implementation focuses on drone control, while this architecture showcases the planned expansion to include wheeled robots, legged robots (Unitree Go2), and advanced mission coordination capabilities.
-Planned System Components:
 
-Multi-Robot CLI: Unified command interface for all robot types
-Robot Manager: Lifecycle management and resource allocation
-Mission Coordinator: Task allocation and multi-robot synchronization
-Robot Factory: Dynamic robot instance creation and management
-Multi-Agent LLM: Enhanced AI coordination between multiple robots
+This represents our ultimate vision for a comprehensive multi-robot coordination system. The current implementation focuses on drone control, while this architecture showcases the planned expansion to include wheeled robots, legged robots (Unitree Go2), and advanced mission coordination capabilities.
+
+### **System Flow Architecture:**
+
+**🔄 Information Flow:**
+1. **User** → **Multi-Robot CLI** → **ROSA Agent** (Natural Language Commands)
+2. **ROSA Agent** → **Robot-Specific Tools** (Decision Making & Tool Selection)
+3. **Robot Tools** → **ROS2 Topics & Clients** (Hardware Communication)
+4. **Topics & Clients** → **CLI** → **User** (Feedback & Status Loop)
+
+**📡 Communication Layers:**
+- **MAVROS Topics & Clients**: Drone communication (state, pose, gimbal, setpoints)
+- **Nav Topics & Clients**: Wheeled robot communication (cmd_vel, odometry, mapping, scanning)
+- **Go2 Topics & Clients**: Legged robot communication (joint_states, walking commands, IMU, footstep planning)
+
+**🧠 Central Intelligence:**
+The ROSA Agent serves as the central decision-making brain, utilizing:
+- **System Prompts**: Robot coordination, safety guidelines, mission context
+- **Configuration System**: robots.yaml defining robot capabilities and topic mappings
+- **Multi-Agent LLM**: Enhanced AI coordination between multiple robots
+
+**📈 Key Features:**
+- **Bidirectional Communication**: Real-time feedback from robots through CLI interface
+- **Multi-Robot Coordination**: Simultaneous control of different robot types
+- **Natural Language Interface**: Intuitive command structure for complex missions
+- **Scalable Architecture**: Easy addition of new robot types and capabilities
+
+### **Planned System Components:**
+
+- **Multi-Robot CLI**: Unified command interface for all robot types with real-time status display
+- **Robot Manager**: Lifecycle management and resource allocation across robot fleet
+- **Mission Coordinator**: Task allocation and multi-robot synchronization for complex operations
+- **Robot Factory**: Dynamic robot instance creation and management
+- **Multi-Agent LLM**: Enhanced AI coordination between multiple robots with shared situational awareness
+- **Configuration Management**: Dynamic robot discovery and capability mapping through robots.yaml
 
 ## 🚀 Features
 
