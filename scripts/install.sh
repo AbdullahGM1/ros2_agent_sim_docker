@@ -191,6 +191,11 @@ echo "Installation successful!"
 
 echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
+# Source the ws
+source $ROS2_WS/install/setup.bash
+# Add to .bashrc for future sessions
+echo "source $ROS2_WS/install/setup.bash" >> ~/.bashrc
+
 # Final message
 echo "INSTALLATION COMPLETE! Packages are built successfully."
 echo "Models and airframe config files are copied to the respective folders in the ${PX4_DIR} directory"
