@@ -196,6 +196,6 @@ echo "INSTALLATION COMPLETE! Packages are built successfully."
 echo "Models and airframe config files are copied to the respective folders in the ${PX4_DIR} directory"
 echo "Next steps:"
 echo "1. Source the workspace:  source $ROS2_WS/install/setup.bash"
-echo "2. Launch the simulation: ros2 launch ros2_agent_sim drone.launch.py"
+echo "2. Launch the simulation: ros2 launch drone_sim drone.launch.py"
 echo "3. Run the ROS2 agent:    ros2 run ros2_agent ros2_agent_node"
 cd $HOME
