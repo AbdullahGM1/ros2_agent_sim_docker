@@ -55,17 +55,44 @@ fix_ros2_gpg_key
 # Clone the ros2_agent_sim repository if it doesn't exist
 ROS2_AGENT_SIM_URL=https://github.com/AbdullahGM1/ros2_agent_sim.git
 
-# Clone the ros2_agent_sim if it doesn't exist (using dev branch)
+# Clone the ros2_agent_sim if it doesn't exist (using main branch with submodules)
 if [ ! -d "$ROS2_SRC/ros2_agent_sim" ]; then
-    echo "Cloning ros2_agent_sim (dev branch)..."
+    echo "Cloning ros2_agent_sim (main branch with submodules)..."
     cd $ROS2_SRC
-    git clone -b dev $ROS2_AGENT_SIM_URL ros2_agent_sim && cd $ROS2_SRC/ros2_agent_sim && git pull origin dev
+    git clone --recursive -b main $ROS2_AGENT_SIM_URL ros2_agent_sim
+    cd $ROS2_SRC/ros2_agent_sim
+    git pull origin main
+    # Ensure submodules are up to date
+    git submodule update --init --recursive
+    echo "✅ ros2_agent_sim cloned with submodules successfully"
 else
-    echo "ros2_agent_sim already exists, updating to dev branch..."
+    echo "ros2_agent_sim already exists, updating to main branch..."
     cd $ROS2_SRC/ros2_agent_sim 
     git fetch origin
-    git checkout dev
-    git pull origin dev
+    git checkout main
+    git pull origin main
+    # Update submodules to match the main repo
+    git submodule update --init --recursive
+    echo "✅ ros2_agent_sim updated with submodules successfully"
+fi
+
+# Verify submodule is properly loaded
+if [ -d "$ROS2_SRC/ros2_agent_sim/unitree_go2_ros2" ]; then
+    echo "✅ Unitree Go2 submodule found"
+    # Check if submodule has content (not empty)
+    if [ "$(ls -A $ROS2_SRC/ros2_agent_sim/unitree_go2_ros2)" ]; then
+        echo "✅ Unitree Go2 submodule has content"
+    else
+        echo "⚠️  Unitree Go2 submodule is empty, updating..."
+        cd $ROS2_SRC/ros2_agent_sim
+        git submodule update --init --recursive --force
+    fi
+else
+    echo "❌ Unitree Go2 submodule NOT found - checking submodule setup..."
+    cd $ROS2_SRC/ros2_agent_sim
+    git submodule status
+    echo "Attempting to fix submodule..."
+    git submodule update --init --recursive --force
 fi
 
 # Clone and build PX4-Autopilot if it doesn't exist
