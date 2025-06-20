@@ -154,7 +154,8 @@ After completing the installation steps above, follow these steps to set up the 
 ### 1. Clone the ROS2 Agent Simulation Package
 ```bash
 cd ~/ros2_ws/src/
-git clone https://github.com/AbdullahGM1/ros2_agent_sim.git
+git clone --recursive https://github.com/AbdullahGM1/ros2_agent_sim.git
+
 ```
 
 This package ([ros2_agent_sim](https://github.com/AbdullahGM1/ros2_agent_sim)) contains:
