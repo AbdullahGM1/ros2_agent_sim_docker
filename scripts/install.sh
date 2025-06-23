@@ -163,7 +163,7 @@ cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon  build --packages-up-to mavros --execut
 
 cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential
 
-cd $ROS2_WS && colcon build
+cd $ROS2_WS && colcon build --allow-overriding gz_ros2_control gz_ros2_control_demos
 
 echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
