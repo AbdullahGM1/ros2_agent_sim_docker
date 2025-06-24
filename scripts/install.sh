@@ -76,6 +76,48 @@ else
     echo "✅ ros2_agent_sim updated with submodules successfully"
 fi
 
+# Check and install simulation and ROS 2 dependencies
+echo && echo "Checking and installing simulation and ROS 2 packages..." && echo
+
+REQUIRED_APT_PACKAGES=(
+  libgz-physics7
+  libgz-physics7-dartsim
+  ros-humble-ros-gzgarden
+  ros-humble-xacro
+  ros-humble-robot-localization
+  ros-humble-ros2-controllers
+  ros-humble-ros2-control
+  ros-humble-velodyne
+  ros-humble-velodyne-description
+)
+
+for pkg in "${REQUIRED_APT_PACKAGES[@]}"; do
+  if dpkg -s "$pkg" >/dev/null 2>&1; then
+    echo "✅ $pkg is already installed"
+  else
+    echo "⏳ Installing $pkg..."
+    sudo apt install -y "$pkg"
+  fi
+done
+
+# Set Gazebo version for ROS-GZ Bridge
+export GZ_VERSION=garden
+echo "✅ GZ_VERSION set to 'garden'"
+
+# Run rosdep update and install
+echo "⏳ Running rosdep update and install..."
+cd $ROS2_WS
+rosdep update
+rosdep install -r --from-paths src -i -y --rosdistro humble
+
+# Source the install setup file (will work later after full build too)
+if [ -f "$ROS2_WS/install/setup.bash" ]; then
+  source $ROS2_WS/install/setup.bash
+  echo "✅ Sourced workspace: $ROS2_WS/install/setup.bash"
+else
+  echo "⚠️  setup.bash not found yet (will be available after colcon build)"
+fi
+
 # Verify submodule is properly loaded
 if [ -d "$ROS2_SRC/ros2_agent_sim/unitree_go2_ros2" ]; then
     echo "✅ Unitree Go2 submodule found"
