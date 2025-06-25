@@ -28,6 +28,20 @@ fix_ros2_gpg_key() {
     echo "ROS2 GPG key updated successfully"
 }
 
+# Function to setup Gazebo repository
+setup_gazebo_repository() {
+    echo "Setting up Gazebo repository..."
+    
+    # Add Gazebo GPG key
+    sudo rm -f /usr/share/keyrings/gazebo-keyring.gpg 2>/dev/null || true
+    curl -sSL https://packages.osrfoundation.org/gazebo.gpg | sudo gpg --dearmor -o /usr/share/keyrings/gazebo-keyring.gpg
+    
+    # Add Gazebo repository
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gazebo-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+    
+    echo "Gazebo repository added successfully"
+}
+
 if [ -z "${DEV_DIR}" ]; then
   echo "Error: DEV_DIR environment variable is not set. Set it using export DEV_DIR=<DEV_DIR_deirectory_that_should_contain_PX4-Autopilot_and_ros2_ws>"
   exit 1
@@ -51,6 +65,13 @@ fi
 
 # Fix ROS2 GPG key issues before any apt operations
 fix_ros2_gpg_key
+
+# Setup Gazebo repository
+setup_gazebo_repository
+
+# Update package lists after adding repositories
+echo "Updating package lists..."
+sudo apt update
 
 # Clone the ros2_agent_sim repository if it doesn't exist
 ROS2_AGENT_SIM_URL=https://github.com/AbdullahGM1/ros2_agent_sim.git
