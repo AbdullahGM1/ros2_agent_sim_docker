@@ -155,11 +155,31 @@ else
     git submodule update --init --recursive --force
 fi
 
-# Install dependencies for submodules (including gz_ros2_control)
-echo "⏳ Installing dependencies for submodules..."
+# Ensure submodules are on correct branches (not detached HEAD)
+echo "⏳ Ensuring submodules are on correct branches..."
 cd $ROS2_SRC/ros2_agent_sim
-rosdep install -r --from-paths . --ignore-src --rosdistro humble -y
-echo "✅ Submodule dependencies installed"
+
+# gz_ros2_control humble branch
+if [ -d "gz_ros2_control" ]; then
+    echo "Checking out gz_ros2_control to humble branch..."
+    cd gz_ros2_control
+    git checkout humble
+    git pull origin humble
+    cd ..
+    echo "✅ gz_ros2_control is now on humble branch"
+else
+    echo "⚠️  gz_ros2_control directory not found"
+fi
+
+# Install dependencies for gz_ros2_control submodule
+echo "⏳ Installing dependencies for gz_ros2_control submodule..."
+if [ -d "$ROS2_SRC/ros2_agent_sim/gz_ros2_control" ]; then
+    cd $ROS2_SRC/ros2_agent_sim/gz_ros2_control
+    rosdep install -r --from-paths . --ignore-src --rosdistro humble -y
+    echo "✅ gz_ros2_control dependencies installed"
+else
+    echo "⚠️  gz_ros2_control submodule directory not found"
+fi
 
 # Clone and build PX4-Autopilot if it doesn't exist
 if [ ! -d "$PX4_DIR" ]; then
