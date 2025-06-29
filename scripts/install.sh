@@ -155,6 +155,12 @@ else
     git submodule update --init --recursive --force
 fi
 
+# Install dependencies for submodules (including gz_ros2_control)
+echo "⏳ Installing dependencies for submodules..."
+cd $ROS2_SRC/ros2_agent_sim
+rosdep install -r --from-paths . --ignore-src --rosdistro humble -y
+echo "✅ Submodule dependencies installed"
+
 # Clone and build PX4-Autopilot if it doesn't exist
 if [ ! -d "$PX4_DIR" ]; then
     echo "Cloning $PX4_DIR..."
