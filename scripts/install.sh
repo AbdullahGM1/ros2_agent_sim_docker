@@ -103,11 +103,8 @@ echo && echo "Checking and installing simulation and ROS 2 packages..." && echo
 REQUIRED_APT_PACKAGES=(
   libgz-physics7
   libgz-physics7-dartsim
-  ros-humble-ros-gzgarden
   ros-humble-xacro
   ros-humble-robot-localization
-  ros-humble-ros2-controllers
-  ros-humble-ros2-control
   ros-humble-velodyne
   ros-humble-velodyne-description
 )
