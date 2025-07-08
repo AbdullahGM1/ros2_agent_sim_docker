@@ -13,7 +13,7 @@ A complete Docker-based development environment for autonomous robotics featurin
 
 ## 📋 Table of Contents
 - [Demo](#️-demo)
-- [Future Vision](#-future-vision)  ← Added this line
+- [Future Vision](#-future-vision)
 - [Features](#-features)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
@@ -116,30 +116,30 @@ git clone https://github.com/AbdullahGM1/ros2_agent_sim_docker.git
 cd ros2-agent-sim-docker
 ```
 
-### 2. Build the Docker Image
+### 2. Make the Script Executable
 ```bash
-chmod +x build.sh docker_run.sh
-./build.sh
+chmod +x docker_run.sh
 ```
 
-> **Note:** The building process may take 30-60 minutes depending on your system specifications and internet connection.
+### 3. Run the Environment
+```bash
+./docker_run.sh
+```
 
-The build process includes:
+> **Note:** The script will automatically check if the Docker image exists and build it if necessary. The building process may take 30-60 minutes depending on your system specifications and internet connection.
+
+The automated process includes:
+- Docker image building (if not exists)
 - ROS2 Humble installation
 - Gazebo Garden setup
 - PX4 development environment
 - Ollama and Qwen3:8b model download
 - All necessary dependencies
 
-### 3. Run the Container
-```bash
-./docker_run.sh
-```
-
 ### 4. Install Dependencies Inside the Container
 Once inside the container, run the installation script to set up all dependencies:
 ```bash
-cd /shared_volume
+cd /home/user/shared_volume
 ./install.sh
 ```
 <div align="center">
@@ -204,24 +204,21 @@ The ROS2 Agent provides a natural language interface to command the drone. Examp
 
 ```
 ros2-agent-sim-docker/
-├── build.sh                 # Build script for Docker image
-├── Dockerfile.ros2-agent-sim # Main Dockerfile
-├── docker_run.sh            # Script to run the container
-├── middleware_profiles      # DDS configuration profiles
+├── docker_run.sh              # Unified script (build + run)
+├── docker/
+│   └── Dockerfile.ros2-agent-sim  # Main Dockerfile
+├── middleware_profiles        # DDS configuration profiles
 │   └── rtps_udp_profile.xml
-├── PX4_config               # PX4 configuration files
-│   ├── 4022_gz_x500_lidar_camera
-│   ├── 4023_gz_x3_uav
-│   ├── CMakeLists.txt
-│   ├── models              # Drone and sensor models
-│   │   ├── gimbal_small_3d
-│   │   ├── lidar
-│   │   ├── x500
-│   │   └── x500_lidar_camera
-│   └── worlds              # Simulation worlds
+├── PX4_config                 # PX4 configuration files
+│   ├── px4/
+│   │   ├── 4020_gz_x500_d435
+│   │   ├── 4021_gz_x500_lidar_camera
+│   │   ├── 4022_gz_x3_uav
+│   │   └── CMakeLists.txt
+│   └── worlds/                # Simulation worlds
 │       └── default.sdf
 ├── README.md
-└── scripts                  # Container initialization scripts
+└── scripts/                   # Container initialization scripts
     ├── entrypoint.sh
     ├── install.sh
     ├── px4_dev.sh
@@ -235,14 +232,8 @@ ros2-agent-sim-docker/
 
 ### Starting the Container
 ```bash
-# Default startup
+# Simple startup (automatic build if needed)
 ./docker_run.sh
-
-# Custom container name
-./docker_run.sh custom_container_name
-
-# With custom command
-./docker_run.sh container_name "command"
 ```
 
 ### Accessing Running Container
@@ -264,8 +255,8 @@ docker rmi ros2-agent-sim:latest
 # Check logs
 docker logs ros2_agent_sim
 
-# Rebuild from scratch
-docker build --no-cache -f Dockerfile.ros2-agent-sim -t ros2-agent-sim:latest .
+# Force rebuild from scratch
+docker build --no-cache -f docker/Dockerfile.ros2-agent-sim -t ros2-agent-sim:latest .
 ```
 
 ## 🎉 Acknowledgments
