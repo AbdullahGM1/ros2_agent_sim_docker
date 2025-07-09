@@ -1,11 +1,11 @@
 #!/bin/bash
 # Merged Docker script for ROS2 Agent Sim environment
 # Automatically builds image if missing and runs container
+# Enhanced with cross-platform UID mapping for permanent permission fix
 #
 # Usage: ./docker_run.sh
 #
-# Authors: Based on Mohammed Abdelkader's script, adapted for ROS2 stack
-# Maintained by: AbdullahGM1 <agm.musalami@gmail.com>
+# Authors: AbdullahGM1 <agm.musalami@gmail.com>
 
 # Docker configuration
 DOCKER_REPO="ros2-agent-sim:latest"
@@ -157,6 +157,48 @@ setup_workspace() {
     else
         print_info "Workspace directory already exists: $WORKSPACE_DIR"
     fi
+    
+    # CRITICAL: Fix workspace permissions immediately
+    print_info "Ensuring correct workspace permissions..."
+    HOST_UID=$(id -u)
+    HOST_GID=$(id -g)
+    
+    # Fix ownership if needed
+    current_owner=$(stat -c "%U" "$WORKSPACE_DIR" 2>/dev/null || echo "unknown")
+    if [ "$current_owner" != "$(whoami)" ]; then
+        print_warning "Workspace owned by '$current_owner', fixing to '$(whoami)'..."
+        chown -R $(whoami):$(whoami) "$WORKSPACE_DIR" 2>/dev/null || {
+            print_warning "Could not fix workspace ownership, trying with sudo..."
+            sudo chown -R $(whoami):$(whoami) "$WORKSPACE_DIR" || {
+                print_error "Failed to fix workspace ownership"
+            }
+        }
+    fi
+}
+
+# Function to setup host user information for UID mapping
+setup_host_user_info() {
+    print_info "Setting up cross-platform UID mapping..."
+    
+    # Get host user information
+    HOST_UID=$(id -u)
+    HOST_GID=$(id -g)
+    HOST_USER=$(whoami)
+    
+    # Detect Ubuntu version for better compatibility
+    UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "unknown")
+    
+    print_info "Host user: $HOST_USER (UID: $HOST_UID, GID: $HOST_GID)"
+    print_info "Ubuntu version: $UBUNTU_VERSION"
+    
+    # Validate UID range (should be >= 1000 for regular users)
+    if [ "$HOST_UID" -lt 1000 ]; then
+        print_warning "Host UID ($HOST_UID) is less than 1000. This might be a system user."
+        print_warning "Proceeding anyway, but you may need to run as sudo."
+    fi
+    
+    # Export for use in run_container function
+    export HOST_UID HOST_GID HOST_USER UBUNTU_VERSION
 }
 
 # Function to run container
@@ -197,12 +239,17 @@ run_container() {
         docker exec --user user -it ${CONTAINER_NAME} env TERM=xterm-256color bash -c "${CMD}"
     else
         print_info "Running new container: ${CONTAINER_NAME}"
+        print_info "UID mapping: Host $HOST_UID → Container user"
         
+        # Enhanced docker run command with comprehensive UID mapping
         docker run -it \
             --network host \
             --env="DISPLAY=${DISPLAY}" \
             -e NVIDIA_DRIVER_CAPABILITIES=all \
-            -e LOCAL_USER_ID="$(id -u)" \
+            -e LOCAL_USER_ID="$HOST_UID" \
+            -e LOCAL_GROUP_ID="$HOST_GID" \
+            -e HOST_USER="$HOST_USER" \
+            -e UBUNTU_VERSION="$UBUNTU_VERSION" \
             -e FASTRTPS_DEFAULT_PROFILES_FILE=/usr/local/share/middleware_profiles/rtps_udp_profile.xml \
             --volume="/tmp/.X11-unix:/tmp/.X11-unix" \
             --volume="/etc/localtime:/etc/localtime:ro" \
@@ -223,16 +270,32 @@ cleanup() {
     xhost -local:root 2>/dev/null
 }
 
+# Function to show system information
+show_system_info() {
+    print_info "System Information:"
+    echo "  - Docker version: $(docker --version 2>/dev/null | cut -d' ' -f3 | cut -d',' -f1 || echo 'Unknown')"
+    echo "  - Host OS: $(lsb_release -d 2>/dev/null | cut -f2 || echo 'Unknown Linux')"
+    echo "  - Host User: $(whoami) (UID: $(id -u), GID: $(id -g))"
+    echo "  - Available GPU: $(lspci 2>/dev/null | grep -i nvidia | wc -l) NVIDIA device(s)"
+    echo
+}
+
 # Main execution
 main() {
     echo
-    print_info "ROS2 Agent Sim Docker Environment"
+    print_info "🚀 ROS2 Agent Sim Docker Environment"
     print_info "Container: $CONTAINER_NAME"
     print_info "Workspace: $WORKSPACE_DIR"
     echo
     
+    # Show system information
+    show_system_info
+    
     # Check Docker installation
     check_docker
+    
+    # Setup host user information for UID mapping
+    setup_host_user_info
     
     # Check if image exists, build if missing
     if check_image_exists; then
@@ -249,12 +312,12 @@ main() {
     # Setup X11 authentication
     setup_x11_auth
     
-    # Setup workspace
+    # Setup workspace with proper permissions
     setup_workspace
     
     # Run container
     echo
-    print_info "Starting container..."
+    print_info "🐳 Starting container with UID mapping..."
     run_container
     
     # Cleanup on exit

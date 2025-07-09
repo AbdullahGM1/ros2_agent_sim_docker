@@ -2,13 +2,13 @@
 
 set -e
 
-## Bash script to setup PX4 development environment on Ubuntu LTS (22.04, 20.04, 18.04).
+## Bash script to setup PX4 development environment on Ubuntu LTS (24.04, 22.04, 20.04, 18.04).
 ## Can also be used in docker.
 ##
 ## Installs:
 ## - Common dependencies and tools for nuttx, jMAVSim, Gazebo
 ## - NuttX toolchain (omit with arg: --no-nuttx)
-## - jMAVSim and Gazebo9 simulator (omit with arg: --no-sim-tools)
+## - jMAVSim and Gazebo Harmonic simulator (omit with arg: --no-sim-tools)
 ##
 
 INSTALL_NUTTX="true"
@@ -66,6 +66,8 @@ elif [[ "${UBUNTU_RELEASE}" == "20.04" ]]; then
 	echo "Ubuntu 20.04"
 elif [[ "${UBUNTU_RELEASE}" == "22.04" ]]; then
 	echo "Ubuntu 22.04"
+elif [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+	echo "Ubuntu 24.04"
 fi
 
 
@@ -73,42 +75,99 @@ echo
 echo "Installing PX4 general dependencies"
 
 sudo apt-get update -y --quiet
-sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
-	astyle \
-	build-essential \
-	cmake \
-	cppcheck \
-	file \
-	g++ \
-	gcc \
-	gdb \
-	git \
-	lcov \
-	libfuse2 \
-	libxml2-dev \
-	libxml2-utils \
-	make \
-	ninja-build \
-	python3 \
-	python3-dev \
-	python3-pip \
-	python3-setuptools \
-	python3-wheel \
-	rsync \
-	shellcheck \
-	unzip \
-	zip \
-	;
 
-# Python3 dependencies
+# Install common packages with Ubuntu version compatibility
+if [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+	# Ubuntu 24.04 package names
+	sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
+		astyle \
+		build-essential \
+		cmake \
+		cppcheck \
+		file \
+		g++ \
+		gcc \
+		gdb \
+		git \
+		lcov \
+		libfuse2t64 \
+		libxml2-dev \
+		libxml2-utils \
+		make \
+		ninja-build \
+		python3 \
+		python3-dev \
+		python3-pip \
+		python3-setuptools \
+		python3-wheel \
+		rsync \
+		shellcheck \
+		unzip \
+		zip \
+		;
+else
+	# Older Ubuntu versions (22.04, 20.04, 18.04)
+	sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
+		astyle \
+		build-essential \
+		cmake \
+		cppcheck \
+		file \
+		g++ \
+		gcc \
+		gdb \
+		git \
+		lcov \
+		libfuse2 \
+		libxml2-dev \
+		libxml2-utils \
+		make \
+		ninja-build \
+		python3 \
+		python3-dev \
+		python3-pip \
+		python3-setuptools \
+		python3-wheel \
+		rsync \
+		shellcheck \
+		unzip \
+		zip \
+		;
+fi
+
+# Python3 dependencies - Handle Ubuntu 24.04 externally-managed-environment
 echo
 echo "Installing PX4 Python3 dependencies"
-if [ -n "$VIRTUAL_ENV" ]; then
-	# virtual environments don't allow --user option
-	python -m pip install -r ${DIR}/requirements.txt
+
+# For Ubuntu 24.04, install python3-full and handle pip restrictions
+if [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+	echo "Ubuntu 24.04 detected - installing python3-full and handling pip restrictions"
+	sudo apt-get -y --quiet --no-install-recommends install python3-full python3-venv pipx
+	
+	# Try to install from requirements.txt first, if that fails, install essential packages manually
+	echo "Installing Python packages with --break-system-packages (safe in Docker)"
+	if [ -n "$VIRTUAL_ENV" ]; then
+		# In virtual environment, no need for --break-system-packages
+		python -m pip install --no-cache-dir --disable-pip-version-check -r ${DIR}/requirements.txt || {
+			echo "requirements.txt failed, installing essential packages manually"
+			python -m pip install --no-cache-dir --disable-pip-version-check empy jinja2 jsonschema packaging pandas pymavlink pyulog pyyaml toml numpy
+		}
+	else
+		# In Docker, use --break-system-packages and disable hash checking for speed
+		python3 -m pip install --break-system-packages --no-cache-dir --disable-pip-version-check --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r ${DIR}/requirements.txt || {
+			echo "requirements.txt failed, installing essential packages manually"
+			python3 -m pip install --break-system-packages --no-cache-dir --disable-pip-version-check --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org empy jinja2 jsonschema packaging pandas pymavlink pyulog pyyaml toml numpy
+		}
+	fi
 else
-	# older versions of Ubuntu require --user option
-	python3 -m pip install -r ${DIR}/requirements.txt
+	# For older Ubuntu versions, use standard approach
+	if [ -n "$VIRTUAL_ENV" ]; then
+		# virtual environments don't allow --user option
+		python -m pip install -r ${DIR}/requirements.txt
+	else
+		# older versions of Ubuntu require --user option
+		python3 -m pip install -r ${DIR}/requirements.txt
+	fi
 fi
 
 # NuttX toolchain (arm-none-eabi-gcc)
@@ -117,36 +176,71 @@ if [[ $INSTALL_NUTTX == "true" ]]; then
 	echo
 	echo "Installing NuttX dependencies"
 
-	sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
-		automake \
-		binutils-dev \
-		bison \
-		build-essential \
-		flex \
-		g++-multilib \
-		gcc-multilib \
-		gdb-multiarch \
-		genromfs \
-		gettext \
-		gperf \
-		libelf-dev \
-		libexpat-dev \
-		libgmp-dev \
-		libisl-dev \
-		libmpc-dev \
-		libmpfr-dev \
-		libncurses5 \
-		libncurses5-dev \
-		libncursesw5-dev \
-		libtool \
-		pkg-config \
-		screen \
-		texinfo \
-		u-boot-tools \
-		util-linux \
-		vim-common \
-		;
-	if [[ "${UBUNTU_RELEASE}" == "20.04" || "${UBUNTU_RELEASE}" == "22.04" ]]; then
+	# Install NuttX dependencies with Ubuntu version compatibility
+	if [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+		# Ubuntu 24.04 package names
+		sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
+			automake \
+			binutils-dev \
+			bison \
+			build-essential \
+			flex \
+			g++-multilib \
+			gcc-multilib \
+			gdb-multiarch \
+			genromfs \
+			gettext \
+			gperf \
+			libelf-dev \
+			libexpat-dev \
+			libgmp-dev \
+			libisl-dev \
+			libmpc-dev \
+			libmpfr-dev \
+			libncurses6 \
+			libncurses-dev \
+			libtool \
+			pkg-config \
+			screen \
+			texinfo \
+			u-boot-tools \
+			util-linux \
+			vim-common \
+			;
+	else
+		# Older Ubuntu versions (22.04, 20.04, 18.04)
+		sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
+			automake \
+			binutils-dev \
+			bison \
+			build-essential \
+			flex \
+			g++-multilib \
+			gcc-multilib \
+			gdb-multiarch \
+			genromfs \
+			gettext \
+			gperf \
+			libelf-dev \
+			libexpat-dev \
+			libgmp-dev \
+			libisl-dev \
+			libmpc-dev \
+			libmpfr-dev \
+			libncurses5 \
+			libncurses5-dev \
+			libtool \
+			pkg-config \
+			screen \
+			texinfo \
+			u-boot-tools \
+			util-linux \
+			vim-common \
+			;
+	fi
+	
+	# Install kconfig-frontends for supported Ubuntu versions
+	if [[ "${UBUNTU_RELEASE}" == "20.04" || "${UBUNTU_RELEASE}" == "22.04" || "${UBUNTU_RELEASE}" == "24.04" ]]; then
 		sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
 		kconfig-frontends \
 		;
@@ -199,15 +293,19 @@ if [[ $INSTALL_SIM == "true" ]]; then
 		bc \
 		;
 
+	# Java version selection based on Ubuntu version
 	if [[ "${UBUNTU_RELEASE}" == "18.04" ]]; then
 		java_version=11
 	elif [[ "${UBUNTU_RELEASE}" == "20.04" ]]; then
 		java_version=13
 	elif [[ "${UBUNTU_RELEASE}" == "22.04" ]]; then
 		java_version=11
+	elif [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+		java_version=21  # Updated for Ubuntu 24.04
 	else
-		java_version=14
+		java_version=21  # Default to latest for newer versions
 	fi
+	
 	# Java (jmavsim)
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
 		ant \
@@ -216,37 +314,32 @@ if [[ $INSTALL_SIM == "true" ]]; then
 		libvecmath-java \
 		;
 
-	# Set Java 11 as default
-	sudo update-alternatives --set java $(update-alternatives --list java | grep "java-$java_version")
+	# Set Java as default
+	sudo update-alternatives --set java $(update-alternatives --list java | grep "java-$java_version") || echo "Java alternatives setting skipped"
 
-	# Gazebo / Gazebo classic installation
-	if [[ "${UBUNTU_RELEASE}" == "22.04" ]]; then
-		echo "Gazebo (Garden) will be installed"
-		echo "Earlier versions will be removed"
-		# Add Gazebo binary repository
-		sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
-		echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
-		sudo apt-get update -y --quiet
+	# Gazebo installation - UPDATED TO HARMONIC for all versions
+	echo "Installing Gazebo Harmonic"
+	
+	# Add Gazebo binary repository
+	sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+	echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+	sudo apt-get update -y --quiet
 
-		# Install Gazebo
-		gazebo_packages="gz-garden"
+	# Install Gazebo Harmonic for all supported Ubuntu versions
+	if [[ "${UBUNTU_RELEASE}" == "24.04" || "${UBUNTU_RELEASE}" == "22.04" ]]; then
+		echo "Installing Gazebo Harmonic"
+		gazebo_packages="gz-harmonic"
+	elif [[ "${UBUNTU_RELEASE}" == "20.04" ]]; then
+		echo "Ubuntu 20.04 detected - Gazebo Harmonic may not be officially supported"
+		echo "Attempting to install Gazebo Harmonic anyway..."
+		gazebo_packages="gz-harmonic"
 	else
-		sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
-		wget http://packages.osrfoundation.org/gazebo.key -O - | sudo apt-key add -
-		# Update list, since new gazebo-stable.list has been added
-		sudo apt-get update -y --quiet
-
-		# Install Gazebo classic
-		if [[ "${UBUNTU_RELEASE}" == "18.04" ]]; then
-			gazebo_classic_version=9
-			gazebo_packages="gazebo$gazebo_classic_version libgazebo$gazebo_classic_version-dev"
-		else
-			# default and Ubuntu 20.04
-			gazebo_classic_version=11
-			gazebo_packages="gazebo$gazebo_classic_version libgazebo$gazebo_classic_version-dev"
-		fi
+		# Fallback for older versions - try Harmonic first, fall back to available version
+		echo "Older Ubuntu version detected - trying Gazebo Harmonic"
+		gazebo_packages="gz-harmonic"
 	fi
 
+	# Install Gazebo and related packages
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
 		dmidecode \
 		$gazebo_packages \
@@ -264,8 +357,8 @@ if [[ $INSTALL_SIM == "true" ]]; then
 		protobuf-compiler \
 		;
 
+	# Fix VMWare 3D graphics acceleration for gazebo
 	if sudo dmidecode -t system | grep -q "Manufacturer: VMware, Inc." ; then
-		# fix VMWare 3D graphics acceleration for gazebo
 		echo "export SVGA_VGPU10=0" >> ~/.profile
 	fi
 
