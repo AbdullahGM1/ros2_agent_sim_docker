@@ -208,28 +208,6 @@ cd $ROS2_WS && colcon build
 
 echo "DONE. Packages are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
-# # Check if ollama is installed
-# if ! command_exists ollama; then
-#     echo "Installing Ollama..."
-#     curl -fsSL https://ollama.ai/install.sh | sh
-    
-#     # Start ollama service
-#     systemctl start ollama || echo "Failed to start ollama service, you may need to start it manually"
-#     systemctl enable ollama || echo "Failed to enable ollama service, you may need to enable it manually"
-# else
-#     echo "Ollama is already installed"
-# fi
-
-# # Pull Qwen3:8b model
-# echo "Pulling Qwen3:8b model for LLM..."
-# if command_exists ollama; then
-#     ollama pull qwen3:8b || echo "Failed to pull Qwen3:8b model, you may need to pull it manually"
-# else
-#     echo "Ollama not available, skipping model pull"
-# fi
-
-# echo "Installation complete!"
-
 # Source the workspace
 source $ROS2_WS/install/setup.bash
 # Add to .bashrc for future sessions
