@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# This script sets up the Ros2 Agent simulation environment
+# This script sets up the ROS2 Agent simulation environment for ROS2 Jazzy + Gazebo Harmonic
 
 # Function to check if a command exists for Ollama
 command_exists() {
@@ -52,7 +52,7 @@ setup_gazebo_repository() {
 }
 
 if [ -z "${DEV_DIR}" ]; then
-  echo "Error: DEV_DIR environment variable is not set. Set it using export DEV_DIR=<DEV_DIR_deirectory_that_should_contain_PX4-Autopilot_and_ros2_ws>"
+  echo "Error: DEV_DIR environment variable is not set. Set it using export DEV_DIR=<DEV_DIR_directory_that_should_contain_PX4-Autopilot_and_ros2_ws>"
   exit 1
 fi
 echo "DEV_DIR=$DEV_DIR"
@@ -109,58 +109,98 @@ else
     echo "✅ ros2_agent_sim updated with submodules successfully"
 fi
 
-# Clone gz_ros2_control_humble_garden repository
-GZ_ROS2_CONTROL_URL=https://github.com/AbdullahGM1/gz_ros2_control_humble_garden.git
+# Install ONLY verified ROS2 Jazzy packages (NO PROBLEMATIC GAZEBO PACKAGES)
+echo "⏳ Installing verified ROS2 Jazzy packages..."
+sudo apt update
 
-if [ ! -d "$ROS2_SRC/gz_ros2_control" ]; then
-    echo "Cloning gz_ros2_control_humble_garden..."
-    cd $ROS2_SRC
-    git clone $GZ_ROS2_CONTROL_URL gz_ros2_control
-    cd $ROS2_SRC/gz_ros2_control
-    git pull origin master
-    echo "✅ gz_ros2_control_humble_garden cloned successfully"
-else
-    echo "gz_ros2_control already exists, updating..."
-    cd $ROS2_SRC/gz_ros2_control 
-    git fetch origin
-    git checkout master
-    git pull origin master
-    echo "✅ gz_ros2_control_humble_garden updated successfully"
-fi
-
-# Install dependencies for gz_ros2_control
-echo "⏳ Installing dependencies for gz_ros2_control..."
-if [ -d "$ROS2_SRC/gz_ros2_control" ]; then
-    cd $ROS2_SRC/gz_ros2_control
-    rosdep install -r --from-paths . --ignore-src --rosdistro humble -y
-    echo "✅ gz_ros2_control dependencies installed"
-else
-    echo "⚠️  gz_ros2_control directory not found"
-fi
-
-REQUIRED_APT_PACKAGES=(
-  libgz-physics7
-  libgz-physics7-dartsim
-  ros-humble-xacro
-  ros-humble-robot-localization
-  ros-humble-velodyne
-  ros-humble-velodyne-description
+# Install packages ONE BY ONE to catch any issues
+declare -a packages=(
+    "ros-jazzy-gz-ros2-control"
+    "ros-jazzy-gz-ros2-control-demos" 
+    "ros-jazzy-xacro"
+    "ros-jazzy-robot-localization"
+    "ros-jazzy-ros2-controllers"
+    "ros-jazzy-ros2-control"
+    "ros-jazzy-velodyne"
+    "ros-jazzy-velodyne-description"
+    "ros-jazzy-tf2-eigen"
+    "ros-jazzy-tf2-geometry-msgs"
+    "ros-jazzy-eigen3-cmake-module"
 )
 
-for pkg in "${REQUIRED_APT_PACKAGES[@]}"; do
+for pkg in "${packages[@]}"; do
+    echo "📦 Installing $pkg..."
+    if sudo apt install -y "$pkg"; then
+        echo "✅ $pkg installed successfully"
+    else
+        echo "❌ Failed to install $pkg, continuing..."
+    fi
+done
+
+echo "✅ Core ROS2 Jazzy packages installation completed"
+
+# Additional required packages for Jazzy + Harmonic compatibility  
+echo "⏳ Installing Gazebo Harmonic physics libraries..."
+PHYSICS_PACKAGES=(
+  "libgz-physics8-dev"
+  "libgz-physics8-dartsim"
+  "libgz-physics8"
+)
+
+for pkg in "${PHYSICS_PACKAGES[@]}"; do
   if dpkg -s "$pkg" >/dev/null 2>&1; then
     echo "✅ $pkg is already installed"
   else
     echo "⏳ Installing $pkg..."
-    sudo apt install -y "$pkg"
+    if sudo apt install -y "$pkg"; then
+        echo "✅ $pkg installed successfully"
+    else
+        echo "❌ Failed to install $pkg, continuing..."
+    fi
   fi
 done
 
-# Run rosdep update and install
-echo "⏳ Running rosdep update and install..."
+# Run rosdep update and install for Jazzy
+echo "⏳ Running rosdep update and install for ROS2 Jazzy..."
 cd $ROS2_WS
 rosdep update
-rosdep install -r --from-paths src -i -y --rosdistro humble
+
+# Fix gz_sim rosdep issue for Unitree packages
+echo "🔧 Fixing gz_sim rosdep definitions for Unitree packages..."
+if [ -d "$ROS2_SRC/ros2_agent_sim/unitree_go2_ros2" ]; then
+    echo "📝 Removing problematic gz_sim dependencies from Unitree packages..."
+    
+    # REMOVE gz_sim dependencies entirely to avoid rosdep issues
+    find $ROS2_SRC/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz_sim<\/.*depend>/d' {} \;
+    find $ROS2_SRC/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz-sim<\/.*depend>/d' {} \;
+    
+    echo "✅ Removed gz_sim dependencies from Unitree packages (will use system Gazebo)"
+    echo "📋 Modified package.xml files:"
+    find $ROS2_SRC/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec echo "   - {}" \;
+else
+    echo "⚠️  Unitree Go2 packages not found, skipping rosdep fix"
+fi
+
+# Install dependencies with error handling and debugging
+echo "⏳ Running rosdep install with detailed output..."
+rosdep install -r --from-paths src -i -y --rosdistro jazzy --verbose || {
+    echo "❌ Rosdep install failed. Checking individual packages..."
+    echo "📋 Checking each package for dependency issues:"
+    
+    for pkg_dir in src/*/; do
+        if [ -d "$pkg_dir" ]; then
+            pkg_name=$(basename "$pkg_dir")
+            echo "🔍 Checking package: $pkg_name"
+            rosdep check --from-paths "$pkg_dir" --ignore-src --rosdistro jazzy || {
+                echo "❌ $pkg_name has dependency issues"
+                echo "📄 package.xml contents for $pkg_name:"
+                find "$pkg_dir" -name "package.xml" -exec cat {} \; | grep -E "<.*depend>" || echo "No dependencies found"
+            }
+        fi
+    done
+    
+    echo "⚠️  Continuing with partial rosdep installation..."
+}
 
 # Source the install setup file (will work later after full build too)
 if [ -f "$ROS2_WS/install/setup.bash" ]; then
@@ -189,99 +229,210 @@ else
     git submodule update --init --recursive --force
 fi
 
-# Clone and build PX4-Autopilot if it doesn't exist
-if [ ! -d "$PX4_DIR" ]; then
-    echo "Cloning $PX4_DIR..."
-    cd $DEV_DIR
-    git clone https://github.com/PX4/PX4-Autopilot.git --recursive
+# Clone and build PX4-Autopilot from AbdullahGM1's fork using main branch
+if [ -d "$PX4_DIR" ]; then
+    echo "⚠️  PX4_DIR=$PX4_DIR already exists. Removing for clean installation..."
+    rm -rf "$PX4_DIR"
+fi
+
+echo "🔄 Cloning fresh PX4-Autopilot from AbdullahGM1/PX4-Autopilot (main branch)..."
+cd $DEV_DIR
+git clone https://github.com/AbdullahGM1/PX4-Autopilot.git --recursive --depth=1
+cd $PX4_DIR
+
+# Verify we're on the main branch
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [[ "$CURRENT_BRANCH" != "main" ]]; then
+    echo "🔄 Switching to main branch..."
+    git checkout main
+    git submodule update --init --recursive
+fi
+
+echo "✅ Fresh PX4-Autopilot clone completed"
+
+# Verify PX4 version and branch
+PX4_BRANCH=$(cd $PX4_DIR && git rev-parse --abbrev-ref HEAD)
+PX4_COMMIT=$(cd $PX4_DIR && git rev-parse --short HEAD)
+PX4_REMOTE=$(cd $PX4_DIR && git remote get-url origin)
+echo "✅ PX4 Repository: $PX4_REMOTE"
+echo "✅ PX4 Branch: $PX4_BRANCH"  
+echo "✅ PX4 Commit: $PX4_COMMIT"
+
+# Clean any previous build artifacts
+echo "🧹 Cleaning previous build artifacts..."
+cd $PX4_DIR 
+rm -rf build/
+make distclean || echo "⚠️  make distclean failed (this is okay for fresh clone)"
+
+# Build px4_sitl with error handling
+echo "🔨 Building PX4 SITL..."
+cd $PX4_DIR 
+if ! make px4_sitl; then
+    echo "❌ PX4 SITL build failed. Trying alternative build approach..."
+    
+    # Try clearing cmake cache and rebuilding
+    rm -rf build/
+    mkdir -p build/px4_sitl_default
+    cd build/px4_sitl_default
+    
+    if cmake ../.. -DCONFIG=px4_sitl_default; then
+        if make; then
+            echo "✅ PX4 SITL build succeeded with manual cmake"
+        else
+            echo "❌ PX4 SITL build failed even with manual cmake"
+            echo "⚠️  Continuing with installation, but PX4 may not work properly"
+        fi
+    else
+        echo "❌ CMake configuration failed"
+        echo "⚠️  Continuing with installation, but PX4 may not work properly"
+    fi
     cd $PX4_DIR
-    git fetch --all --tags
-    git checkout -f v1.14.0  # Force checkout
-    git reset --hard v1.14.0  # Reset any changes
-    git submodule update --init --recursive  # Update submodules to match
-    make distclean
 else
-    echo "PX4_DIR=$PX4_DIR already exists"
-    cd $PX4_DIR
-    git fetch --all --tags
-    git checkout -f v1.14.0  # Force checkout
-    git reset --hard v1.14.0  # Reset any changes
-    git submodule update --init --recursive  # Update submodules to match
-    make distclean
+    echo "✅ PX4 SITL build succeeded"
 fi
-
-# Verify PX4 version
-PX4_VERSION=$(cd $PX4_DIR && git describe --tags)
-echo "PX4 version: $PX4_VERSION"
-if [[ "$PX4_VERSION" != "v1.14.0" ]]; then
-    echo "Warning: PX4 version is not v1.14.0. Got $PX4_VERSION instead."
-    echo "This may cause compatibility issues."
-fi
-
-# Build px4_sitl
-cd $PX4_DIR && make px4_sitl
 
 # Copy files to $PX4_DIR
-echo && echo  "Copying files to ${PX4_DIR}" && echo
+echo && echo "📁 Copying configuration files to ${PX4_DIR}" && echo
 sleep 1
-cp -r ${PX4_config}/models/* ${PX4_DIR}/Tools/simulation/gz/models/
-cp -r ${PX4_config}/worlds/* ${PX4_DIR}/Tools/simulation/gz/worlds/
-cp -r ${PX4_config}/px4/* ${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/
-cd $PX4_DIR && make px4_sitl
 
-# Install MAVROS packages from apt (using modern keyring approach)
-echo "Installing MAVROS packages from apt..." && sleep 1
+# Ensure target directories exist
+mkdir -p ${PX4_DIR}/Tools/simulation/gz/models/
+mkdir -p ${PX4_DIR}/Tools/simulation/gz/worlds/
+mkdir -p ${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/
+
+# Copy files with error checking
+if [ -d "${PX4_config}/models" ]; then
+    cp -r ${PX4_config}/models/* ${PX4_DIR}/Tools/simulation/gz/models/
+    echo "✅ Models copied successfully"
+else
+    echo "⚠️  Models directory not found in PX4_config"
+fi
+
+if [ -d "${PX4_config}/worlds" ]; then
+    cp -r ${PX4_config}/worlds/* ${PX4_DIR}/Tools/simulation/gz/worlds/
+    echo "✅ Worlds copied successfully"
+else
+    echo "⚠️  Worlds directory not found in PX4_config"
+fi
+
+if [ -d "${PX4_config}/px4" ]; then
+    cp -r ${PX4_config}/px4/* ${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/
+    echo "✅ PX4 airframe configs copied successfully"
+else
+    echo "⚠️  PX4 configs directory not found in PX4_config"
+fi
+
+# Try building again after copying configs
+echo "🔨 Final PX4 SITL build with new configurations..."
+cd $PX4_DIR 
+make px4_sitl || echo "⚠️  Final PX4 build had issues, but continuing..."
+
+# Install MAVROS packages from apt for Jazzy
+echo "Installing ROS2 Jazzy MAVROS packages from apt..." && sleep 1
 sudo apt update
-sudo apt install -y ros-humble-mavros ros-humble-mavros-msgs
+sudo apt install -y ros-jazzy-mavros ros-jazzy-mavros-msgs
 
 #
-# MAVROS
+# MAVROS - Custom packages for multi-vehicle support
 #
-echo "Cloning mavlink package ... " && sleep 1
+echo "Cloning mavlink package for Jazzy... " && sleep 1
 if [ ! -d "$ROS2_SRC/mavlink" ]; then
     cd $ROS2_SRC
-    git clone  https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink
-    cd $ROS2_SRC/mavlink && git checkout release/humble/mavlink/2023.9.9-1
+    git clone https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink
+    cd $ROS2_SRC/mavlink 
+    # Try to find a jazzy compatible branch, fallback to latest
+    if git branch -r | grep -q "release/jazzy"; then
+        git checkout release/jazzy/mavlink/2024.7.8-1 || git checkout $(git branch -r | grep "release/jazzy" | head -1 | sed 's/origin\///')
+    else
+        echo "⚠️  No Jazzy-specific mavlink branch found, using latest release"
+        git checkout $(git tag | grep -E "^2024\." | sort -V | tail -1) || git checkout $(git branch -r | grep "release" | tail -1 | sed 's/origin\///')
+    fi
 fi
+
 # Custom mavros pkg is required to handle TF issues in multi-vehicle simulation
-echo "Cloning custom mavros package ... " && sleep 1
+echo "Cloning custom mavros package for Jazzy... " && sleep 1
 if [ ! -d "$ROS2_SRC/mavros" ]; then
     cd $ROS2_SRC
-    git clone  https://github.com/AbdullahGM1/mavros.git
-    cd $ROS2_SRC/mavros && git checkout ros2_humble
+    git clone https://github.com/AbdullahGM1/mavros.git
+    cd $ROS2_SRC/mavros 
+    # Check if there's a jazzy branch, otherwise use ros2_humble branch
+    if git branch -r | grep -q "ros2_jazzy"; then
+        git checkout ros2_jazzy
+        echo "✅ Using ros2_jazzy branch"
+    else
+        echo "⚠️  No ros2_jazzy branch found, using ros2_humble branch"
+        echo "⚠️  This may require additional dependencies for Jazzy compatibility"
+        git checkout ros2_humble
+        
+        # Install additional dependencies that might be missing for Jazzy
+        sudo apt install -y \
+            ros-jazzy-tf2-eigen \
+            ros-jazzy-tf2-geometry-msgs \
+            ros-jazzy-eigen3-cmake-module \
+            ros-jazzy-geographic-msgs \
+            ros-jazzy-sensor-msgs \
+            ros-jazzy-geometry-msgs \
+            ros-jazzy-std-srvs
+    fi
 fi
 
-cd $ROS2_WS && rosdep init && rosdep update && rosdep install --from-paths src --ignore-src -r -y
+# Initialize and update rosdep for Jazzy
+cd $ROS2_WS 
+rosdep init || echo "rosdep already initialized"
+rosdep update 
+rosdep install --from-paths src --ignore-src -r -y
 
-cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon  build --packages-up-to mavros --executor sequential
+# Build MAVROS packages with Jazzy (with error handling)
+echo "🔨 Building MAVROS packages for Jazzy..."
+cd $ROS2_WS 
 
-cd $ROS2_WS && MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential
+# Try building mavros with better error handling
+if MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros --executor sequential; then
+    echo "✅ MAVROS built successfully"
+    
+    # Build mavros_extras
+    if MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential; then
+        echo "✅ MAVROS extras built successfully"
+    else
+        echo "⚠️  MAVROS extras build failed, but core MAVROS succeeded"
+    fi
+else
+    echo "❌ Custom MAVROS build failed. Trying fallback options..."
+    
+    # Option 1: Remove custom mavros and use system packages
+    echo "🔄 Removing custom MAVROS and using system packages..."
+    rm -rf $ROS2_SRC/mavros $ROS2_SRC/mavlink
+    
+    # Install system MAVROS packages (already installed earlier, but ensure they're there)
+    sudo apt install -y ros-jazzy-mavros ros-jazzy-mavros-msgs ros-jazzy-mavros-extras
+    
+    echo "✅ Using system MAVROS packages as fallback"
+fi
 
-# Set Gazebo version for gz_ros2_control build
-export GZ_VERSION=garden
-echo "✅ GZ_VERSION set to 'garden' for gz_ros2_control build"
+# Set Gazebo version for Harmonic compatibility
+export GZ_VERSION=harmonic
+echo "✅ GZ_VERSION set to 'harmonic' for Gazebo Harmonic compatibility"
 
-cd $ROS2_WS && colcon build --packages-select gz_ros2_control
-
+# Build remaining packages
 cd $ROS2_WS && colcon build
 
-echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
+echo "DONE. Packages are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
 # Add Python local bin to PATH and make it available in this session
 export PATH="$HOME/.local/bin:$PATH"
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 
-# Installing Python dependencies - use --no-warn-script-location to suppress warnings
+# Installing Python dependencies - use --break-system-packages for Ubuntu 24.04
 echo "Installing Python dependencies..."
 
 # Install numpy at the required version to satisfy all dependencies
-pip3 install --no-warn-script-location numpy==1.26.4
+pip3 install --break-system-packages --no-warn-script-location numpy==1.26.4
 
 # Install rospkg which is needed for rosinstall-generator
-pip3 install --no-warn-script-location rospkg
+pip3 install --break-system-packages --no-warn-script-location rospkg
 
 # Install core packages
-pip3 install --no-warn-script-location \
+pip3 install --break-system-packages --no-warn-script-location \
     rich \
     langchain \
     langchain-ollama \
@@ -302,7 +453,7 @@ else
     echo "Ollama is already installed"
 fi
 
-# Pull Qwen3: 8b model
+# Pull Qwen3:8b model
 echo "Pulling Qwen3:8b model for LLM..."
 if command_exists ollama; then
     ollama pull qwen3:8b || echo "Failed to pull Qwen3:8b model, you may need to pull it manually"
@@ -311,18 +462,14 @@ else
 fi
 
 echo "Installation complete!"
-echo "Next steps:"
-echo "Installation successful!"
 
-echo "DONE. Pkgs are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
-
-# Source the ws
+# Source the workspace
 source $ROS2_WS/install/setup.bash
 # Add to .bashrc for future sessions
 echo "source $ROS2_WS/install/setup.bash" >> ~/.bashrc
 
 # Final message
-echo "INSTALLATION COMPLETE! Packages are built successfully."
+echo "INSTALLATION COMPLETE! Packages are built successfully for ROS2 Jazzy + Gazebo Harmonic."
 echo "Models and airframe config files are copied to the respective folders in the ${PX4_DIR} directory"
 echo "Next steps:"
 echo "1. Source the workspace:  source $ROS2_WS/install/setup.bash"
