@@ -263,9 +263,11 @@ docker build --no-cache -f docker/Dockerfile.ros2-agent-sim -t ros2-agent-sim:la
 
 This project builds upon the excellent work of:
 
-- [smart_track Docker Environment](https://github.com/mzahana/smart_track/tree/main/docker) by [Mohammed Abdelkader](https://github.com/mzahana)
-- [PX4 ROS2 Humble Integration](https://github.com/mzahana/px4_ros2_humble) by [Mohammed Abdelkader](https://github.com/mzahana)
 - [ROSA (NASA JPL)](https://github.com/nasa-jpl/rosa) - ROS Agent task planning framework
+- [uav_gz_sim_docker](https://github.com/asmbatati/uav_gz_sim_docker/tree/main) by [asmbatati](https://github.com/asmbatati)
+
+
+asmbatati
 
 Special thanks to [Mohammed Abdelkader](https://github.com/mzahana) for providing the foundational Docker configurations and ROS2-PX4 integration scripts that made this project possible.
 
