@@ -1,6 +1,4 @@
-# ============================================================================
-# PHASE 2 CHANGES: ROS2 Humble → Jazzy Migration  
-# ============================================================================
+
 # Custom ROS2 Jazzy + Gazebo Harmonic + XRCE-DDS + PX4 + MAVROS + ROSA + ChatOllama + Qwen3:8b
 # Updated to CUDA 12.9.1 for Ubuntu 24.04 compatibility
 #
@@ -231,15 +229,15 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 #
 RUN pip3 install --break-system-packages --ignore-installed langchain langchain-community ollama
 
-# #
-# # Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
-# #
-# RUN bash -c "ollama serve & \
-#     sleep 10 && \
-#     (ollama list | grep -q 'qwen3:8b' && echo 'Model qwen3:8b already exists, skipping download') || \
-#     (echo 'Model qwen3:8b not found, pulling now...' && \
-#     ollama pull qwen3:8b || echo 'Failed to pull model during build, will try in container runtime') && \
-#     pkill ollama || true"
+#
+# Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
+#
+RUN bash -c "ollama serve & \
+    sleep 10 && \
+    (ollama list | grep -q 'qwen3:8b' && echo 'Model qwen3:8b already exists, skipping download') || \
+    (echo 'Model qwen3:8b not found, pulling now...' && \
+    ollama pull qwen3:8b || echo 'Failed to pull model during build, will try in container runtime') && \
+    pkill ollama || true"
 
 # Create necessary directories in the image
 RUN mkdir -p /home/user/backup
@@ -273,11 +271,3 @@ WORKDIR /home/user
 
 CMD ["/bin/bash"]
 
-# ============================================================================
-# PHASE 1 ✅ COMPLETE - Base System Update (Ubuntu 24.04 + CUDA 12.9.1)
-# PHASE 2 ✅ COMPLETE - ROS2 Humble → Jazzy Migration
-# PHASE 3 ✅ COMPLETE - Gazebo Garden → Harmonic Migration
-# NEXT PHASES:
-# Phase 4: PX4 integration testing
-# Phase 5: Final integration testing
-# ============================================================================

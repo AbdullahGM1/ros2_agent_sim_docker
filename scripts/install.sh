@@ -208,17 +208,6 @@ cd $ROS2_WS && colcon build
 
 echo "DONE. Packages are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
-
-# # Install core packages
-# pip3 install --break-system-packages --no-warn-script-location \
-#     rich \
-#     langchain \
-#     langchain-ollama \
-#     langchain-community==0.3.21 \
-#     opencv-python \
-#     PyYAML==6.0.1 \
-#     rosa
-
 # # Check if ollama is installed
 # if ! command_exists ollama; then
 #     echo "Installing Ollama..."
@@ -241,16 +230,16 @@ echo "DONE. Packages are built. Models and airframe config files are copied to t
 
 # echo "Installation complete!"
 
-# # Source the workspace
-# source $ROS2_WS/install/setup.bash
-# # Add to .bashrc for future sessions
-# echo "source $ROS2_WS/install/setup.bash" >> ~/.bashrc
+# Source the workspace
+source $ROS2_WS/install/setup.bash
+# Add to .bashrc for future sessions
+echo "source $ROS2_WS/install/setup.bash" >> ~/.bashrc
 
-# # Final message
-# echo "INSTALLATION COMPLETE! Packages are built successfully for ROS2 Jazzy + Gazebo Harmonic."
-# echo "Models and airframe config files are copied to the respective folders in the ${PX4_DIR} directory"
-# echo "Next steps:"
-# echo "1. Source the workspace:  source $ROS2_WS/install/setup.bash"
-# echo "2. Launch the simulation: ros2 launch drone_sim drone.launch.py"
-# echo "3. Run the ROS2 agent:    ros2 run ros2_agent ros2_agent_node"
-# cd $HOME
+# Final message
+echo "INSTALLATION COMPLETE! Packages are built successfully for ROS2 Jazzy + Gazebo Harmonic."
+echo "Models and airframe config files are copied to the respective folders in the ${PX4_DIR} directory"
+echo "Next steps:"
+echo "1. Source the workspace:  source $ROS2_WS/install/setup.bash"
+echo "2. Launch the simulation: ros2 launch drone_sim drone.launch.py"
+echo "3. Run the ROS2 agent:    ros2 run ros2_agent ros2_agent_node"
+cd $HOME
