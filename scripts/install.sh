@@ -2,12 +2,6 @@
 
 # This script sets up the ROS2 Agent simulation environment for ROS2 Jazzy + Gazebo Harmonic
 
-# Run rosdep update and install for Jazzy
-# echo "⏳ Running rosdep update and install for ROS2 Jazzy..."
-# cd $ROS2_WS
-# rosdep update
-#rosdep install --from-paths src --ignore-src -r -y
-
 # # Function to check if a command exists for Ollama
 # command_exists() {
 #     command -v "$1" >/dev/null 2>&1
@@ -92,6 +86,22 @@ make submodulesclean
 make distclean
 make clean
 
+# Install core packages 
+echo "⏳ Installing core packages"
+pip3 install --break-system-packages --no-warn-script-location \
+    rich \
+    langchain \
+    langchain-ollama \
+    langchain-community==0.3.21 \
+    opencv-python \
+    PyYAML==6.0.1 \
+    rosa \
+    symforce \
+    numpy==1.26.4 \
+    rospkg
+
+export CMAKE_ARGS="-Wno-dev"
+
 # Build px4_sitl with error handling
 echo "🔨 Building PX4 SITL..."
 cd "$PX4_DIR"
@@ -149,109 +159,55 @@ else
     echo "❌ PX4 SITL build failed"
 fi
 
-# # Install MAVROS packages from apt for Jazzy
-# echo "Installing ROS2 Jazzy MAVROS packages from apt..." && sleep 1
-# sudo apt update
-# sudo apt install -y ros-jazzy-mavros ros-jazzy-mavros-msgs
+# Clone mavlink dependency
+echo "📦 Cloning mavlink package..."
+if [ ! -d "$ROS2_SRC/mavlink" ]; then
+    cd $ROS2_SRC
+    git clone https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink
+    cd mavlink
+    git checkout release/jazzy/mavlink
+    echo "✅ mavlink cloned with jazzy branch"
+else
+    echo "⚠️  mavlink exists, updating..."
+    cd $ROS2_SRC/mavlink
+    git fetch origin
+    git checkout release/jazzy/mavlink
+    git pull origin release/jazzy/mavlink
+    echo "✅ mavlink updated"
+fi
 
-# #
-# # MAVROS - Custom packages for multi-vehicle support
-# #
-# echo "Cloning mavlink package for Jazzy... " && sleep 1
-# if [ ! -d "$ROS2_SRC/mavlink" ]; then
-#     cd $ROS2_SRC
-#     git clone https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink
-#     cd $ROS2_SRC/mavlink 
-#     # Try to find a jazzy compatible branch, fallback to latest
-#     if git branch -r | grep -q "release/jazzy"; then
-#         git checkout release/jazzy/mavlink/2024.7.8-1 || git checkout $(git branch -r | grep "release/jazzy" | head -1 | sed 's/origin\///')
-#     else
-#         echo "⚠️  No Jazzy-specific mavlink branch found, using latest release"
-#         git checkout $(git tag | grep -E "^2024\." | sort -V | tail -1) || git checkout $(git branch -r | grep "release" | tail -1 | sed 's/origin\///')
-#     fi
-# fi
+# Clone MAVROS for ROS2 Jazzy
+echo "📦 Cloning MAVROS for ROS2 Jazzy..."
+if [ ! -d "$ROS2_SRC/mavros" ]; then
+    cd $ROS2_SRC
+    git clone https://github.com/AbdullahGM1/mavros.git mavros
+    cd mavros
+    git checkout ros2
+    echo "✅ MAVROS cloned with ros2 branch"
+else
+    echo "⚠️  MAVROS exists, updating..."
+    cd $ROS2_SRC/mavros
+    git fetch origin
+    git checkout ros2
+    git pull origin ros2
+    echo "✅ MAVROS updated"
+fi
 
-# # Custom mavros pkg is required to handle TF issues in multi-vehicle simulation
-# echo "Cloning custom mavros package for Jazzy... " && sleep 1
-# if [ ! -d "$ROS2_SRC/mavros" ]; then
-#     cd $ROS2_SRC
-#     git clone https://github.com/AbdullahGM1/mavros.git
-#     cd $ROS2_SRC/mavros 
-#     # Check if there's a jazzy branch, otherwise use ros2_humble branch
-#     if git branch -r | grep -q "ros2_jazzy"; then
-#         git checkout ros2_jazzy
-#         echo "✅ Using ros2_jazzy branch"
-#     else
-#         echo "⚠️  No ros2_jazzy branch found, using ros2_humble branch"
-#         echo "⚠️  This may require additional dependencies for Jazzy compatibility"
-#         git checkout ros2_humble
-        
-#         # Install additional dependencies that might be missing for Jazzy
-#         sudo apt install -y \
-#             ros-jazzy-tf2-eigen \
-#             ros-jazzy-tf2-geometry-msgs \
-#             ros-jazzy-eigen3-cmake-module \
-#             ros-jazzy-geographic-msgs \
-#             ros-jazzy-sensor-msgs \
-#             ros-jazzy-geometry-msgs \
-#             ros-jazzy-std-srvs
-#     fi
-# fi
+# Install missing geographic messages
+sudo apt install -y ros-jazzy-geographic-msgs
 
-# # Initialize and update rosdep for Jazzy
-# cd $ROS2_WS 
-# rosdep init || echo "rosdep already initialized"
-# rosdep update 
-# rosdep install --from-paths src --ignore-src -r -y
+# Handle rosdep (IMPORTANT - installs all dependencies automatically)
+echo "📦 Running rosdep for MAVROS dependencies..."
+cd $ROS2_WS 
+rosdep init || echo "rosdep already initialized"
+rosdep update 
+rosdep install --from-paths src --ignore-src -r -y
 
-# # Build MAVROS packages with Jazzy (with error handling)
-# echo "🔨 Building MAVROS packages for Jazzy..."
-# cd $ROS2_WS 
+# Build the packages
+cd $ROS2_WS && colcon build
 
-# # Try building mavros with better error handling
-# if MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros --executor sequential; then
-#     echo "✅ MAVROS built successfully"
-    
-#     # Build mavros_extras
-#     if MAKEFLAGS='j1 -l1' colcon build --packages-up-to mavros_extras --executor sequential; then
-#         echo "✅ MAVROS extras built successfully"
-#     else
-#         echo "⚠️  MAVROS extras build failed, but core MAVROS succeeded"
-#     fi
-# else
-#     echo "❌ Custom MAVROS build failed. Trying fallback options..."
-    
-#     # Option 1: Remove custom mavros and use system packages
-#     echo "🔄 Removing custom MAVROS and using system packages..."
-#     rm -rf $ROS2_SRC/mavros $ROS2_SRC/mavlink
-    
-#     # Install system MAVROS packages (already installed earlier, but ensure they're there)
-#     sudo apt install -y ros-jazzy-mavros ros-jazzy-mavros-msgs ros-jazzy-mavros-extras
-    
-#     echo "✅ Using system MAVROS packages as fallback"
-# fi
+echo "DONE. Packages are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
 
-# # Set Gazebo version for Harmonic compatibility
-# export GZ_VERSION=harmonic
-# echo "✅ GZ_VERSION set to 'harmonic' for Gazebo Harmonic compatibility"
-
-# # Build remaining packages
-# cd $ROS2_WS && colcon build
-
-# echo "DONE. Packages are built. Models and airframe config files are copied to the respective folder in the ${PX4_DIR} directory"
-
-# # Add Python local bin to PATH and make it available in this session
-# export PATH="$HOME/.local/bin:$PATH"
-# echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-
-# # Installing Python dependencies - use --break-system-packages for Ubuntu 24.04
-# echo "Installing Python dependencies..."
-
-# # Install numpy at the required version to satisfy all dependencies
-# pip3 install --break-system-packages --no-warn-script-location numpy==1.26.4
-
-# # Install rospkg which is needed for rosinstall-generator
-# pip3 install --break-system-packages --no-warn-script-location rospkg
 
 # # Install core packages
 # pip3 install --break-system-packages --no-warn-script-location \
