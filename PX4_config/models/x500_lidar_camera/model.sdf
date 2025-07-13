@@ -2,7 +2,7 @@
 <sdf version='1.9'>
   <model name='x500_lidar_camera'>
     <include merge='true'>
-      <uri>x500</uri>
+      <uri>model://x500</uri>
     </include>
 
     <include merge='true'>
