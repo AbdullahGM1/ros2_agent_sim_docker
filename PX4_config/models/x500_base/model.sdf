@@ -234,7 +234,6 @@
         <always_on>1</always_on>
         <update_rate>250</update_rate>
         <topic>imu</topic>
-        <frame_id>base_link</frame_id>
         <enable_metrics>false</enable_metrics>
         <imu>
           <enable_orientation>true</enable_orientation>
@@ -316,7 +315,6 @@
         <always_on>1</always_on>
         <update_rate>30</update_rate>
         <topic>navsat</topic>
-        <frame_id>base_link</frame_id>
         <enable_metrics>false</enable_metrics>
         <navsat>
           <position_sensing>
@@ -355,7 +353,6 @@
         <always_on>1</always_on>
         <update_rate>50</update_rate>
         <topic>magnetometer</topic>
-        <frame_id>base_link</frame_id>
         <enable_metrics>false</enable_metrics>
         <magnetometer>
           <x>
