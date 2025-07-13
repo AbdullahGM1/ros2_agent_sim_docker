@@ -215,7 +215,6 @@
           </friction>
         </surface>
       </collision>
-      <!-- Adding Air air_pressure_sensor -->
       <sensor name="air_pressure_sensor" type="air_pressure">
         <always_on>1</always_on>
         <update_rate>50</update_rate>
@@ -228,158 +227,30 @@
           </pressure>
         </air_pressure>
       </sensor>
-      <!-- Adding IMU sensor -->
       <sensor name="imu_sensor" type="imu">
-        <pose>0 0 0 0 0 0</pose>
         <always_on>1</always_on>
         <update_rate>250</update_rate>
-        <topic>imu</topic>
-        <enable_metrics>false</enable_metrics>
-        <imu>
-          <enable_orientation>true</enable_orientation>
-          <angular_velocity>
-            <x>
-              <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>0.009</stddev>
-                <bias_mean>0.00075</bias_mean>
-                <bias_stddev>0.005</bias_stddev>
-                <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
-                <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
-                <precision>0.00025</precision>
-              </noise>
-            </x>
-            <y>
-              <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>0.009</stddev>
-                <bias_mean>0.00075</bias_mean>
-                <bias_stddev>0.005</bias_stddev>
-                <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
-                <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
-                <precision>0.00025</precision>
-              </noise>
-            </y>
-            <z>
-              <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>0.009</stddev>
-                <bias_mean>0.00075</bias_mean>
-                <bias_stddev>0.005</bias_stddev>
-                <dynamic_bias_stddev>0.00002</dynamic_bias_stddev>
-                <dynamic_bias_correlation_time>400.0</dynamic_bias_correlation_time>
-                <precision>0.00025</precision>
-              </noise>
-            </z>
-          </angular_velocity>
-          <linear_acceleration>
-            <x>
-              <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>0.021</stddev>
-                <bias_mean>0.05</bias_mean>
-                <bias_stddev>0.0075</bias_stddev>
-                <dynamic_bias_stddev>0.000375</dynamic_bias_stddev>
-                <dynamic_bias_correlation_time>175.0</dynamic_bias_correlation_time>
-                <precision>0.005</precision>
-              </noise>
-            </x>
-            <y>
-              <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>0.021</stddev>
-                <bias_mean>0.05</bias_mean>
-                <bias_stddev>0.0075</bias_stddev>
-                <dynamic_bias_stddev>0.000375</dynamic_bias_stddev>
-                <dynamic_bias_correlation_time>175.0</dynamic_bias_correlation_time>
-                <precision>0.005</precision>
-              </noise>
-            </y>
-            <z>
-              <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>0.021</stddev>
-                <bias_mean>0.05</bias_mean>
-                <bias_stddev>0.0075</bias_stddev>
-                <dynamic_bias_stddev>0.000375</dynamic_bias_stddev>
-                <dynamic_bias_correlation_time>175.0</dynamic_bias_correlation_time>
-                <precision>0.005</precision>
-              </noise>
-            </z>
-          </linear_acceleration>
-        </imu>
-        <!-- Adding GPS -->
       </sensor>
       <sensor name="navsat_sensor" type="navsat">
-        <pose>0 0 0 0 0 0</pose>
         <always_on>1</always_on>
         <update_rate>30</update_rate>
         <topic>navsat</topic>
-        <enable_metrics>false</enable_metrics>
         <navsat>
           <position_sensing>
             <horizontal>
               <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>2.0</stddev>
+                <mean>0.0</mean>
+                <stddev>1e-2</stddev>
               </noise>
             </horizontal>
             <vertical>
               <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>4.0</stddev>
+                <mean>0.0</mean>
+                <stddev>1e-2</stddev>
               </noise>
             </vertical>
           </position_sensing>
-          <velocity_sensing>
-            <horizontal>
-              <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>0.2</stddev>
-              </noise>
-            </horizontal>
-            <vertical>
-              <noise type="gaussian">
-                <mean>0</mean>
-                <stddev>0.4</stddev>
-              </noise>
-            </vertical>
-          </velocity_sensing>
         </navsat>
-      </sensor>
-      <!-- Adding magnetometer -->
-      <sensor name="magnetometer_sensor" type="magnetometer">
-        <pose>0 0 0 0 0 0</pose>
-        <always_on>1</always_on>
-        <update_rate>50</update_rate>
-        <topic>magnetometer</topic>
-        <enable_metrics>false</enable_metrics>
-        <magnetometer>
-          <x>
-            <noise type="gaussian">
-              <mean>0.000000080</mean>
-              <stddev>0.000000080</stddev>
-              <bias_mean>0.000000400</bias_mean>
-              <bias_stddev>0.000000020</bias_stddev>
-            </noise>
-          </x>
-          <y>
-            <noise type="gaussian">
-              <mean>0.000000080</mean>
-              <stddev>0.000000080</stddev>
-              <bias_mean>0.000000400</bias_mean>
-              <bias_stddev>0.000000020</bias_stddev>
-            </noise>
-          </y>
-          <z>
-            <noise type="gaussian">
-              <mean>0.000000080</mean>
-              <stddev>0.000000080</stddev>
-              <bias_mean>0.000000400</bias_mean>
-              <bias_stddev>0.000000020</bias_stddev>
-            </noise>
-          </z>
-        </magnetometer>
       </sensor>
     </link>
     <link name="rotor_0">

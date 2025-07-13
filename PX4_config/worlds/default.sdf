@@ -1,26 +1,21 @@
 <sdf version='1.9'>
   <world name='default'>
-    <!-- EXPLICIT DART Physics -->
-    <plugin name='gz::sim::systems::Physics' filename='gz-sim-physics-system'>
-      <engine>
-        <filename>gz-physics-dartsim-plugin</filename>
-      </engine>
+    <physics type="ode">
       <max_step_size>0.004</max_step_size>
       <real_time_factor>1.0</real_time_factor>
-    </plugin>
-    
-    <!-- Essential plugins -->
+      <real_time_update_rate>250</real_time_update_rate>
+    </physics>
+    <plugin name='gz::sim::systems::Physics' filename='gz-sim-physics-system'/>
     <plugin name='gz::sim::systems::UserCommands' filename='gz-sim-user-commands-system'/>
     <plugin name='gz::sim::systems::SceneBroadcaster' filename='gz-sim-scene-broadcaster-system'/>
     <plugin name='gz::sim::systems::Contact' filename='gz-sim-contact-system'/>
     <plugin name='gz::sim::systems::Imu' filename='gz-sim-imu-system'/>
     <plugin name='gz::sim::systems::AirPressure' filename='gz-sim-air-pressure-system'/>
+    <plugin name='gz::sim::systems::ApplyLinkWrench' filename='gz-sim-apply-link-wrench-system'/>
+    <plugin name='gz::sim::systems::NavSat' filename='gz-sim-navsat-system'/>
     <plugin name='gz::sim::systems::Sensors' filename='gz-sim-sensors-system'>
       <render_engine>ogre2</render_engine>
     </plugin>
-    <plugin name='gz::sim::systems::NavSat' filename='gz-sim-navsat-system'/>
-    <plugin name='gz::sim::systems::Magnetometer' filename='gz-sim-magnetometer-system'/>
-    
     <gui fullscreen='false'>
       <plugin name='3D View' filename='GzScene3D'>
         <gz-gui>
@@ -73,18 +68,23 @@
       </plugin>
       <plugin name='Entity tree' filename='EntityTree'/>
     </gui>
-    
     <gravity>0 0 -9.8</gravity>
     <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
     <atmosphere type='adiabatic'/>
+    <!-- ADD THIS: GPS reference coordinates -->
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <latitude_deg>37.4223</latitude_deg>
+      <longitude_deg>-122.0844</longitude_deg>
+      <elevation>0</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
     <scene>
       <grid>false</grid>
       <ambient>0.4 0.4 0.4 1</ambient>
       <background>0.7 0.7 0.7 1</background>
       <shadows>true</shadows>
     </scene>
-    
-    <!-- Ground plane -->
     <model name='ground_plane'>
       <static>true</static>
       <link name='link'>
@@ -97,11 +97,10 @@
           </geometry>
           <surface>
             <friction>
-              <dart>
-                <primary_friction_coefficient>1.0</primary_friction_coefficient>
-                <secondary_friction_coefficient>0.8</secondary_friction_coefficient>
-              </dart>
+              <ode/>
             </friction>
+            <bounce/>
+            <contact/>
           </surface>
         </collision>
         <visual name='visual'>
@@ -135,8 +134,6 @@
       <pose>0 0 0 0 -0 0</pose>
       <self_collide>false</self_collide>
     </model>
-    
-    <!-- Keep existing light -->
     <light name='sunUTC' type='directional'>
       <pose>0 0 500 0 -0 0</pose>
       <cast_shadows>true</cast_shadows>
@@ -156,90 +153,5 @@
         <falloff>0</falloff>
       </spot>
     </light>
-
-    <!-- SIMPLE TEST 1: Single falling box -->
-    <model name="test_box_1">
-      <pose>8 3 3 0 0 0</pose>
-      <link name="link">
-        <inertial>
-          <mass>1.0</mass>
-          <inertia>
-            <ixx>0.167</ixx><ixy>0</ixy><ixz>0</ixz>
-            <iyy>0.167</iyy><iyz>0</iyz><izz>0.167</izz>
-          </inertia>
-        </inertial>
-        <collision name="collision">
-          <geometry>
-            <box><size>1 1 1</size></box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box><size>1 1 1</size></box>
-          </geometry>
-          <material>
-            <ambient>1 0 0 1</ambient>
-            <diffuse>1 0 0 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <!-- SIMPLE TEST 2: Second falling box -->
-    <model name="test_box_2">
-      <pose>8 3 5 0 0 0</pose>
-      <link name="link">
-        <inertial>
-          <mass>1.0</mass>
-          <inertia>
-            <ixx>0.167</ixx><ixy>0</ixy><ixz>0</ixz>
-            <iyy>0.167</iyy><iyz>0</iyz><izz>0.167</izz>
-          </inertia>
-        </inertial>
-        <collision name="collision">
-          <geometry>
-            <box><size>1 1 1</size></box>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <box><size>1 1 1</size></box>
-          </geometry>
-          <material>
-            <ambient>0 1 0 1</ambient>
-            <diffuse>0 1 0 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
-    <!-- SIMPLE TEST 3: Rolling ball -->
-    <model name="test_ball">
-      <pose>10 0 2 0 0 0</pose>
-      <link name="link">
-        <inertial>
-          <mass>1.0</mass>
-          <inertia>
-            <ixx>0.4</ixx><ixy>0</ixy><ixz>0</ixz>
-            <iyy>0.4</iyy><iyz>0</iyz><izz>0.4</izz>
-          </inertia>
-        </inertial>
-        <collision name="collision">
-          <geometry>
-            <sphere><radius>0.5</radius></sphere>
-          </geometry>
-        </collision>
-        <visual name="visual">
-          <geometry>
-            <sphere><radius>0.5</radius></sphere>
-          </geometry>
-          <material>
-            <ambient>1 1 0 1</ambient>
-            <diffuse>1 1 0 1</diffuse>
-          </material>
-        </visual>
-      </link>
-    </model>
-
   </world>
 </sdf>
