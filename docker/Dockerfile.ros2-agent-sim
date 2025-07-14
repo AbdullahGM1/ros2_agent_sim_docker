@@ -37,6 +37,25 @@ RUN apt install -y ros-jazzy-desktop ros-dev-tools \
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
+# ========================================================================
+# FIX 1: NumPy Development Environment for MAVROS compilation  
+# ========================================================================
+RUN apt-get update && apt-get install -y \
+    python3-numpy \
+    python3-numpy-dev \
+    python3-dev \
+    libpython3-dev \
+    python3-setuptools-scm \
+    cython3 \
+    libxml2-dev \
+    libxslt1-dev \
+    libyaml-cpp-dev \
+    libboost-all-dev \
+    libeigen3-dev \
+    && apt-get -y autoremove \
+    && apt-get clean autoclean \
+    && rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+
 #
 # Setup XRCE-DDS Agent & Client
 #
@@ -224,10 +243,9 @@ RUN apt update &&  apt install -y ros-jazzy-rqt-tf-* \
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 	
-#
-# MAVROS dependencies
-# PHASE 2: Updated for Jazzy compatibility
-#
+# ========================================================================
+# FIX 2: Enhanced MAVROS dependencies
+# ========================================================================
 RUN apt update && \
     apt install -y \
         python3-vcstool \
@@ -235,33 +253,58 @@ RUN apt update && \
         python3-osrf-pycommon \
         geographiclib-tools \
         libgeographiclib-dev \
-		libasio-dev \
-		libgoogle-glog-dev \
-		ros-jazzy-eigen-stl-containers \
-		ros-jazzy-diagnostic-updater \
-		ros-jazzy-geographic-msgs \
-		&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/*
+        libasio-dev \
+        libgoogle-glog-dev \
+        ros-jazzy-eigen-stl-containers \
+        ros-jazzy-diagnostic-updater \
+        ros-jazzy-geographic-msgs \
+        build-essential \
+        cmake \
+        pkg-config \
+        libconsole-bridge-dev \
+        libtinyxml2-dev \
+        libpoco-dev \
+        && apt-get -y autoremove \
+        && apt-get clean autoclean \
+        && rm -rf /var/lib/apt/lists/*
 
 RUN geographiclib-get-geoids egm96-5 && \
     geographiclib-get-gravity egm96 && \
     geographiclib-get-magnetic emm2015
-RUN pip3 install --break-system-packages --ignore-installed future
 
-#
+# ========================================================================
+# FIX 3: Improved Python Environment Setup
+# ========================================================================
+
+# Install core Python build dependencies first
+RUN pip3 install --break-system-packages --no-cache-dir \
+    wheel \
+    setuptools \
+    cython
+
+# Install NumPy explicitly to avoid conflicts
+RUN pip3 install --break-system-packages --no-cache-dir \
+    "numpy>=1.21.0,<2.0.0"
+
+# Install basic dependencies
+RUN pip3 install --break-system-packages --no-cache-dir \
+    future
+
 # Install ROSA (ROS Agent) - NASA JPL Task Planning Framework
-#
-RUN pip3 install --break-system-packages --ignore-installed jpl-rosa
+RUN pip3 install --break-system-packages --no-cache-dir \
+    jpl-rosa
 
 #
 # Install Ollama for local LLM support
 #
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
-#
-# Install ChatOllama (LangChain integration)
-#
-RUN pip3 install --break-system-packages --ignore-installed langchain langchain-community ollama
+# Install ChatOllama and LangChain integration
+RUN pip3 install --break-system-packages --no-cache-dir \
+    langchain \
+    langchain-ollama \
+    langchain-community \
+    ollama
 
 # #
 # # Pull Qwen3:8b model using Ollama (only if it doesn't already exist)

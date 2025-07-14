@@ -16,8 +16,8 @@
     <plugin name='gz::sim::systems::AirPressure' filename='gz-sim-air-pressure-system'/>
     <plugin name='gz::sim::systems::ApplyLinkWrench' filename='gz-sim-apply-link-wrench-system'/>
     
-    <!-- ✅ CRITICAL: NavSat plugin with FULL PATH (BEFORE Sensors plugin) -->
-    <plugin name='gz::sim::systems::NavSat' filename='/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins/libgz-sim-navsat-system.so'/>
+    <!-- NavSat plugin  -->
+    <plugin name='gz::sim::systems::NavSat' filename='gz-sim-navsat-system'/>
     
     <!-- Sensors plugin (AFTER NavSat) -->
     <plugin name='gz::sim::systems::Sensors' filename='gz-sim-sensors-system'>
