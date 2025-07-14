@@ -497,9 +497,8 @@ show_help() {
 # Main execution
 main() {
     echo
-    print_info "🚀 ROS2 Agent Sim Docker Environment (Modern Setup)"
-    print_info "🎯 All Original Functionality: ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA"
-    print_info "✅ Fixed: PEP 668 Python issues, dependency conflicts, build errors"
+    print_info "🚀 ROS2 Agent Sim Docker Environment"
+    print_info "🎯 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA"
     print_info "Container: $CONTAINER_NAME"
     print_info "Workspace: $WORKSPACE_DIR"
     echo
