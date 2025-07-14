@@ -230,21 +230,68 @@ run_container() {
     
     # Check if container already exists
     if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
-        if [ "$(docker ps -aq -f status=exited -f name=${CONTAINER_NAME})" ]; then
-            print_info "Restarting existing container..."
-            docker start ${CONTAINER_NAME}
+        # Test if container is healthy and accessible
+        if docker exec ${CONTAINER_NAME} pwd >/dev/null 2>&1; then
+            # Container is healthy, check if it's running
+            if [ "$(docker ps -aq -f status=exited -f name=${CONTAINER_NAME})" ]; then
+                print_info "Restarting existing container..."
+                docker start ${CONTAINER_NAME}
+            fi
+            
+            print_info "Connecting to existing container: ${CONTAINER_NAME}"
+            # FIXED: Specify working directory explicitly in exec command with colors
+            docker exec --user user --workdir /home/user/shared_volume -it ${CONTAINER_NAME} env \
+                TERM=xterm-256color \
+                COLORTERM=truecolor \
+                FORCE_COLOR=1 \
+                CLICOLOR_FORCE=1 \
+                bash -l -c "${CMD}"
+        else
+            # Container has issues, remove and recreate
+            print_warning "Existing container has issues, removing and recreating..."
+            docker stop ${CONTAINER_NAME} 2>/dev/null || true
+            docker rm ${CONTAINER_NAME} 2>/dev/null || true
+            
+            print_info "Running new container: ${CONTAINER_NAME}"
+            print_info "UID mapping: Host $HOST_UID → Container user"
+            
+            # Create new container with explicit working directory and colors
+            docker run -it \
+                --network host \
+                --env="DISPLAY=${DISPLAY}" \
+                --env="TERM=xterm-256color" \
+                --env="COLORTERM=truecolor" \
+                --env="FORCE_COLOR=1" \
+                --env="CLICOLOR_FORCE=1" \
+                -e NVIDIA_DRIVER_CAPABILITIES=all \
+                -e LOCAL_USER_ID="$HOST_UID" \
+                -e LOCAL_GROUP_ID="$HOST_GID" \
+                -e HOST_USER="$HOST_USER" \
+                -e UBUNTU_VERSION="$UBUNTU_VERSION" \
+                -e FASTRTPS_DEFAULT_PROFILES_FILE=/usr/local/share/middleware_profiles/rtps_udp_profile.xml \
+                --volume="/tmp/.X11-unix:/tmp/.X11-unix" \
+                --volume="/etc/localtime:/etc/localtime:ro" \
+                --volume="$WORKSPACE_DIR:/home/user/shared_volume:rw" \
+                --volume="/dev:/dev" \
+                --name=${CONTAINER_NAME} \
+                --privileged \
+                --workdir /home/user/shared_volume \
+                $DOCKER_OPTS \
+                ${DOCKER_REPO} \
+                bash -l -c "${CMD}"
         fi
-        
-        print_info "Connecting to existing container: ${CONTAINER_NAME}"
-        docker exec --user user -it ${CONTAINER_NAME} env TERM=xterm-256color bash -c "${CMD}"
     else
         print_info "Running new container: ${CONTAINER_NAME}"
         print_info "UID mapping: Host $HOST_UID → Container user"
         
-        # Enhanced docker run command with comprehensive UID mapping
+        # FIXED: Enhanced docker run command with colors and explicit working directory
         docker run -it \
             --network host \
             --env="DISPLAY=${DISPLAY}" \
+            --env="TERM=xterm-256color" \
+            --env="COLORTERM=truecolor" \
+            --env="FORCE_COLOR=1" \
+            --env="CLICOLOR_FORCE=1" \
             -e NVIDIA_DRIVER_CAPABILITIES=all \
             -e LOCAL_USER_ID="$HOST_UID" \
             -e LOCAL_GROUP_ID="$HOST_GID" \
@@ -260,7 +307,7 @@ run_container() {
             --workdir /home/user/shared_volume \
             $DOCKER_OPTS \
             ${DOCKER_REPO} \
-            bash -c "${CMD}"
+            bash -l -c "${CMD}"
     fi
 }
 

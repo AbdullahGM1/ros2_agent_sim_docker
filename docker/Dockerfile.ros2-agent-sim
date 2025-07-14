@@ -1,4 +1,3 @@
-
 # Custom ROS2 Jazzy + Gazebo Harmonic + XRCE-DDS + PX4 + MAVROS + ROSA + ChatOllama + Qwen3:8b
 # Updated to CUDA 12.9.1 for Ubuntu 24.04 compatibility
 #
@@ -91,7 +90,7 @@ COPY scripts/requirements.txt /tmp/requirements.txt
 
 #
 # Install PX4 dev requirements
-# NOTE: Keeping PX4 v1.14.0 as requested
+# NOTE: Using PX4 v1.15
 #
 RUN /tmp/px4_dev.sh
 
@@ -115,10 +114,19 @@ ENV QT_X11_NO_MITSHM=1
 # Use UTF8 encoding in java tools (needed to compile jMAVSim)
 ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
 
-# PHASE 1: Updated JSBSim for Ubuntu 24.04 - need to check for noble package
-# NOTE: May need to update JSBSim version for Ubuntu 24.04 compatibility
-RUN wget https://github.com/JSBSim-Team/jsbsim/releases/download/v1.1.13/JSBSim-devel_1.1.13-986.jammy.amd64.deb
-RUN dpkg -i JSBSim-devel_1.1.13-986.jammy.amd64.deb
+# PHASE 1: JSBSim installation with Ubuntu 24.04 compatibility
+RUN if [ "$(lsb_release -cs)" = "noble" ]; then \
+        echo "Ubuntu 24.04 detected - using alternative JSBSim installation"; \
+        apt-get update && apt-get install -y libsubunit-dev && \
+        wget https://github.com/JSBSim-Team/jsbsim/archive/refs/tags/v1.1.14.tar.gz && \
+        tar -xzf v1.1.14.tar.gz && cd jsbsim-1.1.14 && \
+        mkdir build && cd build && \
+        cmake .. && make -j$(nproc) && make install && \
+        cd ../.. && rm -rf jsbsim-1.1.14 v1.1.14.tar.gz; \
+    else \
+        wget https://github.com/JSBSim-Team/jsbsim/releases/download/v1.1.13/JSBSim-devel_1.1.13-986.jammy.amd64.deb && \
+        dpkg -i JSBSim-devel_1.1.13-986.jammy.amd64.deb; \
+    fi
 
 #
 # Install VS Code for easy code development
@@ -134,8 +142,10 @@ RUN apt install -y apt-transport-https && \
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-# PHASE 2: Updated to Jazzy
-RUN echo "source /opt/ros/jazzy/setup.bash" >> /home/user/.bashrc
+# FIXED: Create a template bashrc instead of modifying during build
+RUN mkdir -p /opt/bashrc_templates
+COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
+RUN chmod 644 /opt/bashrc_templates/bashrc_template.sh
 
 #
 # Remove binary pkg ros-jazzy-ros-gz-bridge. Need to build from source for compatibility
@@ -178,9 +188,6 @@ RUN rosdep init &&  rosdep update \
 	&& rosdep install -r --from-paths src -i -y --ignore-src --rosdistro jazzy
 WORKDIR /home/user/ros_ws
 RUN bash -c "source /opt/ros/jazzy/setup.bash && cd /home/user/ros2_ws && export MAKEFLAGS='-j 4' &&  colcon build"
-	
-# USER root
-RUN echo "source /home/user/ros2_ws/install/setup.bash" >> /home/user/.bashrc
 	
 #
 # Install rqt_tf
@@ -231,6 +238,8 @@ RUN pip3 install --break-system-packages --ignore-installed langchain langchain-
 
 # #
 # # Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
+# # Uncomment the section below if you want to pre-download the model during build
+# # Note: This significantly increases build time and image size
 # #
 # RUN bash -c "ollama serve & \
 #     sleep 10 && \
@@ -270,4 +279,3 @@ ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 WORKDIR /home/user
 
 CMD ["/bin/bash"]
-

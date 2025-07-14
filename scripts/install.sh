@@ -410,18 +410,83 @@ finalize_installation() {
     cd "$ROS2_WS"
     source install/setup.bash
     
-    # Add to .bashrc if not already there
-    local bashrc_line="source $ROS2_WS/install/setup.bash"
-    if ! grep -q "$bashrc_line" ~/.bashrc; then
-        echo "$bashrc_line" >> ~/.bashrc
-        print_success "Added workspace sourcing to .bashrc"
+    # FIXED: Check if .bashrc exists and is writable
+    if [ ! -f ~/.bashrc ]; then
+        print_warning ".bashrc not found, creating basic version..."
+        touch ~/.bashrc
     fi
     
-    # Add Python path
-    local python_path_line='export PATH="$HOME/.local/bin:$PATH"'
-    if ! grep -q "$python_path_line" ~/.bashrc; then
-        echo "$python_path_line" >> ~/.bashrc
-        print_success "Added Python path to .bashrc"
+    # Make a backup of current .bashrc
+    cp ~/.bashrc ~/.bashrc.backup.$(date +%s)
+    print_info "Backed up existing .bashrc"
+    
+    # FIXED: Add workspace sourcing with correct path validation
+    local workspace_source_line="# Auto-added by install script"
+    local workspace_command="if [ -f \"$ROS2_WS/install/setup.bash\" ]; then source \"$ROS2_WS/install/setup.bash\"; fi"
+    
+    if ! grep -q "$workspace_source_line" ~/.bashrc; then
+        echo "" >> ~/.bashrc
+        echo "$workspace_source_line" >> ~/.bashrc
+        echo "$workspace_command" >> ~/.bashrc
+        print_success "Added conditional workspace sourcing to .bashrc"
+    else
+        print_info "Workspace sourcing already configured in .bashrc"
+    fi
+    
+    # FIXED: Add Python path with conditional check
+    local python_path_comment="# Python local path - auto-added by install script"
+    local python_path_command='if [ -d "$HOME/.local/bin" ]; then export PATH="$HOME/.local/bin:$PATH"; fi'
+    
+    if ! grep -q "$python_path_comment" ~/.bashrc; then
+        echo "" >> ~/.bashrc
+        echo "$python_path_comment" >> ~/.bashrc
+        echo "$python_path_command" >> ~/.bashrc
+        print_success "Added conditional Python path to .bashrc"
+    else
+        print_info "Python path already configured in .bashrc"
+    fi
+    
+    # FIXED: Add environment variables with validation
+    local env_comment="# ROS2 Agent Sim environment - auto-added by install script"
+    if ! grep -q "$env_comment" ~/.bashrc; then
+        cat >> ~/.bashrc << EOF
+
+$env_comment
+export DEV_DIR="$DEV_DIR"
+export PX4_DIR="$PX4_DIR"
+export ROS2_WS="$ROS2_WS"
+export OSQP_SRC="$OSQP_SRC"
+export GZ_VERSION="harmonic"
+
+# Convenient aliases
+alias cd_ws='cd \$ROS2_WS'
+alias cd_dev='cd \$DEV_DIR'
+alias source_ws='if [ -f "\$ROS2_WS/install/setup.bash" ]; then source "\$ROS2_WS/install/setup.bash"; fi'
+alias rosdep_install='rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy'
+alias colcon_build='colcon build --executor sequential --event-handlers console_direct+'
+
+EOF
+        print_success "Added environment variables and aliases to .bashrc"
+    else
+        print_info "Environment variables already configured in .bashrc"
+    fi
+    
+    # Verify the .bashrc is valid by testing it
+    print_info "Validating .bashrc syntax..."
+    if bash -n ~/.bashrc; then
+        print_success ".bashrc syntax is valid"
+    else
+        print_error ".bashrc has syntax errors! Restoring backup..."
+        cp ~/.bashrc.backup.$(date +%s) ~/.bashrc
+        return 1
+    fi
+    
+    # Test sourcing the .bashrc
+    print_info "Testing .bashrc sourcing..."
+    if bash -c "source ~/.bashrc && echo 'Bashrc sourced successfully'"; then
+        print_success ".bashrc sources without errors"
+    else
+        print_warning ".bashrc has sourcing issues, but continuing..."
     fi
     
     track_time

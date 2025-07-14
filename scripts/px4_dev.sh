@@ -9,6 +9,7 @@ set -e
 ## - Common dependencies and tools for nuttx, jMAVSim, Gazebo
 ## - NuttX toolchain (omit with arg: --no-nuttx)
 ## - jMAVSim and Gazebo Harmonic simulator (omit with arg: --no-sim-tools)
+## Updated for PX4 v1.15 compatibility
 ##
 
 INSTALL_NUTTX="true"
@@ -135,7 +136,45 @@ else
 		;
 fi
 
-# Python3 dependencies - Handle Ubuntu 24.04 externally-managed-environment
+# Function for robust Python package installation
+install_python_with_retry() {
+    local package=$1
+    local max_retries=3
+    
+    for i in $(seq 1 $max_retries); do
+        echo "Installing $package (attempt $i/$max_retries)..."
+        
+        if [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+            if [ -n "$VIRTUAL_ENV" ]; then
+                if python -m pip install --no-cache-dir --disable-pip-version-check "$package"; then
+                    return 0
+                fi
+            else
+                if python3 -m pip install --break-system-packages --no-cache-dir --disable-pip-version-check --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org "$package"; then
+                    return 0
+                fi
+            fi
+        else
+            if [ -n "$VIRTUAL_ENV" ]; then
+                if python -m pip install "$package"; then
+                    return 0
+                fi
+            else
+                if python3 -m pip install --user "$package"; then
+                    return 0
+                fi
+            fi
+        fi
+        
+        echo "Failed to install $package, retrying in 2 seconds..."
+        sleep 2
+    done
+    
+    echo "ERROR: Failed to install $package after $max_retries attempts"
+    return 1
+}
+
+# Python3 dependencies - Enhanced for PX4 v1.15 and Ubuntu 24.04
 echo
 echo "Installing PX4 Python3 dependencies"
 
@@ -150,13 +189,31 @@ if [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
 		# In virtual environment, no need for --break-system-packages
 		python -m pip install --no-cache-dir --disable-pip-version-check -r ${DIR}/requirements.txt || {
 			echo "requirements.txt failed, installing essential packages manually"
-			python -m pip install --no-cache-dir --disable-pip-version-check empy jinja2 jsonschema packaging pandas pymavlink pyulog pyyaml toml numpy
+			install_python_with_retry "empy>=3.3"
+			install_python_with_retry "jinja2>=2.8"
+			install_python_with_retry "jsonschema"
+			install_python_with_retry "packaging"
+			install_python_with_retry "pandas>=0.21"
+			install_python_with_retry "pymavlink"
+			install_python_with_retry "pyulog>=0.5.0"
+			install_python_with_retry "pyyaml"
+			install_python_with_retry "toml>=0.9"
+			install_python_with_retry "numpy>=1.13"
 		}
 	else
 		# In Docker, use --break-system-packages and disable hash checking for speed
 		python3 -m pip install --break-system-packages --no-cache-dir --disable-pip-version-check --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r ${DIR}/requirements.txt || {
 			echo "requirements.txt failed, installing essential packages manually"
-			python3 -m pip install --break-system-packages --no-cache-dir --disable-pip-version-check --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org empy jinja2 jsonschema packaging pandas pymavlink pyulog pyyaml toml numpy
+			install_python_with_retry "empy>=3.3"
+			install_python_with_retry "jinja2>=2.8"
+			install_python_with_retry "jsonschema"
+			install_python_with_retry "packaging"
+			install_python_with_retry "pandas>=0.21"
+			install_python_with_retry "pymavlink"
+			install_python_with_retry "pyulog>=0.5.0"
+			install_python_with_retry "pyyaml"
+			install_python_with_retry "toml>=0.9"
+			install_python_with_retry "numpy>=1.13"
 		}
 	fi
 else
@@ -166,7 +223,7 @@ else
 		python -m pip install -r ${DIR}/requirements.txt
 	else
 		# older versions of Ubuntu require --user option
-		python3 -m pip install -r ${DIR}/requirements.txt
+		python3 -m pip install --user -r ${DIR}/requirements.txt
 	fi
 fi
 
@@ -252,9 +309,16 @@ if [[ $INSTALL_NUTTX == "true" ]]; then
 		sudo usermod -a -G dialout $USER
 	fi
 
-	# arm-none-eabi-gcc
-	NUTTX_GCC_VERSION="9-2020-q2-update"
-	NUTTX_GCC_VERSION_SHORT="9-2020q2"
+	# arm-none-eabi-gcc - Updated for PX4 v1.15
+	if [[ "${UBUNTU_RELEASE}" == "24.04" ]]; then
+		# Use newer toolchain for Ubuntu 24.04 and PX4 v1.15
+		NUTTX_GCC_VERSION="10.3-2021.10"
+		NUTTX_GCC_VERSION_SHORT="10.3-2021q4"
+	else
+		# Use stable version for older Ubuntu releases
+		NUTTX_GCC_VERSION="9-2020-q2-update"
+		NUTTX_GCC_VERSION_SHORT="9-2020q2"
+	fi
 
 	source $HOME/.profile # load changed path for the case the script is reran before relogin
 	if [ $(which arm-none-eabi-gcc) ]; then
@@ -317,29 +381,28 @@ if [[ $INSTALL_SIM == "true" ]]; then
 	# Set Java as default
 	sudo update-alternatives --set java $(update-alternatives --list java | grep "java-$java_version") || echo "Java alternatives setting skipped"
 
-	# Gazebo installation - UPDATED TO HARMONIC for all versions
-	echo "Installing Gazebo Harmonic"
+	# Gazebo installation - Enhanced for PX4 v1.15 compatibility
+	echo "Installing Gazebo Harmonic for PX4 v1.15"
 	
 	# Add Gazebo binary repository
 	sudo wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
 	echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
 	sudo apt-get update -y --quiet
 
-	# Install Gazebo Harmonic for all supported Ubuntu versions
+	# Install Gazebo Harmonic with enhanced compatibility
 	if [[ "${UBUNTU_RELEASE}" == "24.04" || "${UBUNTU_RELEASE}" == "22.04" ]]; then
-		echo "Installing Gazebo Harmonic"
+		echo "Installing Gazebo Harmonic (officially supported)"
 		gazebo_packages="gz-harmonic"
 	elif [[ "${UBUNTU_RELEASE}" == "20.04" ]]; then
-		echo "Ubuntu 20.04 detected - Gazebo Harmonic may not be officially supported"
-		echo "Attempting to install Gazebo Harmonic anyway..."
+		echo "Ubuntu 20.04 detected - Gazebo Harmonic compatibility mode"
 		gazebo_packages="gz-harmonic"
 	else
 		# Fallback for older versions - try Harmonic first, fall back to available version
-		echo "Older Ubuntu version detected - trying Gazebo Harmonic"
+		echo "Older Ubuntu version detected - using Gazebo Harmonic"
 		gazebo_packages="gz-harmonic"
 	fi
 
-	# Install Gazebo and related packages
+	# Enhanced package installation with fallback
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
 		dmidecode \
 		$gazebo_packages \
@@ -355,7 +418,24 @@ if [[ $INSTALL_SIM == "true" ]]; then
 		libxml2-utils \
 		pkg-config \
 		protobuf-compiler \
-		;
+		|| {
+			echo "Standard Gazebo installation failed, trying alternative approach..."
+			sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install \
+				dmidecode \
+				gstreamer1.0-plugins-bad \
+				gstreamer1.0-plugins-base \
+				gstreamer1.0-plugins-good \
+				gstreamer1.0-plugins-ugly \
+				gstreamer1.0-libav \
+				libeigen3-dev \
+				libgstreamer-plugins-base1.0-dev \
+				libimage-exiftool-perl \
+				libopencv-dev \
+				libxml2-utils \
+				pkg-config \
+				protobuf-compiler
+			echo "Installed supporting packages, Gazebo may need manual installation"
+		}
 
 	# Fix VMWare 3D graphics acceleration for gazebo
 	if sudo dmidecode -t system | grep -q "Manufacturer: VMware, Inc." ; then
@@ -364,7 +444,45 @@ if [[ $INSTALL_SIM == "true" ]]; then
 
 fi
 
+# Verification and Summary
+echo
+echo "=============================================="
+echo "PX4 v1.15 Development Environment Setup Complete"
+echo "=============================================="
+echo "Ubuntu Version: ${UBUNTU_RELEASE}"
+echo "Gazebo Version: Harmonic"
 if [[ $INSTALL_NUTTX == "true" ]]; then
-	echo
-	echo "Relogin or reboot computer before attempting to build NuttX targets"
+	echo "NuttX Toolchain: ${NUTTX_GCC_VERSION}"
 fi
+
+# Verify key installations
+echo
+echo "Verification:"
+if command -v gz sim &> /dev/null; then
+    echo "✅ Gazebo Harmonic installed"
+else
+    echo "❌ Gazebo installation may have issues"
+fi
+
+if [[ $INSTALL_NUTTX == "true" ]]; then
+	if command -v arm-none-eabi-gcc &> /dev/null; then
+		echo "✅ NuttX toolchain installed: $(arm-none-eabi-gcc --version | head -1)"
+	else
+		echo "❌ NuttX toolchain not found in PATH"
+	fi
+fi
+
+if python3 -c "import pymavlink" 2>/dev/null; then
+    echo "✅ Python MAVLink installed"
+else
+    echo "❌ Python MAVLink installation issues"
+fi
+
+echo
+echo "Next steps:"
+if [[ $INSTALL_NUTTX == "true" ]]; then
+	echo "1. Relogin or reboot if NuttX targets were installed"
+fi
+echo "2. Clone PX4-Autopilot v1.15"
+echo "3. Run 'make px4_sitl' to test the installation"
+echo "=============================================="
