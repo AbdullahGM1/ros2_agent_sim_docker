@@ -1,6 +1,5 @@
 # ============================================================================
 # OPTIMIZED ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA + AI/ML
-# Best sequence order for optimal Docker layer caching and build performance
 # ============================================================================
 
 FROM osrf/ros:jazzy-desktop
@@ -204,7 +203,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpoco-dev \
     libxml2-dev \
     libxslt1-dev \
-    libyaml-cpp-dev \
     libboost-all-dev \
     libeigen3-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -321,9 +319,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # PHASE 17: Final User Environment Setup
 # ============================================================================
 
-# Set ownership for user directories
+# Set ownership for user directories and Python environment
 RUN mkdir -p /home/user/shared_volume && \
-    chown -R user:user /home/user && \
+    chown -R user:user /home/user /opt/python-env && \
     chmod 755 /home/user/shared_volume
 
 # Switch to user and setup environment
