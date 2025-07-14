@@ -276,7 +276,7 @@ RUN geographiclib-get-geoids egm96-5 && \
     geographiclib-get-magnetic emm2015
 
 # ========================================================================
-# FIX 3: Improved Python Environment Setup
+# FIX 3: Improved Python Environment Setup - CONSERVATIVE APPROACH
 # ========================================================================
 
 # Install core Python build dependencies first
@@ -293,8 +293,20 @@ RUN pip3 install --break-system-packages --no-cache-dir \
 RUN pip3 install --break-system-packages --no-cache-dir \
     future
 
-# Install ROSA (ROS Agent) - NASA JPL Task Planning Framework
+# Install Python packages individually to avoid dependency conflicts
 RUN pip3 install --break-system-packages --no-cache-dir \
+    rich \
+    langchain \
+    langchain-ollama \
+    "langchain-community==0.3.21" \
+    "PyYAML==6.0.1" \
+    "numpy==1.26.4" \
+    rospkg
+
+# Install ROSA separately with conflict resolution
+RUN pip3 install --break-system-packages --no-cache-dir --force-reinstall --no-deps \
+    typing-extensions && \
+    pip3 install --break-system-packages --no-cache-dir \
     jpl-rosa
 
 #
