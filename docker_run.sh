@@ -1,6 +1,6 @@
 #!/bin/bash
 # Modern Docker script for ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA
-# Maintains all original functionality while fixing PEP 668 and dependency issues
+# Enhanced to keep container running in background
 
 set -e
 
@@ -196,31 +196,112 @@ EOF
             ;;
             
         "scripts/entrypoint.sh")
+            # Create the fixed entrypoint that keeps container running
             cat > "$file" << 'EOF'
 #!/bin/bash
 set -e
 
-# Handle UID/GID mapping for cross-platform compatibility
-LOCAL_USER_ID=${LOCAL_USER_ID:-1000}
-LOCAL_GROUP_ID=${LOCAL_GROUP_ID:-1000}
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Update user UID/GID if different
-if [ "$LOCAL_USER_ID" != "1000" ] || [ "$LOCAL_GROUP_ID" != "1000" ]; then
-    echo "Updating user UID/GID to $LOCAL_USER_ID:$LOCAL_GROUP_ID"
-    groupmod -g $LOCAL_GROUP_ID user
-    usermod -u $LOCAL_USER_ID -g $LOCAL_GROUP_ID user
-    chown -R user:user /home/user
+print_info() { echo -e "${BLUE}[ENTRYPOINT]${NC} $1"; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+print_info "Starting container initialization..."
+
+# Get host UID/GID from environment variables with fallbacks
+HOST_UID=${LOCAL_USER_ID:-1000}
+HOST_GID=${LOCAL_GROUP_ID:-1000}
+HOST_USER=${HOST_USER:-"user"}
+
+print_info "Host: $HOST_USER (UID: $HOST_UID, GID: $HOST_GID)"
+
+# Setup user mapping
+CURRENT_USER_UID=$(id -u user)
+CURRENT_USER_GID=$(id -g user)
+
+if [ "$HOST_UID" != "$CURRENT_USER_UID" ] || [ "$HOST_GID" != "$CURRENT_USER_GID" ]; then
+    print_info "Updating container user UID/GID to match host..."
+    
+    # If UID is taken by another user, remove that user first
+    if id "$HOST_UID" >/dev/null 2>&1; then
+        EXISTING_USER=$(id -nu "$HOST_UID" 2>/dev/null)
+        if [ "$EXISTING_USER" != "user" ]; then
+            print_warning "UID $HOST_UID is taken by '$EXISTING_USER' - removing conflicting user"
+            userdel "$EXISTING_USER" 2>/dev/null || print_warning "Could not remove $EXISTING_USER"
+        fi
+    fi
+    
+    # Update user UID/GID
+    usermod -u "$HOST_UID" user 2>/dev/null || print_error "Failed to change user UID"
+    groupmod -g "$HOST_GID" user 2>/dev/null || print_error "Failed to change user GID"
+    
+    # Update home directory ownership
+    chown -R "$HOST_UID:$HOST_GID" /home/user 2>/dev/null || print_warning "Could not update home ownership"
+    
+    print_success "User UID/GID updated to: $(id -u user):$(id -g user)"
 fi
 
-# Setup bashrc from template
-if [ -f /opt/bashrc_templates/bashrc_template.sh ] && [ ! -f /home/user/.bashrc_setup ]; then
-    cat /opt/bashrc_templates/bashrc_template.sh >> /home/user/.bashrc
-    touch /home/user/.bashrc_setup
-    chown user:user /home/user/.bashrc /home/user/.bashrc_setup
+# Setup bashrc
+if [ -f "/opt/bashrc_templates/bashrc_template.sh" ]; then
+    print_info "Installing proper .bashrc template..."
+    cp /opt/bashrc_templates/bashrc_template.sh /home/user/.bashrc
+    chown "$HOST_UID:$HOST_GID" /home/user/.bashrc
+    chmod 644 /home/user/.bashrc
+    print_success "New .bashrc installed"
 fi
 
-# Execute command as user
-exec gosu user "$@"
+# Setup shared volume
+if [ -d "/home/user/shared_volume" ]; then
+    print_info "Setting up shared volume..."
+    chown $HOST_UID:$HOST_GID /home/user/shared_volume/ 2>/dev/null || true
+    chmod 755 /home/user/shared_volume/ 2>/dev/null || true
+    
+    # Create subdirectories
+    mkdir -p /home/user/shared_volume/ros2_ws/src
+    chown -R $HOST_UID:$HOST_GID /home/user/shared_volume/ros2_ws/ 2>/dev/null || true
+    
+    # Copy files if needed
+    if [ ! -f "/home/user/shared_volume/install.sh" ] && [ -f "/home/user/backup/install.sh" ]; then
+        cp /home/user/backup/install.sh /home/user/shared_volume/
+        chmod +x /home/user/shared_volume/install.sh
+        chown $HOST_UID:$HOST_GID /home/user/shared_volume/install.sh
+    fi
+    
+    if [ ! -d "/home/user/shared_volume/PX4_config" ] && [ -d "/home/user/backup/PX4_config" ]; then
+        cp -r /home/user/backup/PX4_config /home/user/shared_volume/
+        chown -R $HOST_UID:$HOST_GID /home/user/shared_volume/PX4_config/
+    fi
+fi
+
+# Start Ollama service
+if ! netstat -tuln 2>/dev/null | grep -q ":11434 "; then
+    print_info "Starting Ollama service..."
+    ollama serve &
+    sleep 3
+fi
+
+# For persistent container mode, check if we should just keep running
+if [ "$1" = "tail" ] && [ "$2" = "-f" ] && [ "$3" = "/dev/null" ]; then
+    print_success "Container initialized successfully in persistent mode"
+    print_info "Container will keep running in background"
+    print_info "Use 'docker exec -it ${CONTAINER_NAME} bash' to connect"
+    exec "$@"
+fi
+
+# For interactive mode, switch to user and run command
+print_info "Switching to user context..."
+exec sudo -u user -H bash -c "
+    source ~/.bashrc
+    cd /home/user/shared_volume 2>/dev/null || cd /home/user
+    exec \"\$@\"
+" -- "$@"
 EOF
             chmod +x "$file"
             ;;
@@ -228,18 +309,9 @@ EOF
         "scripts/install.sh")
             cat > "$file" << 'EOF'
 #!/bin/bash
-# Installation script for additional components
-
-echo "Running additional installation setup..."
-
-# Create workspace directories
-mkdir -p /home/user/shared_volume/ros2_ws/src
-mkdir -p /home/user/shared_volume/PX4-Autopilot
-
-# Set permissions
-chown -R user:user /home/user/shared_volume
-
-echo "Installation setup complete"
+# Installation script placeholder
+echo "Running installation setup..."
+echo "This is a placeholder. Replace with your actual installation script."
 EOF
             chmod +x "$file"
             ;;
@@ -367,56 +439,17 @@ setup_workspace() {
     fi
 }
 
-# Function to run or connect to container
-run_container() {
-    print_info "🚀 Preparing to run container: $CONTAINER_NAME"
+# Function to start container in persistent mode
+start_persistent_container() {
+    print_info "🚀 Starting container in persistent mode: $CONTAINER_NAME"
     
     # Get host user information
     HOST_UID=$(id -u)
     HOST_GID=$(id -g)
     HOST_USER=$(whoami)
     
-    # Base environment setup
-    BASE_CMD="export DEV_DIR=/home/user/shared_volume && \
-        export PX4_DIR=\$DEV_DIR/PX4-Autopilot && \
-        export ROS2_WS=\$DEV_DIR/ros2_ws && \
-        export OSQP_SRC=\$DEV_DIR && \
-        cd /home/user/shared_volume && \
-        source /home/user/.bashrc"
-    
-    CMD="$BASE_CMD && /bin/bash"
-    
-    # Check if container already exists
-    if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
-        # Test if container is healthy
-        if docker exec ${CONTAINER_NAME} pwd >/dev/null 2>&1; then
-            if [ "$(docker ps -aq -f status=exited -f name=${CONTAINER_NAME})" ]; then
-                print_info "♻️  Restarting existing container..."
-                docker start ${CONTAINER_NAME}
-            fi
-            
-            print_info "🔗 Connecting to existing container: ${CONTAINER_NAME}"
-            docker exec --user user --workdir /home/user/shared_volume -it ${CONTAINER_NAME} \
-                env TERM=xterm-256color COLORTERM=truecolor FORCE_COLOR=1 \
-                bash -l -c "${CMD}"
-        else
-            # Container has issues, recreate
-            print_warning "🗑️  Removing problematic container and recreating..."
-            docker stop ${CONTAINER_NAME} 2>/dev/null || true
-            docker rm ${CONTAINER_NAME} 2>/dev/null || true
-            run_new_container
-        fi
-    else
-        run_new_container
-    fi
-}
-
-# Function to run new container
-run_new_container() {
-    print_info "🆕 Running new container: ${CONTAINER_NAME}"
-    print_info "🔗 UID mapping: Host $HOST_UID → Container user"
-    
-    docker run -it \
+    # Start container in detached mode with tail -f /dev/null to keep it running
+    docker run -d \
         --name=${CONTAINER_NAME} \
         --hostname=ros2-dev \
         --network host \
@@ -425,6 +458,7 @@ run_new_container() {
         --env="COLORTERM=truecolor" \
         --env="FORCE_COLOR=1" \
         --env="CLICOLOR_FORCE=1" \
+        --env="CONTAINER_NAME=${CONTAINER_NAME}" \
         -e LOCAL_USER_ID="$HOST_UID" \
         -e LOCAL_GROUP_ID="$HOST_GID" \
         -e HOST_USER="$HOST_USER" \
@@ -438,7 +472,71 @@ run_new_container() {
         --security-opt apparmor=unconfined \
         $DOCKER_OPTS \
         ${IMAGE_NAME} \
+        tail -f /dev/null
+    
+    # Wait for container to be ready
+    sleep 2
+    
+    # Check if container is running
+    if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+        print_success "Container started successfully in persistent mode"
+        print_info "Container will continue running in background when you exit"
+        return 0
+    else
+        print_error "Failed to start container"
+        docker logs ${CONTAINER_NAME}
+        return 1
+    fi
+}
+
+# Function to connect to running container
+connect_to_container() {
+    print_info "🔗 Connecting to container: ${CONTAINER_NAME}"
+    
+    # Base command to run in container
+    BASE_CMD="export DEV_DIR=/home/user/shared_volume && \
+        export PX4_DIR=\$DEV_DIR/PX4-Autopilot && \
+        export ROS2_WS=\$DEV_DIR/ros2_ws && \
+        export OSQP_SRC=\$DEV_DIR && \
+        cd /home/user/shared_volume && \
+        source /home/user/.bashrc"
+    
+    CMD="$BASE_CMD && /bin/bash"
+    
+    # Connect to container
+    docker exec --user user --workdir /home/user/shared_volume -it ${CONTAINER_NAME} \
+        env TERM=xterm-256color COLORTERM=truecolor FORCE_COLOR=1 \
         bash -l -c "${CMD}"
+}
+
+# Function to run or connect to container
+run_container() {
+    print_info "🐳 Managing container: $CONTAINER_NAME"
+    
+    # Check if container exists
+    if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
+        # Container exists, check if it's running
+        if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+            # Container is running, connect to it
+            print_info "Container is already running"
+            connect_to_container
+        else
+            # Container exists but stopped, start it
+            print_info "Starting stopped container..."
+            docker start ${CONTAINER_NAME}
+            sleep 2
+            connect_to_container
+        fi
+    else
+        # Container doesn't exist, create and start it
+        print_info "Creating new persistent container..."
+        if start_persistent_container; then
+            connect_to_container
+        else
+            print_error "Failed to create container"
+            exit 1
+        fi
+    fi
 }
 
 # Cleanup function
@@ -471,6 +569,25 @@ show_system_info() {
     echo
 }
 
+# Show container status
+show_container_status() {
+    print_info "📊 Container Status:"
+    
+    if [ "$(docker ps -aq -f name=${CONTAINER_NAME})" ]; then
+        if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+            print_success "Container '${CONTAINER_NAME}' is RUNNING"
+            echo "  - To connect: docker exec -it ${CONTAINER_NAME} bash"
+            echo "  - To see logs: docker logs ${CONTAINER_NAME}"
+        else
+            print_warning "Container '${CONTAINER_NAME}' is STOPPED"
+            echo "  - To start: docker start ${CONTAINER_NAME}"
+        fi
+    else
+        print_info "Container '${CONTAINER_NAME}' does not exist"
+    fi
+    echo
+}
+
 # Show help
 show_help() {
     echo "Usage: $0 [COMMAND]"
@@ -478,20 +595,25 @@ show_help() {
     echo "🚀 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA Development Environment"
     echo
     echo "Commands:"
-    echo "  run       Start or connect to container (default)"
+    echo "  run       Start/connect to persistent container (default)"
     echo "  build     Build the Docker image"
     echo "  rebuild   Force rebuild the Docker image"
     echo "  clean     Remove container and image"
     echo "  shell     Open additional shell in running container"
     echo "  logs      Show container logs"
-    echo "  stop      Stop the container"
+    echo "  stop      Stop the container (keeps it for later)"
     echo "  restart   Restart the container"
+    echo "  status    Show container status"
     echo "  help      Show this help"
+    echo
+    echo "The container runs persistently in the background."
+    echo "You can exit and reconnect without losing your work."
     echo
     echo "Examples:"
     echo "  $0                # Start/connect to container"
     echo "  $0 build          # Build image"
-    echo "  $0 clean          # Clean up everything"
+    echo "  $0 status         # Check container status"
+    echo "  $0 shell          # Open another terminal in container"
 }
 
 # Main execution
@@ -518,7 +640,7 @@ main() {
     setup_workspace
     
     echo
-    print_info "🐳 Starting container with all components..."
+    print_info "🐳 Starting persistent container environment..."
     run_container
     
     trap cleanup EXIT
@@ -549,9 +671,10 @@ case "${1:-run}" in
         ;;
     "shell")
         if [ "$(docker ps -q -f name="$CONTAINER_NAME")" ]; then
-            docker exec -it --user user "$CONTAINER_NAME" /bin/bash
+            connect_to_container
         else
             print_error "Container $CONTAINER_NAME is not running"
+            print_info "Use '$0 run' to start it first"
             exit 1
         fi
         ;;
@@ -560,11 +683,15 @@ case "${1:-run}" in
         ;;
     "stop")
         docker stop "$CONTAINER_NAME"
-        print_success "Container stopped"
+        print_success "Container stopped (but not removed)"
+        print_info "Use '$0 run' to restart it"
         ;;
     "restart")
         docker restart "$CONTAINER_NAME"
         print_success "Container restarted"
+        ;;
+    "status")
+        show_container_status
         ;;
     "help")
         show_help
