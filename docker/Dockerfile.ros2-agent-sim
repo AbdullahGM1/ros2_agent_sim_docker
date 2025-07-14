@@ -220,7 +220,7 @@ RUN apt-get update && apt-get install -y \
 # PHASE 2 & 3: Updated for Jazzy + Harmonic compatibility
 #
 # PHASE 3: Updated Gazebo Harmonic development libraries  
-RUN apt-get install -y gz-sim8-cli libgz-transport13-dev libgz-math7-dev libgz-cmake3-dev \
+RUN apt-get install -y gz-sim8-cli libgz-transport13-dev libgz-math8-dev libgz-cmake3-dev \
 	&& apt-get -y autoremove \
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
@@ -294,14 +294,17 @@ RUN pip3 install --break-system-packages --no-cache-dir \
     future
 
 # Install Python packages individually to avoid dependency conflicts
-RUN pip3 install --break-system-packages --no-cache-dir \
-    rich \
-    langchain \
-    langchain-ollama \
-    "langchain-community==0.3.21" \
+RUN pip3 install --break-system-packages --no-cache-dir --ignore-installed \
+    "typing-extensions>=4.7.0" && \
+    pip3 install --break-system-packages --no-cache-dir \
     "PyYAML==6.0.1" \
     "numpy==1.26.4" \
-    rospkg
+    rospkg \
+    rich && \
+    pip3 install --break-system-packages --no-cache-dir \
+    langchain \
+    langchain-ollama \
+    "langchain-community==0.3.21"
 
 # Install ROSA separately with conflict resolution
 RUN pip3 install --break-system-packages --no-cache-dir --force-reinstall --no-deps \
