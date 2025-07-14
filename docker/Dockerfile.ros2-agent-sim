@@ -1,77 +1,64 @@
-# Custom ROS2 Jazzy + Gazebo Harmonic + XRCE-DDS + PX4 + MAVROS + ROSA + ChatOllama + Qwen3:8b
-# Updated to CUDA 12.9.1 for Ubuntu 24.04 compatibility 
-#
+#ROS2 Jazzy + Gazebo Harmonic + XRCE-DDS + PX4 + MAVROS + ROSA + ChatOllama + Qwen3:8b + CUDA Runtime Support 
 
-FROM nvidia/cuda:12.9.1-devel-ubuntu24.04
-#
+FROM osrf/ros:jazzy-desktop
+
 LABEL maintainer="AbdullahGM1 <agm.musalami@gmail.com>"
+LABEL description="ROS2 Jazzy + Gazebo Harmonic + CUDA Runtime + XRCE-DDS + PX4 + MAVROS + ROSA + ChatOllama"
 
-#
-# Install ROS2 Jazzy Desktop Full - PHASE 2: UPDATED TO JAZZY
-#
+# Environment setup
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
-# ENHANCED: GPU and Graphics Environment Variables
+# GPU and Graphics Environment Variables (for runtime CUDA support)
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=all
 ENV QT_X11_NO_MITSHM=1
 ENV LIBGL_ALWAYS_INDIRECT=0
 ENV DISPLAY=:0
 
-# PHASE 1: Updated for Ubuntu 24.04 compatibility
-RUN apt update && apt install -y curl software-properties-common && add-apt-repository universe \
-	&& apt-get -y autoremove \
-	&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
-
-# PHASE 2: Update packages (CUDA already configured in base image)
-RUN apt-get update && apt-get -y upgrade
-
-# PHASE 2: Add ROS2 Jazzy repository
-RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/ros2.list > /dev/null && \
-    apt-get update
-
-# PHASE 2: ROS2 installation - UPDATED TO JAZZY
-RUN apt install -y ros-jazzy-desktop ros-dev-tools \
-	&& apt-get -y autoremove \
-	&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
-
-# ========================================================================
-# FIX 1: NumPy Development Environment for MAVROS compilation  
-# ========================================================================
+# ============================================================================
+# PHASE 1: System Setup and Locale (ROS already has most of this)
+# ============================================================================
 RUN apt-get update && apt-get install -y \
-    python3-numpy \
-    python3-numpy-dev \
+    curl \
+    software-properties-common \
+    locales \
+    && locale-gen en_US en_US.UTF-8 \
+    && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# PHASE 2: Python Environment Setup (Solves PEP 668 issues)
+# ============================================================================
+# Install Python development environment
+RUN apt-get update && apt-get install -y \
+    python3-full \
+    python3-venv \
     python3-dev \
-    libpython3-dev \
     python3-setuptools-scm \
     cython3 \
-    libxml2-dev \
-    libxslt1-dev \
-    libyaml-cpp-dev \
-    libboost-all-dev \
-    libeigen3-dev \
-    && apt-get -y autoremove \
-    && apt-get clean autoclean \
-    && rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+    libpython3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-#
-# Setup XRCE-DDS Agent & Client
-#
-RUN git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && \
-    cd Micro-XRCE-DDS-Agent && \
-    mkdir build && \
-    cd build && \
-    cmake .. && \
-    make && \
-    make install && \
-    ldconfig /usr/local/lib/
+# Create Python virtual environment - THIS SOLVES PEP 668 ISSUES
+RUN python3 -m venv /opt/python-env
+ENV PATH="/opt/python-env/bin:$PATH"
+ENV VIRTUAL_ENV="/opt/python-env"
 
-	RUN apt-get update && apt-get -y --quiet --no-install-recommends install \
+# Install core Python packages in virtual environment
+RUN pip install --upgrade pip setuptools wheel cython
+RUN pip install \
+    "numpy>=1.21.0,<2.0.0" \
+    "PyYAML==6.0.1" \
+    future \
+    rospkg \
+    rich
+
+# ============================================================================
+# PHASE 3: Development Tools and Dependencies
+# ============================================================================
+RUN apt-get update && apt-get install -y \
     bzip2 \
     ca-certificates \
     ccache \
@@ -95,8 +82,6 @@ RUN git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && \
     make \
     openssh-client \
     pkg-config \
-    python3-dev \
-    python3-pip \
     rsync \
     shellcheck \
     tzdata \
@@ -108,6 +93,10 @@ RUN git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && \
     gedit \
     bash-completion \
     command-not-found \
+    && rm -rf /var/lib/apt/lists/*
+
+# Graphics and GUI support
+RUN apt-get update && apt-get install -y \
     mesa-utils \
     x11-apps \
     libgl1-mesa-dri \
@@ -127,208 +116,139 @@ RUN git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git && \
     libxi6 \
     libxtst6 \
     libnss3 \
-    libxss1 \
-    libglib2.0-0 \
     libasound2t64 \
-    && apt-get -y autoremove \
-    && apt-get clean autoclean \
-    && rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/*
 
-COPY scripts/px4_dev.sh /tmp/px4_dev.sh
-COPY scripts/requirements.txt /tmp/requirements.txt
+# ============================================================================
+# PHASE 4: XRCE-DDS Agent & Client
+# ============================================================================
+RUN git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git \
+    && cd Micro-XRCE-DDS-Agent \
+    && mkdir build && cd build \
+    && cmake .. && make && make install \
+    && ldconfig /usr/local/lib/ \
+    && cd ../.. && rm -rf Micro-XRCE-DDS-Agent
 
-#
-# Install PX4 dev requirements
-# NOTE: Using PX4 v1.15
-#
-RUN /tmp/px4_dev.sh
+# ============================================================================
+# PHASE 5: MAVROS Dependencies and Installation
+# ============================================================================
+# Enhanced MAVROS dependencies
+RUN apt-get update && apt-get install -y \
+    python3-vcstool \
+    python3-rosinstall-generator \
+    python3-osrf-pycommon \
+    geographiclib-tools \
+    libgeographiclib-dev \
+    libasio-dev \
+    libgoogle-glog-dev \
+    ros-jazzy-eigen-stl-containers \
+    ros-jazzy-diagnostic-updater \
+    ros-jazzy-geographic-msgs \
+    build-essential \
+    pkg-config \
+    libconsole-bridge-dev \
+    libtinyxml2-dev \
+    libpoco-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    libyaml-cpp-dev \
+    libboost-all-dev \
+    libeigen3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# create user with id 1001 (jenkins docker workflow default)
-# Fix permissions for shared volume
-RUN userdel -r ubuntu 2>/dev/null || echo "ubuntu user not found" && \
-    useradd --shell /bin/bash -u 1000 -c "" -m user && \
-    usermod -a -G dialout user && \
-    echo "user:user" | chpasswd && \
-    adduser user sudo && \
-    mkdir -p /home/user/shared_volume && \
-    chown -R user:user /home/user && \
-    chmod -R 755 /home/user
-# Allow user to run sudo without password
-RUN echo "user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/user && \
-    chmod 0440 /etc/sudoers.d/user
+# Install MAVROS (binary packages for Jazzy)
+RUN apt-get update && apt-get install -y \
+    ros-jazzy-mavros \
+    ros-jazzy-mavros-extras \
+    && rm -rf /var/lib/apt/lists/*
 
-# Some QT-Apps/Gazebo don't not show controls without this
-ENV QT_X11_NO_MITSHM=1
+# Install geographiclib datasets
+RUN geographiclib-get-geoids egm96-5 \
+    && geographiclib-get-gravity egm96 \
+    && geographiclib-get-magnetic emm2015
 
-# Use UTF8 encoding in java tools (needed to compile jMAVSim)
-ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
-
-# PHASE 1: JSBSim installation with Ubuntu 24.04 compatibility
-RUN if [ "$(lsb_release -cs)" = "noble" ]; then \
-        echo "Ubuntu 24.04 detected - using alternative JSBSim installation"; \
-        apt-get update && apt-get install -y libsubunit-dev && \
-        wget https://github.com/JSBSim-Team/jsbsim/archive/refs/tags/v1.1.14.tar.gz && \
-        tar -xzf v1.1.14.tar.gz && cd jsbsim-1.1.14 && \
-        mkdir build && cd build && \
-        cmake .. && make -j$(nproc) && make install && \
-        cd ../.. && rm -rf jsbsim-1.1.14 v1.1.14.tar.gz; \
-    else \
-        wget https://github.com/JSBSim-Team/jsbsim/releases/download/v1.1.13/JSBSim-devel_1.1.13-986.jammy.amd64.deb && \
-        dpkg -i JSBSim-devel_1.1.13-986.jammy.amd64.deb; \
-    fi
-
-#
-# Install VS Code for easy code development
-#
-RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg && \
-	install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg && \
-	sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list' && \
-	rm -f packages.microsoft.gpg
-RUN apt install -y apt-transport-https && \
-	apt update && \
-	apt install -y code \
-	&& apt-get -y autoremove \
-	&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
-
-# FIXED: Create a template bashrc instead of modifying during build
-RUN mkdir -p /opt/bashrc_templates
-COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
-RUN chmod 644 /opt/bashrc_templates/bashrc_template.sh
-
-#
-# Remove binary pkg ros-jazzy-ros-gz-bridge. Need to build from source for compatibility
-# PHASE 2: Updated for Jazzy
-#
-RUN apt remove -y ros-jazzy-ros-gz-bridge || echo "Package not installed"
-
-# PHASE 3: Gazebo repository setup - UPDATED to Harmonic
+# ============================================================================
+# PHASE 6: Gazebo Harmonic Installation
+# ============================================================================
 # Add Gazebo Harmonic repository
-RUN apt-get update && apt-get install -y lsb-release wget gnupg
-RUN wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
-RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+RUN wget https://packages.osrfoundation.org/gazebo.gpg -O /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
 
-# PHASE 3: Install Gazebo Harmonic (UPDATED from Garden)
+# Install Gazebo Harmonic
 RUN apt-get update && apt-get install -y \
     gz-harmonic \
-    && apt-get -y autoremove \
-    && apt-get clean autoclean \
-    && rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+    gz-sim8-cli \
+    libgz-transport13-dev \
+    libgz-math8-dev \
+    libgz-cmake3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-#
-# Build ros-jazzy-ros-gz-bridge from source
-# PHASE 2 & 3: Updated for Jazzy + Harmonic compatibility
-#
-# PHASE 3: Updated Gazebo Harmonic development libraries  
-RUN apt-get install -y gz-sim8-cli libgz-transport13-dev libgz-math8-dev libgz-cmake3-dev \
-	&& apt-get -y autoremove \
-	&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+# ============================================================================
+# PHASE 7: Build ros-jazzy-ros-gz-bridge from source
+# ============================================================================
+# Initialize rosdep (may already be done in base image)
+RUN rosdep update || echo "rosdep update completed"
 
-# RUN rosdep init
-RUN mkdir -p /home/user/ros2_ws/src/
-RUN cd /home/user/ros2_ws/src/ && git clone -b jazzy https://github.com/gazebosim/ros_gz.git
+# Create workspace for ros_gz bridge
+RUN mkdir -p /opt/ros2_ws/src
+WORKDIR /opt/ros2_ws
+RUN git clone -b jazzy https://github.com/gazebosim/ros_gz.git src/ros_gz
 
-# PHASE 3: Updated for Gazebo Harmonic compatibility
+# Set Gazebo version and build
 ENV GZ_VERSION=harmonic
-RUN rosdep init &&  rosdep update \
-	&& bash -c "source /opt/ros/jazzy/setup.bash" \
-	&& cd /home/user/ros2_ws/ \
-	&& rosdep install -r --from-paths src -i -y --ignore-src --rosdistro jazzy
-WORKDIR /home/user/ros_ws
-RUN bash -c "source /opt/ros/jazzy/setup.bash && cd /home/user/ros2_ws && export MAKEFLAGS='-j 4' &&  colcon build"
-	
-#
-# Install rqt_tf
-# PHASE 2: Updated to Jazzy packages
-#
-RUN apt update &&  apt install -y ros-jazzy-rqt-tf-* \
-	&& apt-get clean autoclean \
-	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
-	
-# ========================================================================
-# FIX 2: Enhanced MAVROS dependencies
-# ========================================================================
-RUN apt update && \
-    apt install -y \
-        python3-vcstool \
-        python3-rosinstall-generator \
-        python3-osrf-pycommon \
-        geographiclib-tools \
-        libgeographiclib-dev \
-        libasio-dev \
-        libgoogle-glog-dev \
-        ros-jazzy-eigen-stl-containers \
-        ros-jazzy-diagnostic-updater \
-        ros-jazzy-geographic-msgs \
-        build-essential \
-        cmake \
-        pkg-config \
-        libconsole-bridge-dev \
-        libtinyxml2-dev \
-        libpoco-dev \
-        && apt-get -y autoremove \
-        && apt-get clean autoclean \
-        && rm -rf /var/lib/apt/lists/*
+RUN /bin/bash -c "source /opt/ros/jazzy/setup.bash && \
+    rosdep install -r --from-paths src -i -y --ignore-src --rosdistro jazzy && \
+    export MAKEFLAGS='-j 4' && \
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release"
 
-RUN geographiclib-get-geoids egm96-5 && \
-    geographiclib-get-gravity egm96 && \
-    geographiclib-get-magnetic emm2015
+# ============================================================================
+# PHASE 8: JSBSim Installation (Ubuntu 24.04 compatibility)
+# ============================================================================
+RUN apt-get update && apt-get install -y libsubunit-dev \
+    && wget https://github.com/JSBSim-Team/jsbsim/archive/refs/tags/v1.1.14.tar.gz \
+    && tar -xzf v1.1.14.tar.gz && cd jsbsim-1.1.14 \
+    && mkdir build && cd build \
+    && cmake .. && make -j$(nproc) && make install \
+    && cd ../.. && rm -rf jsbsim-1.1.14 v1.1.14.tar.gz \
+    && rm -rf /var/lib/apt/lists/*
 
-# ========================================================================
-# FIX 3: Improved Python Environment Setup - CONSERVATIVE APPROACH
-# ========================================================================
+# ============================================================================
+# PHASE 9: VS Code Installation
+# ============================================================================
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg \
+    && install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg \
+    && sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list' \
+    && rm -f packages.microsoft.gpg \
+    && apt-get update && apt-get install -y \
+    apt-transport-https \
+    code \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install core Python build dependencies first
-RUN pip3 install --break-system-packages --no-cache-dir \
-    wheel \
-    setuptools \
-    cython
-
-# Install NumPy explicitly to avoid conflicts
-RUN pip3 install --break-system-packages --no-cache-dir \
-    "numpy>=1.21.0,<2.0.0"
-
-# Install basic dependencies
-RUN pip3 install --break-system-packages --no-cache-dir \
-    future
-
-# Install Python packages individually to avoid dependency conflicts
-RUN pip3 install --break-system-packages --no-cache-dir --ignore-installed \
-    "typing-extensions>=4.7.0" && \
-    pip3 install --break-system-packages --no-cache-dir \
-    "PyYAML==6.0.1" \
-    "numpy==1.26.4" \
-    rospkg \
-    rich && \
-    pip3 install --break-system-packages --no-cache-dir \
+# ============================================================================
+# PHASE 10: Python AI/ML Packages Installation (in virtual environment)
+# ============================================================================
+# Install AI/ML packages in virtual environment - NO MORE PEP 668 ERRORS!
+RUN pip install \
+    "typing-extensions>=4.7.0" \
     langchain \
     langchain-ollama \
-    "langchain-community==0.3.21"
-
-# Install ROSA separately with conflict resolution
-RUN pip3 install --break-system-packages --no-cache-dir --force-reinstall --no-deps \
-    typing-extensions && \
-    pip3 install --break-system-packages --no-cache-dir \
-    jpl-rosa
-
-#
-# Install Ollama for local LLM support
-#
-RUN curl -fsSL https://ollama.com/install.sh | sh
-
-# Install ChatOllama and LangChain integration
-RUN pip3 install --break-system-packages --no-cache-dir \
-    langchain \
-    langchain-ollama \
-    langchain-community \
+    "langchain-community==0.3.21" \
     ollama
 
-# #
-# # Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
-# # Uncomment the section below if you want to pre-download the model during build
-# # Note: This significantly increases build time and image size
-# #
+# Install ROSA (ROS AI package)
+RUN pip install jpl-rosa
+
+# ============================================================================
+# PHASE 11: Ollama Installation and Setup
+# ============================================================================
+# Install Ollama for local LLM support
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# ============================================================================
+# Optional: Pull Qwen3:8b model using Ollama (COMMENTED OUT)
+# Uncomment the section below if you want to pre-download the model during build
+# Note: This significantly increases build time and image size (~4-8GB)
+# ============================================================================
 # RUN bash -c "ollama serve & \
 #     sleep 10 && \
 #     (ollama list | grep -q 'qwen3:8b' && echo 'Model qwen3:8b already exists, skipping download') || \
@@ -336,34 +256,99 @@ RUN pip3 install --break-system-packages --no-cache-dir \
 #     ollama pull qwen3:8b || echo 'Failed to pull model during build, will try in container runtime') && \
 #     pkill ollama || true"
 
-# Create necessary directories in the image
-RUN mkdir -p /home/user/backup
+# ============================================================================
+# PHASE 12: PX4 Development Environment
+# ============================================================================
+# Copy PX4 development scripts
+COPY scripts/px4_dev.sh /tmp/px4_dev.sh
+COPY scripts/requirements.txt /tmp/requirements.txt
 
-# Copy installation scripts and PX4 configs into backup location
-COPY scripts/install.sh /home/user/backup/
-COPY PX4_config /home/user/backup/PX4_config/
-RUN chmod +x /home/user/backup/install.sh
-RUN echo "Files copied successfully to /home/user/backup/"
+# Install PX4 dev requirements (using virtual environment)
+RUN chmod +x /tmp/px4_dev.sh && /tmp/px4_dev.sh
 
-# Set proper ownership and permissions for user directories
-RUN chown -R user:user /home/user/backup && \
-    echo "Permissions set successfully for user:user" && \
-    echo "user:1001:1001" >> /etc/passwd.bak || true
+# Additional PX4 dependencies
+RUN apt-get update && apt-get install -y \
+    libgstreamer-plugins-base1.0-dev \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-ugly \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create and start as LOCAL_USER_ID with proper permissions
-COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh && \
-    mkdir -p /home/user/shared_volume && \
-    chown -R user:user /home/user/shared_volume && \
-    chmod 755 /home/user/shared_volume
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# ============================================================================
+# PHASE 13: User Setup and Permissions
+# ============================================================================
+# Create proper user (ROS image may have different user setup)
+RUN useradd --shell /bin/bash -u 1000 -c "" -m user || echo "user may already exist" \
+    && usermod -a -G dialout user \
+    && echo "user:user" | chpasswd \
+    && adduser user sudo \
+    && mkdir -p /home/user/shared_volume \
+    && chown -R user:user /home/user \
+    && chmod -R 755 /home/user
+
+# Allow user to run sudo without password
+RUN echo "user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/user \
+    && chmod 0440 /etc/sudoers.d/user
+
+# ============================================================================
+# PHASE 14: Environment Configuration
+# ============================================================================
+# Create template bashrc
+RUN mkdir -p /opt/bashrc_templates
+COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
+RUN chmod 644 /opt/bashrc_templates/bashrc_template.sh
+
+# Use UTF8 encoding in java tools
+ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
 
 # Copy middleware profiles
 RUN mkdir -p /usr/local/share/middleware_profiles
 COPY middleware_profiles/*profile.xml /usr/local/share/middleware_profiles/
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
-# Switch to user by default and set working directory
+# ============================================================================
+# PHASE 15: Installation Scripts and PX4 Configs
+# ============================================================================
+# Create necessary directories and copy files
+RUN mkdir -p /home/user/backup
+COPY scripts/install.sh /home/user/backup/
+COPY PX4_config /home/user/backup/PX4_config/
+RUN chmod +x /home/user/backup/install.sh
+
+# Set proper ownership
+RUN chown -R user:user /home/user/backup
+
+# ============================================================================
+# PHASE 16: Entrypoint and Final Setup
+# ============================================================================
+# Copy and setup entrypoint
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && mkdir -p /home/user/shared_volume \
+    && chown -R user:user /home/user/shared_volume \
+    && chmod 755 /home/user/shared_volume
+
+# Switch to user and setup environment
+USER user
 WORKDIR /home/user
 
+# Setup user environment with all components
+RUN echo "# ROS2 Jazzy setup" >> ~/.bashrc \
+    && echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc \
+    && echo "source /opt/ros2_ws/install/setup.bash" >> ~/.bashrc \
+    && echo "export PATH=/opt/python-env/bin:\$PATH" >> ~/.bashrc \
+    && echo "export VIRTUAL_ENV=/opt/python-env" >> ~/.bashrc \
+    && echo "export GZ_VERSION=harmonic" >> ~/.bashrc \
+    && echo "export ROS_DOMAIN_ID=0" >> ~/.bashrc \
+    && echo "export DEV_DIR=/home/user/shared_volume" >> ~/.bashrc \
+    && echo "export PX4_DIR=\$DEV_DIR/PX4-Autopilot" >> ~/.bashrc \
+    && echo "export ROS2_WS=\$DEV_DIR/ros2_ws" >> ~/.bashrc \
+    && echo "export OSQP_SRC=\$DEV_DIR" >> ~/.bashrc
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD bash -c "source ~/.bashrc && ros2 topic list" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/bin/bash"]
