@@ -26,10 +26,8 @@ RUN apt update && apt install -y curl software-properties-common && add-apt-repo
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-# PHASE 2: ROS2 repository setup - will be updated to Jazzy in next phase
-RUN curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863ec.pub  | gpg --dearmor -o /usr/share/keyrings/cuda-archive-keyring.gpg
-RUN echo "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/  /" | tee /etc/apt/sources.list.d/cuda.list > /dev/null
-RUN apt update &&  apt upgrade -y
+# PHASE 2: Update packages (CUDA already configured in base image)
+RUN apt-get update && apt-get -y upgrade
 
 # PHASE 2: ROS2 installation - UPDATED TO JAZZY
 RUN apt install -y ros-jazzy-desktop ros-dev-tools \
