@@ -15,12 +15,6 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 print_info "Starting container initialization..."
 
-# Start virtual X server in the background
-if [[ -x "$(command -v Xvfb)" && "$DISPLAY" == ":99" ]]; then
-    print_info "Starting Xvfb"
-    Xvfb :99 -screen 0 1600x1200x24+32 &
-fi
-
 # ========================================================================
 # CRITICAL: Force UID/GID Mapping - No Alternatives
 # ========================================================================
@@ -173,16 +167,6 @@ if [ -d "/home/user/shared_volume" ]; then
         print_warning "Some ownership changes failed (normal for certain mount types)"
     }
     
-    # Verification
-    print_info "=== OWNERSHIP VERIFICATION ==="
-    echo "Shared volume directory:"
-    ls -ld /home/user/shared_volume/ || print_error "Cannot list shared volume"
-    echo "Key files:"
-    ls -la /home/user/shared_volume/ | head -5 || print_error "Cannot list contents"
-    echo ".bashrc status:"
-    ls -la /home/user/.bashrc || print_error "Cannot list .bashrc"
-    print_info "=== END VERIFICATION ==="
-    
     print_success "Shared volume setup completed"
 else
     print_warning "Shared volume directory not found!"
@@ -202,12 +186,13 @@ else
 fi
 
 # ========================================================================
-# Switch to User Context with Environment Setup
+# Switch to User Context WITHOUT password prompt (FIXED)
 # ========================================================================
 
 print_info "Switching to user context and executing command..."
 
-exec gosu user bash -c "
+# Instead of using gosu or su with password, use sudo with NOPASSWD
+exec sudo -u user -H bash -c "
     # Test that .bashrc is working
     if [ -f ~/.bashrc ]; then
         source ~/.bashrc
