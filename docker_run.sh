@@ -55,34 +55,11 @@ build_image() {
         exit 1
     fi
     
-    # Check for required supporting files
-    local required_files=(
-        "scripts/px4_dev.sh"
-        "scripts/requirements.txt" 
-        "scripts/bashrc_template.sh"
-        "scripts/entrypoint.sh"
-        "scripts/install.sh"
-    )
-    
-    for file in "${required_files[@]}"; do
-        if [ ! -f "$file" ]; then
-            print_warning "Creating missing file: $file"
-            mkdir -p "$(dirname "$file")"
-            create_missing_file "$file"
         fi
     done
     
-    # Check for middleware profiles
-    if [ ! -d "middleware_profiles" ]; then
-        print_warning "Creating missing middleware_profiles directory"
-        create_middleware_profiles
     fi
     
-    # Check for PX4_config
-    if [ ! -d "PX4_config" ]; then
-        print_warning "Creating missing PX4_config directory"
-        mkdir -p PX4_config
-        echo "# PX4 configuration files go here" > PX4_config/README.md
     fi
     
     echo

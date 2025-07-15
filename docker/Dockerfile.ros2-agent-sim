@@ -250,7 +250,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# PHASE 11: NuttX Toolchain and Java (FIXED: Before user creation)
+# PHASE 11: NuttX Toolchain and Java (FIXED: Updated ARM GCC installation)
 # ============================================================================
 
 # NuttX toolchain dependencies
@@ -282,12 +282,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     kconfig-frontends \
     && rm -rf /var/lib/apt/lists/*
 
-# Install NuttX GCC toolchain
-RUN echo "Installing arm-none-eabi-gcc-${NUTTX_GCC_VERSION}" && \
-    wget -O /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2 \
-    https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-rm/${NUTTX_GCC_VERSION_SHORT}/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-${INSTALL_ARCH}-linux.tar.bz2 && \
-    tar -jxf /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2 -C /opt/ && \
-    rm /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2
+# FIXED: Install ARM GCC toolchain using multiple fallback methods
+RUN set -e && \
+    echo "Installing ARM GCC toolchain..." && \
+    # Method 1: Try the official ARM release (updated URL)
+    (wget -O /tmp/gcc-arm-none-eabi.tar.bz2 \
+        "https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2" && \
+     tar -jxf /tmp/gcc-arm-none-eabi.tar.bz2 -C /opt/ && \
+     rm /tmp/gcc-arm-none-eabi.tar.bz2 && \
+     echo "✅ ARM GCC installed from official ARM site") || \
+    # Method 2: Try alternative mirror
+    (wget -O /tmp/gcc-arm-none-eabi.tar.bz2 \
+        "https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-rm/10.3-2021.07/gcc-arm-none-eabi-10.3-2021.07-x86_64-linux.tar.bz2" && \
+     tar -jxf /tmp/gcc-arm-none-eabi.tar.bz2 -C /opt/ && \
+     rm /tmp/gcc-arm-none-eabi.tar.bz2 && \
+     echo "✅ ARM GCC installed from alternative mirror") || \
+    # Method 3: Use system package manager as fallback
+    (apt-get update && \
+     apt-get install -y --no-install-recommends gcc-arm-none-eabi && \
+     rm -rf /var/lib/apt/lists/* && \
+     echo "✅ ARM GCC installed from system packages") || \
+    # Method 4: Download from GitHub releases
+    (wget -O /tmp/gcc-arm-none-eabi.tar.bz2 \
+        "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v10.3.1-2.3/xpack-arm-none-eabi-gcc-10.3.1-2.3-linux-x64.tar.gz" && \
+     tar -zxf /tmp/gcc-arm-none-eabi.tar.bz2 -C /opt/ && \
+     rm /tmp/gcc-arm-none-eabi.tar.bz2 && \
+     echo "✅ ARM GCC installed from GitHub releases") || \
+    # If all methods fail, show error
+    (echo "❌ All ARM GCC installation methods failed" && exit 1)
+
+# Update PATH to include ARM GCC (handle different installation paths)
+ENV PATH="/opt/gcc-arm-none-eabi-10.3-2021.10/bin:/opt/gcc-arm-none-eabi-10.3-2021.07/bin:/opt/xpack-arm-none-eabi-gcc-10.3.1-2.3/bin:$PATH"
 
 # Java installation for jMAVSim
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -299,7 +324,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Set Java as default
 RUN update-alternatives --set java $(update-alternatives --list java | grep "java-21") || echo "Java alternatives setting skipped"
-
 # ============================================================================
 # PHASE 12: User Setup (FIXED: Moved before Python packages)
 # ============================================================================
