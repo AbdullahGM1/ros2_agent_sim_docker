@@ -1,14 +1,14 @@
 # ============================================================================
-# OPTIMIZED ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA + AI/ML
+# ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA + AI/ML
 # ============================================================================
 
 FROM osrf/ros:jazzy-desktop
 
 LABEL maintainer="AbdullahGM1 <agm.musalami@gmail.com>"
-LABEL description="Optimized ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA + AI/ML Stack"
+LABEL description="ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA + AI/ML Stack"
 
 # ============================================================================
-# PHASE 1: Environment Setup (Least likely to change - cache friendly)
+# PHASE 1: Environment Setup 
 # ============================================================================
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
@@ -32,8 +32,14 @@ ENV OSQP_SRC=$DEV_DIR
 ENV ROS_DOMAIN_ID=0
 ENV JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8
 
+# PX4 NuttX toolchain environment variables
+ENV NUTTX_GCC_VERSION="10.3-2021.10"
+ENV NUTTX_GCC_VERSION_SHORT="10.3-2021q4"
+ENV INSTALL_ARCH="x86_64"
+ENV PATH="/opt/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}/bin:$PATH"
+
 # ============================================================================
-# PHASE 2: System Packages Installation (Ordered by stability/frequency)
+# PHASE 2: System Packages Installation (FIXED: Removed duplicates)
 # ============================================================================
 
 # Essential system packages and locales
@@ -49,7 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
-# Development tools and build essentials
+# Development tools and build essentials (FIXED: Added all PX4 tools here)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -63,6 +69,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdb \
     valgrind \
     cppcheck \
+    astyle \
     doxygen \
     lcov \
     unzip \
@@ -79,6 +86,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     gosu \
     gedit \
+    bc \
     && rm -rf /var/lib/apt/lists/*
 
 # Graphics, GUI, and multimedia support
@@ -112,7 +120,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# PHASE 3: Python Environment Setup (Solves PEP 668 issues early)
+# PHASE 3: Python Environment Setup (FIXED: Single numpy installation)
 # ============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-full \
@@ -131,17 +139,11 @@ RUN python3 -m venv /opt/python-env
 ENV PATH="/opt/python-env/bin:$PATH"
 ENV VIRTUAL_ENV="/opt/python-env"
 
-# Install core Python packages
-RUN pip install --upgrade pip setuptools wheel cython && \
-    pip install --no-cache-dir \
-    "numpy>=1.21.0,<2.0.0" \
-    "PyYAML==6.0.1" \
-    future \
-    rospkg \
-    rich
+# Install pip and core Python packages (FIXED: Single installation)
+RUN pip install --upgrade pip setuptools wheel cython
 
 # ============================================================================
-# PHASE 4: Add External Repositories (Before package installations)
+# PHASE 4: Add External Repositories
 # ============================================================================
 
 # Add Gazebo Harmonic repository
@@ -155,7 +157,7 @@ RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor 
     rm -f packages.microsoft.gpg
 
 # ============================================================================
-# PHASE 5: Gazebo Harmonic Installation (Binary packages - stable & fast)
+# PHASE 5: Gazebo Harmonic Installation
 # ============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gz-harmonic \
@@ -166,7 +168,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# PHASE 6: ROS2 Jazzy Additional Packages (Binary installations)
+# PHASE 6: ROS2 Jazzy Additional Packages
 # ============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-ros-gz-bridge \
@@ -191,7 +193,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# PHASE 7: MAVROS Dependencies and GeographicLib Data
+# PHASE 7: MAVROS Dependencies and GeographicLib Data (FIXED: Combined with PX4)
 # ============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     geographiclib-tools \
@@ -202,9 +204,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libtinyxml2-dev \
     libpoco-dev \
     libxml2-dev \
+    libxml2-utils \
     libxslt1-dev \
     libboost-all-dev \
     libeigen3-dev \
+    libfuse2t64 \
+    libimage-exiftool-perl \
+    libopencv-dev \
+    protobuf-compiler \
+    dmidecode \
     && rm -rf /var/lib/apt/lists/*
 
 # Install geographiclib datasets
@@ -223,7 +231,7 @@ RUN git clone https://github.com/eProsima/Micro-XRCE-DDS-Agent.git /tmp/Micro-XR
     rm -rf /tmp/Micro-XRCE-DDS-Agent
 
 # ============================================================================
-# PHASE 9: JSBSim Installation (Flight Simulator)
+# PHASE 9: JSBSim Installation
 # ============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends libsubunit-dev && \
     rm -rf /var/lib/apt/lists/* && \
@@ -242,36 +250,58 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# PHASE 11: AI/ML Python Packages (Using virtual environment)
-# ============================================================================
-RUN pip install --no-cache-dir \
-    "typing-extensions>=4.7.0" \
-    langchain \
-    langchain-ollama \
-    "langchain-community==0.3.21" \
-    ollama \
-    jpl-rosa
-
-# ============================================================================
-# PHASE 12: Ollama Installation
-# ============================================================================
-RUN curl -fsSL https://ollama.com/install.sh | sh
-
-# ============================================================================
-# PHASE 13: PX4 Development Environment Setup
+# PHASE 11: NuttX Toolchain and Java (FIXED: Before user creation)
 # ============================================================================
 
-# Copy PX4 development scripts
-COPY scripts/px4_dev.sh /tmp/px4_dev.sh
-COPY scripts/requirements.txt /tmp/requirements.txt
+# NuttX toolchain dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    automake \
+    binutils-dev \
+    bison \
+    flex \
+    g++-multilib \
+    gcc-multilib \
+    gdb-multiarch \
+    genromfs \
+    gettext \
+    gperf \
+    libelf-dev \
+    libexpat-dev \
+    libgmp-dev \
+    libisl-dev \
+    libmpc-dev \
+    libmpfr-dev \
+    libncurses6 \
+    libncurses-dev \
+    libtool \
+    screen \
+    texinfo \
+    u-boot-tools \
+    util-linux \
+    vim-common \
+    kconfig-frontends \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install PX4 dependencies
-RUN chmod +x /tmp/px4_dev.sh && \
-    /tmp/px4_dev.sh && \
-    rm -rf /tmp/px4_dev.sh /tmp/requirements.txt
+# Install NuttX GCC toolchain
+RUN echo "Installing arm-none-eabi-gcc-${NUTTX_GCC_VERSION}" && \
+    wget -O /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2 \
+    https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-rm/${NUTTX_GCC_VERSION_SHORT}/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-${INSTALL_ARCH}-linux.tar.bz2 && \
+    tar -jxf /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2 -C /opt/ && \
+    rm /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2
+
+# Java installation for jMAVSim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ant \
+    openjdk-21-jre \
+    openjdk-21-jdk \
+    libvecmath-java \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Java as default
+RUN update-alternatives --set java $(update-alternatives --list java | grep "java-21") || echo "Java alternatives setting skipped"
 
 # ============================================================================
-# PHASE 14: User Setup and Permissions (Late in build for flexibility)
+# PHASE 12: User Setup (FIXED: Moved before Python packages)
 # ============================================================================
 
 # Create user with proper permissions
@@ -291,7 +321,113 @@ RUN if id -u 1000 >/dev/null 2>&1; then \
     chmod 0440 /etc/sudoers.d/user
 
 # ============================================================================
-# PHASE 15: Configuration Files and Templates
+# PHASE 13: Python Dependencies (FIXED: Single installation, no duplicates)
+# ============================================================================
+
+# All Python packages in one consolidated installation
+RUN pip install --no-cache-dir \
+    "numpy>=1.21.0,<2.0.0" \
+    "PyYAML==6.0.1" \
+    future \
+    rospkg \
+    rich \
+    argcomplete \
+    "argparse>=1.2" \
+    cerberus \
+    coverage \
+    "empy>=3.3" \
+    "jinja2>=2.8" \
+    jsonschema \
+    kconfiglib \
+    lxml \
+    "matplotlib>=3.0.0,<4.0.0" \
+    "nunavut>=1.1.0" \
+    packaging \
+    "pandas>=0.21,<3.0.0" \
+    pkgconfig \
+    psutil \
+    pygments \
+    "wheel>=0.31.1" \
+    pymavlink \
+    pyros-genmsg \
+    pyserial \
+    "pyulog>=0.5.0" \
+    requests \
+    "setuptools>=39.2.0" \
+    "six>=1.12.0" \
+    "toml>=0.9" \
+    "sympy>=1.10.1" \
+    "typing-extensions>=4.7.0" \
+    "symforce>=0.10.0,<0.11.0" \
+    langchain \
+    langchain-ollama \
+    "langchain-community==0.3.21" \
+    ollama \
+    jpl-rosa \
+    "opencv-python>=4.5.0,<5.0.0"
+
+# ============================================================================
+# PHASE 14: Ollama Installation + LLM Models
+# ============================================================================
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# LLM Model Installation (commented for build speed - can be enabled if needed)
+# Note: These models are large (4-8GB each) and significantly increase build time
+# Uncomment the models you want pre-installed, or pull them at runtime instead
+
+# Start Ollama service temporarily for model downloads (if uncommenting models below)
+# RUN ollama serve &
+
+# Wait for Ollama service to start
+# RUN sleep 5
+
+# Download Qwen models (recommended for ROS2 Agent)
+# RUN ollama pull qwen2.5:8b     # Main model mentioned in README (8B parameters)
+# RUN ollama pull qwen2.5:3b     # Lighter alternative (3B parameters)
+# RUN ollama pull qwen2.5:1.5b   # Smallest option (1.5B parameters)
+
+# Download alternative models (optional)
+# RUN ollama pull llama3.2:3b    # Meta's Llama 3.2 (3B parameters) 
+# RUN ollama pull phi3.5:3.8b    # Microsoft Phi-3.5 (3.8B parameters)
+# RUN ollama pull mistral:7b     # Mistral AI model (7B parameters)
+
+# Stop Ollama service after model downloads
+# RUN pkill ollama || true
+
+# Runtime model pulling (recommended approach):
+# Users can pull models when needed using:
+# docker exec -it ros2_agent_sim ollama pull qwen2.5:8b
+
+# ============================================================================
+# PHASE 15: VMWare Graphics Fix and Verification
+# ============================================================================
+
+# Fix VMWare 3D graphics acceleration for gazebo
+RUN if dmidecode -t system 2>/dev/null | grep -q "Manufacturer: VMware, Inc." ; then \
+        echo "export SVGA_VGPU10=0" >> /etc/environment ; \
+        echo "VMWare detected - applied graphics fix" ; \
+    else \
+        echo "Non-VMWare environment detected" ; \
+    fi
+
+# Environment verification
+RUN echo "=== PX4 Development Environment Verification ===" && \
+    echo "Ubuntu Version: $(lsb_release -rs)" && \
+    echo "GCC Version: $(gcc --version | head -1)" && \
+    echo "CMake Version: $(cmake --version | head -1)" && \
+    echo "Python Version: $(python3 --version)" && \
+    echo "Java Version: $(java -version 2>&1 | head -1)" && \
+    echo "NuttX GCC: $(arm-none-eabi-gcc --version | head -1)" && \
+    echo "Gazebo Version: $(gz sim --version 2>/dev/null | head -1)" && \
+    echo "Python packages verification:" && \
+    python3 -c "import pymavlink; print('✅ pymavlink installed')" && \
+    python3 -c "import jinja2; print('✅ jinja2 installed')" && \
+    python3 -c "import yaml; print('✅ PyYAML installed')" && \
+    python3 -c "import kconfiglib; print('✅ kconfiglib installed')" && \
+    echo "=== Verification Complete ==="
+
+# ============================================================================
+# PHASE 16: Configuration Files and Templates
 # ============================================================================
 
 # Create configuration directories
@@ -302,7 +438,7 @@ COPY middleware_profiles/*profile.xml /usr/local/share/middleware_profiles/
 COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
 
 # ============================================================================
-# PHASE 16: Application Files and Scripts (Most likely to change)
+# PHASE 17: Application Files and Scripts
 # ============================================================================
 
 # Create directories and copy application files
@@ -316,7 +452,7 @@ COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # ============================================================================
-# PHASE 17: Final User Environment Setup
+# PHASE 18: Final User Environment Setup
 # ============================================================================
 
 # Set ownership for user directories and Python environment
@@ -343,7 +479,7 @@ RUN echo "# ROS2 Jazzy + Gazebo Harmonic + AI/ML Environment" >> ~/.bashrc && \
     echo 'if [ -f "$ROS2_WS/install/setup.bash" ]; then source "$ROS2_WS/install/setup.bash"; fi' >> ~/.bashrc
 
 # ============================================================================
-# PHASE 18: Health Check and Finalization
+# PHASE 19: Health Check and Finalization
 # ============================================================================
 
 # Initialize rosdep for user
