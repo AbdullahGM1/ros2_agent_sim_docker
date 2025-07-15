@@ -54,14 +54,7 @@ build_image() {
         print_error "Please ensure you're running this script from the correct directory."
         exit 1
     fi
-    
-        fi
-    done
-    
-    fi
-    
-    fi
-    
+
     echo
     print_info "Starting Docker build process..."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
