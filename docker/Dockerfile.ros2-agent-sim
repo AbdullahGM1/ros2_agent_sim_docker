@@ -437,6 +437,46 @@ RUN mkdir -p /opt/bashrc_templates /usr/local/share/middleware_profiles
 COPY middleware_profiles/*profile.xml /usr/local/share/middleware_profiles/
 COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
 
+
+# ============================================================================
+# PHASE 16.5: Pre-clone Repositories (NEW - Reduces install.sh complexity)
+# ============================================================================
+
+# Create workspace structure in container  
+RUN mkdir -p /home/user/ros2_ws/src
+
+# Clone ros2_agent_sim with submodules (from install.sh)
+RUN cd /home/user/ros2_ws/src && \
+    git clone --recursive https://github.com/AbdullahGM1/ros2_agent_sim.git && \
+    cd ros2_agent_sim && \
+    git submodule update --init --recursive
+
+# Clone PX4-Autopilot (from install.sh) 
+RUN git clone https://github.com/AbdullahGM1/PX4-Autopilot.git /tmp/PX4-Autopilot && \
+    cd /tmp/PX4-Autopilot && \
+    git checkout navsat_callback
+
+# Clone MAVLink (from install.sh)
+RUN cd /home/user/ros2_ws/src && \
+    git clone https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink && \
+    cd mavlink && \
+    git checkout release/jazzy/mavlink
+
+# Clone MAVROS (from install.sh)  
+RUN cd /home/user/ros2_ws/src && \
+    git clone https://github.com/AbdullahGM1/mavros.git && \
+    cd mavros && \
+    git checkout ros2
+
+# Fix gz_sim dependencies in Unitree packages (from install.sh)
+RUN if [ -d "/home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2" ]; then \
+        find /home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz_sim<\/.*depend>/d' {} \; && \
+        find /home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz-sim<\/.*depend>/d' {} \; ; \
+    fi
+
+# Set proper ownership for cloned repositories
+RUN chown -R user:user /home/user/ros2_ws /tmp/PX4-Autopilot
+
 # ============================================================================
 # PHASE 17: Application Files and Scripts
 # ============================================================================

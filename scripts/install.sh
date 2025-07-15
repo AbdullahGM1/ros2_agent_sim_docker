@@ -1,8 +1,8 @@
 #!/bin/bash -e
 
 # ============================================================================
-# ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA Installation Script
-# Enhanced with error handling, logging, and progress tracking
+# ROS2 Agent Sim - Simplified Runtime Installation Script
+# Only handles runtime-specific tasks (Docker handles build-time setup)
 # ============================================================================
 
 # Colors and formatting
@@ -19,7 +19,7 @@ BOLD='\033[1m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="${SCRIPT_DIR}/install_$(date +%Y%m%d_%H%M%S).log"
 STEP_COUNTER=0
-TOTAL_STEPS=12
+TOTAL_STEPS=6  # Reduced from 12 since Docker handles most setup
 
 # Enhanced logging functions
 log() {
@@ -47,11 +47,6 @@ print_info() { log "${CYAN}ℹ️  $1${NC}"; }
 cleanup_on_error() {
     print_error "Installation failed at step ${STEP_COUNTER}/${TOTAL_STEPS}"
     print_info "Check log file: ${LOG_FILE}"
-    print_info "Cleaning up partial installations..."
-    
-    # Optional: Add cleanup commands here
-    # rm -rf partially_installed_directories
-    
     exit 1
 }
 
@@ -66,46 +61,17 @@ track_time() {
     start_time=$(date +%s)
 }
 
-# System requirements check
-check_system_requirements() {
-    print_step "Checking System Requirements"
-    
-    # Check available disk space (minimum 20GB)
-    local available_space=$(df /home | tail -1 | awk '{print $4}')
-    if [ "$available_space" -lt 20971520 ]; then
-        print_error "Insufficient disk space. Need at least 20GB free."
-        exit 1
-    fi
-    
-    # Check RAM (minimum 8GB recommended)
-    local ram_gb=$(free -g | grep "Mem:" | awk '{print $2}')
-    if [ "$ram_gb" -lt 8 ]; then
-        print_warning "Less than 8GB RAM detected. Build process may be slow."
-    fi
-    
-    # Check Ubuntu version
-    local ubuntu_version=$(lsb_release -rs)
-    if [[ "$ubuntu_version" != "24.04" ]]; then
-        print_warning "Optimized for Ubuntu 24.04. Current: $ubuntu_version"
-    fi
-    
-    print_success "System requirements check completed"
-    track_time
-}
-
-# Environment validation
+# Environment validation (runtime-specific)
 validate_environment() {
-    print_step "Validating Environment Variables"
+    print_step "Validating Runtime Environment"
     
     if [ -z "${DEV_DIR}" ]; then
         print_error "DEV_DIR environment variable is not set"
-        print_info "Set it using: export DEV_DIR=/path/to/your/dev/directory"
+        print_info "Set it using: export DEV_DIR=/home/user/shared_volume"
         exit 1
     fi
     
     print_info "DEV_DIR: ${DEV_DIR}"
-    print_info "GIT_USER: ${GIT_USER:-'Not set'}"
-    print_info "GIT_TOKEN: ${GIT_TOKEN:+Set}"
     
     # Set all paths
     export ROS2_WS="$DEV_DIR/ros2_ws"
@@ -121,172 +87,85 @@ validate_environment() {
     track_time
 }
 
-# Enhanced package installation with retry mechanism
-install_packages_with_retry() {
-    local packages=("$@")
-    local max_retries=3
-    local retry_count=0
+# Copy pre-cloned repositories from container to shared volume
+setup_repositories() {
+    print_step "Setting up Repositories in Shared Volume"
     
-    while [ $retry_count -lt $max_retries ]; do
-        if sudo apt install -y "${packages[@]}"; then
-            return 0
-        else
-            retry_count=$((retry_count + 1))
-            print_warning "Package installation failed. Retry ${retry_count}/${max_retries}"
-            sudo apt update
-            sleep 2
-        fi
-    done
-    
-    print_error "Failed to install packages after ${max_retries} attempts"
-    return 1
-}
-
-# Enhanced repository cloning with validation
-clone_repository() {
-    local repo_url="$1"
-    local target_dir="$2"
-    local branch="$3"
-    local repo_name=$(basename "$repo_url" .git)
-    
-    print_info "Cloning ${repo_name} (${branch} branch)..."
-    
-    if [ -d "$target_dir" ]; then
-        print_warning "${repo_name} exists, updating..."
-        cd "$target_dir"
-        git fetch origin
-        git checkout "$branch"
-        git pull origin "$branch"
-        
-        # Verify branch
-        local current_branch=$(git rev-parse --abbrev-ref HEAD)
-        if [ "$current_branch" != "$branch" ]; then
-            print_error "Failed to checkout ${branch} branch"
-            return 1
-        fi
+    # Copy ros2_agent_sim if not exists
+    if [ ! -d "$ROS2_SRC/ros2_agent_sim" ]; then
+        print_info "Copying ros2_agent_sim from container..."
+        cp -r /home/user/ros2_ws/src/ros2_agent_sim "$ROS2_SRC/"
+        print_success "ros2_agent_sim copied"
     else
-        cd "$(dirname "$target_dir")"
-        git clone "$repo_url" "$(basename "$target_dir")"
-        cd "$target_dir"
-        git checkout "$branch"
+        print_info "ros2_agent_sim already exists in shared volume"
     fi
     
-    print_success "${repo_name} ready ($(git rev-parse --short HEAD))"
-    return 0
-}
-
-# Main installation steps
-setup_ros2_agent_sim() {
-    print_step "Setting up ROS2 Agent Simulation"
-    
-    clone_repository \
-        "https://github.com/AbdullahGM1/ros2_agent_sim.git" \
-        "$ROS2_SRC/ros2_agent_sim" \
-        "main"
-    
-    # Update submodules
-    cd "$ROS2_SRC/ros2_agent_sim"
-    git submodule update --init --recursive
-    
-    # Verify submodules
-    if [ -d "$ROS2_SRC/ros2_agent_sim/unitree_go2_ros2" ] && [ "$(ls -A "$ROS2_SRC/ros2_agent_sim/unitree_go2_ros2")" ]; then
-        print_success "Unitree Go2 submodule verified"
+    # Copy mavlink if not exists
+    if [ ! -d "$ROS2_SRC/mavlink" ]; then
+        print_info "Copying mavlink from container..."
+        cp -r /home/user/ros2_ws/src/mavlink "$ROS2_SRC/"
+        print_success "mavlink copied"
     else
-        print_warning "Unitree Go2 submodule issue detected, fixing..."
-        git submodule update --init --recursive --force
+        print_info "mavlink already exists in shared volume"
+    fi
+    
+    # Copy mavros if not exists
+    if [ ! -d "$ROS2_SRC/mavros" ]; then
+        print_info "Copying mavros from container..."
+        cp -r /home/user/ros2_ws/src/mavros "$ROS2_SRC/"
+        print_success "mavros copied"
+    else
+        print_info "mavros already exists in shared volume"
+    fi
+    
+    # Copy PX4-Autopilot if not exists
+    if [ ! -d "$PX4_DIR" ]; then
+        print_info "Copying PX4-Autopilot from container..."
+        cp -r /tmp/PX4-Autopilot "$PX4_DIR"
+        print_success "PX4-Autopilot copied"
+    else
+        print_info "PX4-Autopilot already exists in shared volume"
     fi
     
     track_time
 }
 
-install_ros2_packages() {
-    print_step "Installing ROS2 Jazzy Packages"
-    
-    local packages=(
-        "ros-jazzy-gz-ros2-control"
-        "ros-jazzy-gz-ros2-control-demos"
-        "ros-jazzy-xacro"
-        "ros-jazzy-robot-localization"
-        "ros-jazzy-ros2-controllers"
-        "ros-jazzy-ros2-control"
-        "ros-jazzy-velodyne"
-        "ros-jazzy-velodyne-description"
-        "ros-jazzy-tf2-eigen"
-        "ros-jazzy-tf2-geometry-msgs"
-        "ros-jazzy-eigen3-cmake-module"
-        "ros-jazzy-geographic-msgs"
-    )
-    
-    # Install packages with progress tracking
-    local total_packages=${#packages[@]}
-    local current_package=0
-    
-    for pkg in "${packages[@]}"; do
-        current_package=$((current_package + 1))
-        print_info "[${current_package}/${total_packages}] Installing ${pkg}..."
-        
-        if ! install_packages_with_retry "$pkg"; then
-            print_error "Failed to install ${pkg}"
-            return 1
-        fi
-    done
-    
-    print_success "All ROS2 Jazzy packages installed"
-    track_time
-}
-
-install_python_dependencies() {
-    print_step "Installing Python Dependencies"
-    
-    # Install with proper error handling
-    local python_packages=(
-        "rich"
-        "langchain"
-        "langchain-ollama"
-        "langchain-community==0.3.21"
-        "opencv-python"
-        "PyYAML==6.0.1"
-        "rosa"
-        "symforce"
-        "numpy==1.26.4"
-        "rospkg"
-    )
-    
-    print_info "Installing Python packages..."
-    for pkg in "${python_packages[@]}"; do
-        print_info "Installing ${pkg}..."
-        if ! pip3 install --break-system-packages --no-warn-script-location "$pkg"; then
-            print_error "Failed to install ${pkg}"
-            return 1
-        fi
-    done
-    
-    print_success "Python dependencies installed"
-    track_time
-}
-
+# Build PX4 with shared volume configurations
 setup_px4_autopilot() {
-    print_step "Setting up PX4 Autopilot"
+    print_step "Building PX4 Autopilot with Configurations"
     
-    # Clean installation
-    if [ -d "$PX4_DIR" ]; then
-        print_warning "Removing existing PX4 installation for clean build"
-        rm -rf "$PX4_DIR"
-    fi
-    
-    # Clone PX4
-    clone_repository \
-        "https://github.com/AbdullahGM1/PX4-Autopilot.git" \
-        "$PX4_DIR" \
-        "navsat_callback"
-    
-    # Clean and build
     cd "$PX4_DIR"
+    
+    # Clean build artifacts
     print_info "Cleaning build artifacts..."
     rm -rf build/ || true
     make distclean || true
     
-    # Build with progress indication
+    # Copy configurations if available
+    if [ -d "$PX4_config" ]; then
+        print_info "Copying PX4 configurations..."
+        
+        # Copy models, worlds, and airframes
+        if [ -d "$PX4_config/models" ]; then
+            mkdir -p "${PX4_DIR}/Tools/simulation/gz/models/"
+            cp -r "$PX4_config/models/"* "${PX4_DIR}/Tools/simulation/gz/models/"
+            print_success "Models configuration copied"
+        fi
+        
+        if [ -d "$PX4_config/worlds" ]; then
+            mkdir -p "${PX4_DIR}/Tools/simulation/gz/worlds/"
+            cp -r "$PX4_config/worlds/"* "${PX4_DIR}/Tools/simulation/gz/worlds/"
+            print_success "Worlds configuration copied"
+        fi
+        
+        if [ -d "$PX4_config/px4" ]; then
+            mkdir -p "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
+            cp -r "$PX4_config/px4/"* "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
+            print_success "Airframes configuration copied"
+        fi
+    fi
+    
+    # Build PX4 SITL
     print_info "Building PX4 SITL (this may take several minutes)..."
     export CMAKE_ARGS="-Wno-dev"
     
@@ -299,61 +178,7 @@ setup_px4_autopilot() {
     track_time
 }
 
-copy_px4_configurations() {
-    print_step "Copying PX4 Configuration Files"
-    
-    # Ensure target directories exist
-    mkdir -p "${PX4_DIR}/Tools/simulation/gz/models/"
-    mkdir -p "${PX4_DIR}/Tools/simulation/gz/worlds/"
-    mkdir -p "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
-    
-    # Copy with verification
-    local config_types=("models" "worlds" "px4")
-    local target_dirs=(
-        "${PX4_DIR}/Tools/simulation/gz/models/"
-        "${PX4_DIR}/Tools/simulation/gz/worlds/"
-        "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
-    )
-    
-    for i in "${!config_types[@]}"; do
-        local config_type="${config_types[$i]}"
-        local target_dir="${target_dirs[$i]}"
-        
-        if [ -d "${PX4_config}/${config_type}" ]; then
-            cp -r "${PX4_config}/${config_type}/"* "$target_dir"
-            print_success "${config_type} configuration copied"
-        else
-            print_warning "${config_type} configuration not found"
-        fi
-    done
-    
-    # Rebuild PX4 with new configurations
-    print_info "Rebuilding PX4 with new configurations..."
-    cd "$PX4_DIR"
-    make px4_sitl
-    
-    track_time
-}
-
-setup_mavros_and_mavlink() {
-    print_step "Setting up MAVROS and MAVLink"
-    
-    # Clone mavlink
-    clone_repository \
-        "https://github.com/ros2-gbp/mavlink-gbp-release.git" \
-        "$ROS2_SRC/mavlink" \
-        "release/jazzy/mavlink"
-    
-    # Clone MAVROS
-    clone_repository \
-        "https://github.com/AbdullahGM1/mavros.git" \
-        "$ROS2_SRC/mavros" \
-        "ros2"
-    
-    print_success "MAVROS and MAVLink setup completed"
-    track_time
-}
-
+# Handle ROS2 dependencies (runtime-specific)
 handle_dependencies() {
     print_step "Resolving ROS2 Dependencies"
     
@@ -367,13 +192,6 @@ handle_dependencies() {
     # Update rosdep
     rosdep update
     
-    # Fix gz_sim rosdep issue for Unitree packages
-    if [ -d "$ROS2_SRC/ros2_agent_sim/unitree_go2_ros2" ]; then
-        print_info "Fixing gz_sim dependencies in Unitree packages..."
-        find "$ROS2_SRC/ros2_agent_sim/unitree_go2_ros2" -name "package.xml" -exec sed -i '/<.*depend>gz_sim<\/.*depend>/d' {} \;
-        find "$ROS2_SRC/ros2_agent_sim/unitree_go2_ros2" -name "package.xml" -exec sed -i '/<.*depend>gz-sim<\/.*depend>/d' {} \;
-    fi
-    
     # Install dependencies
     print_info "Installing ROS2 dependencies..."
     rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy || {
@@ -383,6 +201,7 @@ handle_dependencies() {
     track_time
 }
 
+# Build workspace (runtime-specific)
 build_workspace() {
     print_step "Building ROS2 Workspace"
     
@@ -403,6 +222,7 @@ build_workspace() {
     track_time
 }
 
+# Finalize installation (runtime-specific bashrc setup)
 finalize_installation() {
     print_step "Finalizing Installation"
     
@@ -410,7 +230,7 @@ finalize_installation() {
     cd "$ROS2_WS"
     source install/setup.bash
     
-    # FIXED: Check if .bashrc exists and is writable
+    # Check if .bashrc exists
     if [ ! -f ~/.bashrc ]; then
         print_warning ".bashrc not found, creating basic version..."
         touch ~/.bashrc
@@ -420,7 +240,7 @@ finalize_installation() {
     cp ~/.bashrc ~/.bashrc.backup.$(date +%s)
     print_info "Backed up existing .bashrc"
     
-    # FIXED: Add workspace sourcing with correct path validation
+    # Add workspace sourcing
     local workspace_source_line="# Auto-added by install script"
     local workspace_command="if [ -f \"$ROS2_WS/install/setup.bash\" ]; then source \"$ROS2_WS/install/setup.bash\"; fi"
     
@@ -428,25 +248,12 @@ finalize_installation() {
         echo "" >> ~/.bashrc
         echo "$workspace_source_line" >> ~/.bashrc
         echo "$workspace_command" >> ~/.bashrc
-        print_success "Added conditional workspace sourcing to .bashrc"
+        print_success "Added workspace sourcing to .bashrc"
     else
-        print_info "Workspace sourcing already configured in .bashrc"
+        print_info "Workspace sourcing already configured"
     fi
     
-    # FIXED: Add Python path with conditional check
-    local python_path_comment="# Python local path - auto-added by install script"
-    local python_path_command='if [ -d "$HOME/.local/bin" ]; then export PATH="$HOME/.local/bin:$PATH"; fi'
-    
-    if ! grep -q "$python_path_comment" ~/.bashrc; then
-        echo "" >> ~/.bashrc
-        echo "$python_path_comment" >> ~/.bashrc
-        echo "$python_path_command" >> ~/.bashrc
-        print_success "Added conditional Python path to .bashrc"
-    else
-        print_info "Python path already configured in .bashrc"
-    fi
-    
-    # FIXED: Add environment variables with validation
+    # Add environment variables
     local env_comment="# ROS2 Agent Sim environment - auto-added by install script"
     if ! grep -q "$env_comment" ~/.bashrc; then
         cat >> ~/.bashrc << EOF
@@ -468,10 +275,10 @@ alias colcon_build='colcon build --executor sequential --event-handlers console_
 EOF
         print_success "Added environment variables and aliases to .bashrc"
     else
-        print_info "Environment variables already configured in .bashrc"
+        print_info "Environment variables already configured"
     fi
     
-    # Verify the .bashrc is valid by testing it
+    # Validate .bashrc
     print_info "Validating .bashrc syntax..."
     if bash -n ~/.bashrc; then
         print_success ".bashrc syntax is valid"
@@ -481,41 +288,28 @@ EOF
         return 1
     fi
     
-    # Test sourcing the .bashrc
-    print_info "Testing .bashrc sourcing..."
-    if bash -c "source ~/.bashrc && echo 'Bashrc sourced successfully'"; then
-        print_success ".bashrc sources without errors"
-    else
-        print_warning ".bashrc has sourcing issues, but continuing..."
-    fi
-    
     track_time
 }
 
 # Main execution
 main() {
-    print_header "ROS2 Jazzy + Gazebo Harmonic + PX4 Installation"
+    print_header "ROS2 Agent Sim - Runtime Setup"
     print_info "Log file: ${LOG_FILE}"
     print_info "Installation started at $(date)"
+    print_info "Note: Docker image provides all packages and tools"
     
-    # Run installation steps
-    check_system_requirements
+    # Run runtime-specific installation steps
     validate_environment
-    sudo apt update
-    setup_ros2_agent_sim
-    install_ros2_packages
-    install_python_dependencies
+    setup_repositories
     setup_px4_autopilot
-    copy_px4_configurations
-    setup_mavros_and_mavlink
     handle_dependencies
     build_workspace
     finalize_installation
     
     # Final summary
     local total_time=$(( $(date +%s) - start_time ))
-    print_header "Installation Completed Successfully!"
-    print_success "Total installation time: ${total_time}s"
+    print_header "Runtime Setup Completed Successfully!"
+    print_success "Total setup time: ${total_time}s"
     print_info "Log file saved: ${LOG_FILE}"
     
     echo -e "\n${GREEN}🎉 Next steps:${NC}"
