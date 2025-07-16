@@ -16,7 +16,7 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_info "Starting container initialization..."
 
 # ========================================================================
-# CRITICAL: Force UID/GID Mapping - No Alternatives
+# Force UID/GID Mapping 
 # ========================================================================
 
 print_info "Setting up FORCED UID/GID mapping..."
@@ -64,7 +64,7 @@ else
 fi
 
 # ========================================================================
-# CRITICAL: Setup Proper .bashrc
+# Setup Proper .bashrc
 # ========================================================================
 
 print_info "Setting up proper .bashrc configuration..."
@@ -128,7 +128,7 @@ export ROS_DISTRO="jazzy"
 source "/opt/ros/jazzy/setup.bash"
 
 # ========================================================================
-# CRITICAL: Shared Volume Setup with Correct Ownership
+# Shared Volume Setup with Correct Ownership
 # ========================================================================
 
 print_info "Setting up shared volume with correct ownership..."

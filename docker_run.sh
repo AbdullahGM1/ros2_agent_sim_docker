@@ -360,36 +360,45 @@ setup_gpu_support() {
     export DOCKER_OPTS
 }
 
-# Enhanced X11 authentication and graphics setup
+# X11 authentication and graphics setup
 setup_x11_auth() {
     print_info "🖥️  Setting up X11 authentication..."
     
+    # Ensure DISPLAY is set
     if [ -z "$DISPLAY" ]; then
-        print_warning "DISPLAY variable not set. GUI applications may not work."
         export DISPLAY=:0
     fi
     
-    # Allow X server connections
+    print_info "Display set to: $DISPLAY"
+    
+    # Allow X server connections (the key fix)
     if command -v xhost &> /dev/null; then
         xhost +local:root 2>/dev/null || print_warning "Could not set X11 permissions"
+        xhost +local:docker 2>/dev/null || true
         print_success "X11 permissions configured"
     else
-        print_warning "xhost command not found. GUI applications may have permission issues."
+        print_warning "xhost command not found. Installing..."
+        sudo apt-get update && sudo apt-get install -y x11-xserver-utils 2>/dev/null || true
     fi
     
-    # Setup XAUTH file
+    # Setup XAUTH file (simpler version)
     XAUTH=/tmp/.docker.xauth
     if [ -n "$DISPLAY" ]; then
-        xauth_list=$(xauth nlist $DISPLAY 2>/dev/null | sed -e 's/^..../ffff/' || true)
+        # Create auth file if it doesn't exist
         if [ ! -f $XAUTH ]; then
             touch $XAUTH
-            chmod a+r $XAUTH
-            if [ -n "$xauth_list" ]; then
-                echo $xauth_list | xauth -f $XAUTH nmerge -
-                print_success "X11 authentication configured"
-            fi
+            chmod 666 $XAUTH
+        fi
+        
+        # Add current display to auth file
+        xauth_list=$(xauth nlist $DISPLAY 2>/dev/null | sed -e 's/^..../ffff/' || true)
+        if [ -n "$xauth_list" ]; then
+            echo $xauth_list | xauth -f $XAUTH nmerge - 2>/dev/null || true
+            print_success "X11 authentication configured"
         fi
     fi
+    
+    export XAUTH
 }
 
 # Function to setup workspace
@@ -418,12 +427,15 @@ start_persistent_container() {
     HOST_GID=$(id -g)
     HOST_USER=$(whoami)
     
-    # Start container in detached mode with tail -f /dev/null to keep it running
+    # Start container in detached mode with proper X11 support
     docker run -d \
         --name=${CONTAINER_NAME} \
         --hostname=ros2-dev \
         --network host \
         --env="DISPLAY=${DISPLAY:-:0}" \
+        --env="XAUTHORITY=${XAUTH:-/tmp/.docker.xauth}" \
+        --env="QT_X11_NO_MITSHM=1" \
+        --env="LIBGL_ALWAYS_INDIRECT=0" \
         --env="TERM=xterm-256color" \
         --env="COLORTERM=truecolor" \
         --env="FORCE_COLOR=1" \
@@ -434,6 +446,7 @@ start_persistent_container() {
         -e HOST_USER="$HOST_USER" \
         -e FASTRTPS_DEFAULT_PROFILES_FILE=/usr/local/share/middleware_profiles/rtps_udp_profile.xml \
         --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+        --volume="${XAUTH:-/tmp/.docker.xauth}:${XAUTH:-/tmp/.docker.xauth}:rw" \
         --volume="/etc/localtime:/etc/localtime:ro" \
         --volume="$WORKSPACE_DIR:/home/user/shared_volume:rw" \
         --volume="/dev:/dev:rw" \
@@ -450,33 +463,12 @@ start_persistent_container() {
     # Check if container is running
     if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
         print_success "Container started successfully in persistent mode"
-        print_info "Container will continue running in background when you exit"
         return 0
     else
         print_error "Failed to start container"
         docker logs ${CONTAINER_NAME}
         return 1
     fi
-}
-
-# Function to connect to running container
-connect_to_container() {
-    print_info "🔗 Connecting to container: ${CONTAINER_NAME}"
-    
-    # Base command to run in container
-    BASE_CMD="export DEV_DIR=/home/user/shared_volume && \
-        export PX4_DIR=\$DEV_DIR/PX4-Autopilot && \
-        export ROS2_WS=\$DEV_DIR/ros2_ws && \
-        export OSQP_SRC=\$DEV_DIR && \
-        cd /home/user/shared_volume && \
-        source /home/user/.bashrc"
-    
-    CMD="$BASE_CMD && /bin/bash"
-    
-    # Connect to container
-    docker exec --user user --workdir /home/user/shared_volume -it ${CONTAINER_NAME} \
-        env TERM=xterm-256color COLORTERM=truecolor FORCE_COLOR=1 \
-        bash -l -c "${CMD}"
 }
 
 # Function to run or connect to container
