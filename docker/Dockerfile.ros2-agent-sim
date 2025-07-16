@@ -359,7 +359,7 @@ RUN pip install --no-cache-dir \
     "argparse>=1.2" \
     cerberus \
     coverage \
-    "empy>=3.3" \
+    "empy>=3.3,<4.0" \
     "jinja2>=2.8" \
     jsonschema \
     kconfiglib \
