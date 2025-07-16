@@ -39,7 +39,7 @@ ENV INSTALL_ARCH="x86_64"
 ENV PATH="/opt/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}/bin:$PATH"
 
 # ============================================================================
-# PHASE 2: System Packages Installation (FIXED: Removed duplicates)
+# PHASE 2: System Packages Installation
 # ============================================================================
 
 # Essential system packages and locales
@@ -55,7 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
-# Development tools and build essentials (FIXED: Added all PX4 tools here)
+# Development tools and build essentials
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -120,7 +120,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# PHASE 3: Python Environment Setup (FIXED: Single numpy installation)
+# PHASE 3: Python Environment Setup 
 # ============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-full \
@@ -139,7 +139,7 @@ RUN python3 -m venv /opt/python-env
 ENV PATH="/opt/python-env/bin:$PATH"
 ENV VIRTUAL_ENV="/opt/python-env"
 
-# Install pip and core Python packages (FIXED: Single installation)
+# Install pip and core Python packages 
 RUN pip install --upgrade pip setuptools wheel cython
 
 # ============================================================================
@@ -193,7 +193,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# PHASE 7: MAVROS Dependencies and GeographicLib Data (FIXED: Combined with PX4)
+# PHASE 7: MAVROS Dependencies and GeographicLib Data
 # ============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     geographiclib-tools \
@@ -250,7 +250,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# PHASE 11: NuttX Toolchain and Java (FIXED: Updated ARM GCC installation)
+# PHASE 11: NuttX Toolchain and Java 
 # ============================================================================
 
 # NuttX toolchain dependencies
@@ -285,7 +285,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # FIXED: Install ARM GCC toolchain using multiple fallback methods
 RUN set -e && \
     echo "Installing ARM GCC toolchain..." && \
-    # Method 1: Try the official ARM release (updated URL)
+    # Method 1: Try the official ARM release 
     (wget -O /tmp/gcc-arm-none-eabi.tar.bz2 \
         "https://developer.arm.com/-/media/Files/downloads/gnu-rm/10.3-2021.10/gcc-arm-none-eabi-10.3-2021.10-x86_64-linux.tar.bz2" && \
      tar -jxf /tmp/gcc-arm-none-eabi.tar.bz2 -C /opt/ && \
@@ -311,7 +311,7 @@ RUN set -e && \
     # If all methods fail, show error
     (echo "❌ All ARM GCC installation methods failed" && exit 1)
 
-# Update PATH to include ARM GCC (handle different installation paths)
+# Update PATH to include ARM GCC 
 ENV PATH="/opt/gcc-arm-none-eabi-10.3-2021.10/bin:/opt/gcc-arm-none-eabi-10.3-2021.07/bin:/opt/xpack-arm-none-eabi-gcc-10.3.1-2.3/bin:$PATH"
 
 # Java installation for jMAVSim
@@ -325,7 +325,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set Java as default
 RUN update-alternatives --set java $(update-alternatives --list java | grep "java-21") || echo "Java alternatives setting skipped"
 # ============================================================================
-# PHASE 12: User Setup (FIXED: Moved before Python packages)
+# PHASE 12: User Setup 
 # ============================================================================
 
 # Create user with proper permissions
@@ -345,7 +345,7 @@ RUN if id -u 1000 >/dev/null 2>&1; then \
     chmod 0440 /etc/sudoers.d/user
 
 # ============================================================================
-# PHASE 13: Python Dependencies (FIXED: Single installation, no duplicates)
+# PHASE 13: Python Dependencies 
 # ============================================================================
 
 # All Python packages in one consolidated installation
@@ -426,7 +426,7 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 # PHASE 15: VMWare Graphics Fix and Verification
 # ============================================================================
 
-# Fix VMWare 3D graphics acceleration for gazebo
+# VMWare 3D graphics acceleration for gazebo
 RUN if dmidecode -t system 2>/dev/null | grep -q "Manufacturer: VMware, Inc." ; then \
         echo "export SVGA_VGPU10=0" >> /etc/environment ; \
         echo "VMWare detected - applied graphics fix" ; \
@@ -463,36 +463,36 @@ COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
 
 
 # ============================================================================
-# PHASE 16.5: Pre-clone Repositories (NEW - Reduces install.sh complexity)
+# PHASE 16.5: Pre-clone Repositories 
 # ============================================================================
 
 # Create workspace structure in container  
 RUN mkdir -p /home/user/ros2_ws/src
 
-# Clone ros2_agent_sim with submodules (from install.sh)
+# Clone ros2_agent_sim with submodules 
 RUN cd /home/user/ros2_ws/src && \
     git clone --recursive https://github.com/AbdullahGM1/ros2_agent_sim.git && \
     cd ros2_agent_sim && \
     git submodule update --init --recursive
 
-# Clone PX4-Autopilot (from install.sh) 
+# Clone PX4-Autopilot 
 RUN git clone https://github.com/AbdullahGM1/PX4-Autopilot.git /tmp/PX4-Autopilot && \
     cd /tmp/PX4-Autopilot && \
     git checkout navsat_callback
 
-# Clone MAVLink (from install.sh)
+# Clone MAVLink 
 RUN cd /home/user/ros2_ws/src && \
     git clone https://github.com/ros2-gbp/mavlink-gbp-release.git mavlink && \
     cd mavlink && \
     git checkout release/jazzy/mavlink
 
-# Clone MAVROS (from install.sh)  
+# Clone MAVROS  
 RUN cd /home/user/ros2_ws/src && \
     git clone https://github.com/AbdullahGM1/mavros.git && \
     cd mavros && \
     git checkout ros2
 
-# Fix gz_sim dependencies in Unitree packages (from install.sh)
+# gz_sim dependencies in Unitree packages 
 RUN if [ -d "/home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2" ]; then \
         find /home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz_sim<\/.*depend>/d' {} \; && \
         find /home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz-sim<\/.*depend>/d' {} \; ; \
