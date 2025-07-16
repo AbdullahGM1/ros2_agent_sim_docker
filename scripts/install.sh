@@ -206,6 +206,12 @@ handle_dependencies() {
     
     cd "$ROS2_WS"
     
+    # Install missing Python packages first
+    print_info "Installing missing Python dependencies..."
+    pip install --no-cache-dir "lark>=1.1.0" "lark-parser>=0.12.0" || {
+        print_warning "Failed to install some Python packages"
+    }
+    
     # Initialize rosdep if needed
     if ! rosdep init 2>/dev/null; then
         print_info "rosdep already initialized"
@@ -214,10 +220,21 @@ handle_dependencies() {
     # Update rosdep
     rosdep update
     
-    # Install dependencies
+    # Install dependencies with error handling
     print_info "Installing ROS2 dependencies..."
     rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy || {
-        print_warning "Some dependencies failed to install, continuing..."
+        print_warning "Some rosdep dependencies failed to install"
+        
+        # Try installing critical packages manually
+        print_info "Attempting to install critical packages manually..."
+        sudo apt-get update || true
+        sudo apt-get install -y \
+            python3-future \
+            ros-jazzy-joint-state-publisher \
+            ros-jazzy-joint-state-publisher-gui \
+            ros-jazzy-rosidl-generator-py \
+            ros-jazzy-rosidl-runtime-py \
+            2>/dev/null || print_warning "Some manual installations failed"
     }
     
     track_time
