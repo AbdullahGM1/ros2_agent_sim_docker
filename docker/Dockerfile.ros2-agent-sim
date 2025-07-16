@@ -90,14 +90,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     x11-xserver-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Enhanced Graphics, GUI, OpenGL, and multimedia support (merged and de-duplicated)
+# Enhanced Graphics, GUI, OpenGL, and multimedia support (Ubuntu 24.04 compatible)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     mesa-utils \
-    mesa-utils-extra \
     x11-apps \
     xvfb \
     x11vnc \
-    libgl1-mesa-glx \
     libgl1-mesa-dri \
     libglu1-mesa \
     libegl1 \
