@@ -16,51 +16,7 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_info "Starting container initialization..."
 
 # ========================================================================
-# Create X11 Detection Script (AS ROOT - BEFORE USER SWITCH)
-# ========================================================================
-
-print_info "Creating X11 detection script..."
-mkdir -p /opt/scripts
-cat > /opt/scripts/detect_x11_display.sh << 'EOF'
-#!/bin/bash
-# X11 Display Detection Script
-
-echo "🔍 Detecting working X11 display..."
-
-DISPLAY_CANDIDATES=":1 :0 :10 :2 :1003"
-WORKING_DISPLAY=""
-
-for disp in $DISPLAY_CANDIDATES; do
-    if DISPLAY="$disp" xset q >/dev/null 2>&1; then
-        WORKING_DISPLAY="$disp"
-        echo "✅ Found working display: $disp"
-        break
-    fi
-done
-
-if [ -n "$WORKING_DISPLAY" ]; then
-    export DISPLAY="$WORKING_DISPLAY"
-    export QT_X11_NO_MITSHM=1
-    export LIBGL_ALWAYS_INDIRECT=0
-    export QT_XCB_GL_INTEGRATION=none
-    export QT_QPA_PLATFORM=xcb
-    
-    echo "✅ X11 environment updated:"
-    echo "   DISPLAY=$DISPLAY"
-    echo "   Test with: xset q"
-    echo "   Start RViz2 with: rviz2"
-else
-    echo "❌ No working X11 display found"
-    echo "Available X11 sockets:"
-    ls -la /tmp/.X11-unix/ 2>/dev/null || echo "No X11 sockets found"
-fi
-EOF
-
-chmod +x /opt/scripts/detect_x11_display.sh
-print_success "X11 detection script created"
-
-# ========================================================================
-# Force UID/GID Mapping 
+# CRITICAL: Force UID/GID Mapping - No Alternatives
 # ========================================================================
 
 print_info "Setting up FORCED UID/GID mapping..."
@@ -91,6 +47,7 @@ if [ "$HOST_UID" != "$CURRENT_USER_UID" ] || [ "$HOST_GID" != "$CURRENT_USER_GID
     # FORCE update user UID/GID to match host exactly
     usermod -u "$HOST_UID" user 2>/dev/null || {
         print_error "CRITICAL: Failed to change user UID to $HOST_UID"
+        print_error "This will cause permission issues!"
     }
     
     groupmod -g "$HOST_GID" user 2>/dev/null || {
@@ -114,7 +71,7 @@ print_info "Auto-detecting working X11 display..."
 # Function to test X11 display
 test_display() {
     local disp="$1"
-    DISPLAY="$disp" xset q >/dev/null 2>&1
+    timeout 5 sh -c "DISPLAY='$disp' xset q" >/dev/null 2>&1
 }
 
 # List of displays to try in order of preference
@@ -136,7 +93,7 @@ if [ -n "$WORKING_DISPLAY" ]; then
     print_success "Set DISPLAY=$WORKING_DISPLAY"
 else
     # Fallback to environment or default
-    DISPLAY=${DISPLAY:-:0}
+    DISPLAY=${DISPLAY:-:1}
     print_warning "No working X11 display found, using fallback: $DISPLAY"
     export DISPLAY
 fi
@@ -175,7 +132,7 @@ fi
 print_success "X11 environment setup completed"
 
 # ========================================================================
-# Setup Proper .bashrc
+# CRITICAL: Setup Proper .bashrc
 # ========================================================================
 
 print_info "Setting up proper .bashrc configuration..."
@@ -200,11 +157,6 @@ export QT_X11_NO_MITSHM=1
 export LIBGL_ALWAYS_INDIRECT=0
 export QT_XCB_GL_INTEGRATION=none
 export QT_QPA_PLATFORM=xcb
-
-# X11 aliases for convenience
-alias test_x11='xset q && echo "✅ X11 working on \$DISPLAY"'
-alias fix_x11='source /opt/scripts/detect_x11_display.sh'
-alias start_rviz='test_x11 && rviz2'
 EOF
     
     chown "$HOST_UID:$HOST_GID" /home/user/.bashrc
@@ -212,7 +164,7 @@ EOF
     print_success "New .bashrc installed with X11 environment"
 else
     print_warning "Template .bashrc not found, creating minimal version..."
-    cat > /home/user/.bashrc << EOF
+    cat > /home/user/.bashrc << 'EOF'
 # Minimal .bashrc for ROS2 Agent Sim
 
 # Basic bash settings
@@ -226,10 +178,10 @@ PS1='\u@\h:\w\$ '
 
 # Development environment
 export DEV_DIR="/home/user/shared_volume"
-export PX4_DIR="\$DEV_DIR/PX4-Autopilot"
-export ROS2_WS="\$DEV_DIR/ros2_ws"
-export OSQP_SRC="\$DEV_DIR"
-export PATH="\$HOME/.local/bin:\$PATH"
+export PX4_DIR="$DEV_DIR/PX4-Autopilot"
+export ROS2_WS="$DEV_DIR/ros2_ws"
+export OSQP_SRC="$DEV_DIR"
+export PATH="$HOME/.local/bin:$PATH"
 
 # ROS2 Jazzy setup
 export ROS_DISTRO="jazzy"
@@ -238,22 +190,14 @@ if [ -f "/opt/ros/jazzy/setup.bash" ]; then
 fi
 
 # Source workspace setup if it exists
-if [ -f "\$ROS2_WS/install/setup.bash" ]; then
-    source "\$ROS2_WS/install/setup.bash"
+if [ -f "$ROS2_WS/install/setup.bash" ]; then
+    source "$ROS2_WS/install/setup.bash"
 fi
 
 # Gazebo environment
 export GZ_VERSION="harmonic"
 
-# X11 environment (auto-detected)
-export DISPLAY="$DISPLAY"
-export QT_X11_NO_MITSHM=1
-export LIBGL_ALWAYS_INDIRECT=0
-export QT_XCB_GL_INTEGRATION=none
-export QT_QPA_PLATFORM=xcb
-
 echo "🚀 ROS2 Agent Sim Environment Ready"
-echo "   DISPLAY: \$DISPLAY"
 EOF
     chown "$HOST_UID:$HOST_GID" /home/user/.bashrc
     chmod 644 /home/user/.bashrc
@@ -264,7 +208,7 @@ export ROS_DISTRO="jazzy"
 source "/opt/ros/jazzy/setup.bash"
 
 # ========================================================================
-# Shared Volume Setup with Correct Ownership
+# CRITICAL: Shared Volume Setup with Correct Ownership
 # ========================================================================
 
 print_info "Setting up shared volume with correct ownership..."
@@ -327,7 +271,26 @@ fi
 
 print_info "Switching to user context and executing command..."
 
-# Instead of using gosu or su with password, use sudo with NOPASSWD
+# For persistent container mode, check if we should just keep running
+if [ "$1" = "tail" ] && [ "$2" = "-f" ] && [ "$3" = "/dev/null" ]; then
+    print_success "Container initialized successfully in persistent mode"
+    print_info "Container will keep running in background"
+    print_info "Use 'docker exec -it ros2_agent_sim bash' to connect"
+    
+    # Final status check
+    print_info "=== CONTAINER READY ==="
+    print_info "User: user (UID: $(id -u user), GID: $(id -g user))"
+    print_info "ROS_DISTRO: $ROS_DISTRO"
+    print_info "DISPLAY: $DISPLAY"
+    print_info "X11 Test: $(test_display "$DISPLAY" && echo '✅ Working' || echo '❌ Not Working')"
+    print_info "Shared Volume: $([ -d '/home/user/shared_volume' ] && echo '✅ Ready' || echo '❌ Not Found')"
+    print_info "==================="
+    
+    exec "$@"
+fi
+
+# For interactive mode, switch to user and run command
+print_info "Switching to user context for interactive mode..."
 exec sudo -u user -H bash -c "
     # Test that .bashrc is working
     if [ -f ~/.bashrc ]; then
@@ -361,7 +324,7 @@ exec sudo -u user -H bash -c "
     echo \"User: \$(whoami) (UID: \$(id -u), GID: \$(id -g))\"
     echo \"ROS_DISTRO: \$ROS_DISTRO\"
     echo \"DISPLAY: \$DISPLAY\"
-    echo \"X11 Test: \$(xset q >/dev/null 2>&1 && echo '✅ Working' || echo '❌ Not Working')\"
+    echo \"X11 Test: \$(timeout 5 xset q >/dev/null 2>&1 && echo '✅ Working' || echo '❌ Not Working')\"
     echo \"AMENT_PREFIX_PATH: \${AMENT_PREFIX_PATH:-'Not set'}\"
     if [ -f 'install.sh' ]; then
         echo \"install.sh: \$(ls -l install.sh | awk '{print \$1, \$3, \$4}')\"
