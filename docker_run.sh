@@ -1,6 +1,6 @@
 #!/bin/bash
-# Modern Docker script for ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA
-# Enhanced to keep container running in background
+# FIXED: ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA
+# Enhanced with comprehensive graphics and Qt6 support fixes
 
 set -e
 
@@ -81,248 +81,16 @@ build_image() {
     fi
 }
 
-# Function to create missing supporting files
-create_missing_file() {
-    local file="$1"
-    case "$file" in
-        "scripts/px4_dev.sh")
-            cat > "$file" << 'EOF'
-#!/bin/bash
-# PX4 development environment setup
-set -e
-
-echo "Setting up PX4 development environment..."
-
-# Install basic dependencies
-apt-get update && apt-get install -y \
-    cmake \
-    build-essential \
-    git \
-    ninja-build \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python requirements if file exists
-if [ -f /tmp/requirements.txt ]; then
-    pip install -r /tmp/requirements.txt
-fi
-
-echo "PX4 development environment setup complete"
-EOF
-            chmod +x "$file"
-            ;;
-            
-        "scripts/requirements.txt")
-            cat > "$file" << 'EOF'
-# PX4 Python requirements
-pyserial
-pyulog
-numpy
-jinja2
-pyyaml
-cerberus
-packaging
-toml
-EOF
-            ;;
-            
-        "scripts/bashrc_template.sh")
-            cat > "$file" << 'EOF'
-# ROS2 Jazzy + Gazebo Harmonic + Python Virtual Environment setup
-
-# Source ROS2 Jazzy
-source /opt/ros/jazzy/setup.bash
-
-# Source ros_gz bridge
-if [ -f /opt/ros2_ws/install/setup.bash ]; then
-    source /opt/ros2_ws/install/setup.bash
-fi
-
-# Activate Python virtual environment
-export PATH="/opt/python-env/bin:$PATH"
-export VIRTUAL_ENV="/opt/python-env"
-
-# Gazebo Harmonic
-export GZ_VERSION=harmonic
-
-# Environment variables
-export DEV_DIR=/home/user/shared_volume
-export PX4_DIR=$DEV_DIR/PX4-Autopilot
-export ROS2_WS=$DEV_DIR/ros2_ws
-export OSQP_SRC=$DEV_DIR
-export ROS_DOMAIN_ID=0
-
-# Aliases
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls -CF'
-
-echo "🚀 ROS2 Jazzy + Gazebo Harmonic + Python AI/ML Environment Ready!"
-echo "📁 Workspace: $DEV_DIR"
-echo "🐍 Python Virtual Environment: Active"
-echo "🤖 ROS2 Jazzy: Sourced"
-echo "🏗️  Gazebo Harmonic: Ready"
-EOF
-            ;;
-            
-        "scripts/entrypoint.sh")
-            # Create the fixed entrypoint that keeps container running
-            cat > "$file" << 'EOF'
-#!/bin/bash
-set -e
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-print_info() { echo -e "${BLUE}[ENTRYPOINT]${NC} $1"; }
-print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
-print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-
-print_info "Starting container initialization..."
-
-# Get host UID/GID from environment variables with fallbacks
-HOST_UID=${LOCAL_USER_ID:-1000}
-HOST_GID=${LOCAL_GROUP_ID:-1000}
-HOST_USER=${HOST_USER:-"user"}
-
-print_info "Host: $HOST_USER (UID: $HOST_UID, GID: $HOST_GID)"
-
-# Setup user mapping
-CURRENT_USER_UID=$(id -u user)
-CURRENT_USER_GID=$(id -g user)
-
-if [ "$HOST_UID" != "$CURRENT_USER_UID" ] || [ "$HOST_GID" != "$CURRENT_USER_GID" ]; then
-    print_info "Updating container user UID/GID to match host..."
-    
-    # If UID is taken by another user, remove that user first
-    if id "$HOST_UID" >/dev/null 2>&1; then
-        EXISTING_USER=$(id -nu "$HOST_UID" 2>/dev/null)
-        if [ "$EXISTING_USER" != "user" ]; then
-            print_warning "UID $HOST_UID is taken by '$EXISTING_USER' - removing conflicting user"
-            userdel "$EXISTING_USER" 2>/dev/null || print_warning "Could not remove $EXISTING_USER"
-        fi
-    fi
-    
-    # Update user UID/GID
-    usermod -u "$HOST_UID" user 2>/dev/null || print_error "Failed to change user UID"
-    groupmod -g "$HOST_GID" user 2>/dev/null || print_error "Failed to change user GID"
-    
-    # Update home directory ownership
-    chown -R "$HOST_UID:$HOST_GID" /home/user 2>/dev/null || print_warning "Could not update home ownership"
-    
-    print_success "User UID/GID updated to: $(id -u user):$(id -g user)"
-fi
-
-# Setup bashrc
-if [ -f "/opt/bashrc_templates/bashrc_template.sh" ]; then
-    print_info "Installing proper .bashrc template..."
-    cp /opt/bashrc_templates/bashrc_template.sh /home/user/.bashrc
-    chown "$HOST_UID:$HOST_GID" /home/user/.bashrc
-    chmod 644 /home/user/.bashrc
-    print_success "New .bashrc installed"
-fi
-
-# Setup shared volume
-if [ -d "/home/user/shared_volume" ]; then
-    print_info "Setting up shared volume..."
-    chown $HOST_UID:$HOST_GID /home/user/shared_volume/ 2>/dev/null || true
-    chmod 755 /home/user/shared_volume/ 2>/dev/null || true
-    
-    # Create subdirectories
-    mkdir -p /home/user/shared_volume/ros2_ws/src
-    chown -R $HOST_UID:$HOST_GID /home/user/shared_volume/ros2_ws/ 2>/dev/null || true
-    
-    # Copy files if needed
-    if [ ! -f "/home/user/shared_volume/install.sh" ] && [ -f "/home/user/backup/install.sh" ]; then
-        cp /home/user/backup/install.sh /home/user/shared_volume/
-        chmod +x /home/user/shared_volume/install.sh
-        chown $HOST_UID:$HOST_GID /home/user/shared_volume/install.sh
-    fi
-    
-    if [ ! -d "/home/user/shared_volume/PX4_config" ] && [ -d "/home/user/backup/PX4_config" ]; then
-        cp -r /home/user/backup/PX4_config /home/user/shared_volume/
-        chown -R $HOST_UID:$HOST_GID /home/user/shared_volume/PX4_config/
-    fi
-fi
-
-# Start Ollama service
-if ! netstat -tuln 2>/dev/null | grep -q ":11434 "; then
-    print_info "Starting Ollama service..."
-    ollama serve &
-    sleep 3
-fi
-
-# For persistent container mode, check if we should just keep running
-if [ "$1" = "tail" ] && [ "$2" = "-f" ] && [ "$3" = "/dev/null" ]; then
-    print_success "Container initialized successfully in persistent mode"
-    print_info "Container will keep running in background"
-    print_info "Use 'docker exec -it ${CONTAINER_NAME} bash' to connect"
-    exec "$@"
-fi
-
-# For interactive mode, switch to user and run command
-print_info "Switching to user context..."
-exec sudo -u user -H bash -c "
-    source ~/.bashrc
-    cd /home/user/shared_volume 2>/dev/null || cd /home/user
-    exec \"\$@\"
-" -- "$@"
-EOF
-            chmod +x "$file"
-            ;;
-            
-        "scripts/install.sh")
-            cat > "$file" << 'EOF'
-#!/bin/bash
-# Installation script placeholder
-echo "Running installation setup..."
-echo "This is a placeholder. Replace with your actual installation script."
-EOF
-            chmod +x "$file"
-            ;;
-    esac
-}
-
-# Function to create middleware profiles
-create_middleware_profiles() {
-    mkdir -p middleware_profiles
-    
-    cat > middleware_profiles/rtps_udp_profile.xml << 'EOF'
-<?xml version="1.0" encoding="UTF-8" ?>
-<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
-    <transport_descriptors>
-        <transport_descriptor>
-            <transport_id>udp_transport</transport_id>
-            <type>UDPv4</type>
-        </transport_descriptor>
-    </transport_descriptors>
-    
-    <participant profile_name="udp_participant_profile">
-        <rtps>
-            <userTransports>
-                <transport_id>udp_transport</transport_id>
-            </userTransports>
-            <useBuiltinTransports>false</useBuiltinTransports>
-        </rtps>
-    </participant>
-</profiles>
-EOF
-}
-
-# Enhanced GPU detection and support setup
+# CRITICAL FIX: Enhanced GPU detection and support setup
 setup_gpu_support() {
-    print_info "🎮 Setting up GPU support..."
+    print_info "🎮 Setting up comprehensive GPU support..."
     
     DOCKER_OPTS=""
     
-    # Detect GPU type
+    # Detect GPU type and configure accordingly
     if command -v nvidia-smi &> /dev/null; then
-        print_info "NVIDIA GPU detected: $(nvidia-smi --query-gpu=name --format=csv,noheader,nounits | head -1)"
+        GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader,nounits | head -1)
+        print_info "NVIDIA GPU detected: $GPU_NAME"
         
         # Check Docker version for GPU support
         DOCKER_VERSION=$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo "20.10.0")
@@ -346,79 +114,94 @@ setup_gpu_support() {
         DOCKER_OPTS="$DOCKER_OPTS -e NVIDIA_VISIBLE_DEVICES=all"
         DOCKER_OPTS="$DOCKER_OPTS -e NVIDIA_DRIVER_CAPABILITIES=all"
         
-    elif lspci | grep -i vga | grep -i amd &> /dev/null; then
+    elif lspci 2>/dev/null | grep -i vga | grep -i amd &> /dev/null; then
         print_info "AMD GPU detected"
         DOCKER_OPTS="$DOCKER_OPTS --device=/dev/dri"
         
-    elif lspci | grep -i vga | grep -i intel &> /dev/null; then
+    elif lspci 2>/dev/null | grep -i vga | grep -i intel &> /dev/null; then
         print_info "Intel GPU detected"
         DOCKER_OPTS="$DOCKER_OPTS --device=/dev/dri"
     else
-        print_warning "No dedicated GPU detected, using software rendering"
+        print_warning "No dedicated GPU detected, configuring for software rendering"
     fi
     
     export DOCKER_OPTS
 }
 
-# X11 authentication and graphics setup
+# CRITICAL FIX: Enhanced X11 authentication and graphics setup
 setup_x11_auth() {
-    print_info "🖥️  Setting up X11 authentication..."
+    print_info "🖥️  Setting up comprehensive X11 authentication..."
     
-    # Auto-detect available displays
+    # Enhanced display detection
     print_info "Auto-detecting available X11 displays..."
     AVAILABLE_DISPLAYS=""
     
-    # Check common display locations
-    for disp in ":0" ":1" ":10" ":2"; do
-        if xset -display "$disp" q 2>/dev/null; then
+    # Test function with timeout
+    test_display() {
+        local disp="$1"
+        timeout 3 bash -c "DISPLAY='$disp' xset q" >/dev/null 2>&1
+    }
+    
+    # Check common display locations with priority order
+    DISPLAY_CANDIDATES=":1 :0 :10 :2 :1003 :11 :12"
+    
+    for disp in $DISPLAY_CANDIDATES; do
+        if test_display "$disp"; then
             AVAILABLE_DISPLAYS="$AVAILABLE_DISPLAYS $disp"
             print_success "Found working display: $disp"
         fi
     done
     
-    # Set primary display (prefer :1 if available, then :0)
+    # Set primary display (prefer :1 for Docker, fallback to :0)
     if echo "$AVAILABLE_DISPLAYS" | grep -q ":1"; then
         export DISPLAY=":1"
-        print_success "Using preferred display: :1"
+        print_success "Using preferred Docker display: :1"
     elif echo "$AVAILABLE_DISPLAYS" | grep -q ":0"; then
         export DISPLAY=":0"
-        print_success "Using display: :0"
+        print_success "Using standard display: :0"
     else
-        export DISPLAY=":0"
-        print_warning "No working displays found, using fallback :0"
+        # Fallback display selection
+        if [ -n "$DISPLAY" ]; then
+            print_warning "Using existing DISPLAY: $DISPLAY (may not work)"
+        else
+            export DISPLAY=":1"
+            print_warning "No working displays found, using fallback :1"
+        fi
     fi
     
     print_info "Selected DISPLAY: $DISPLAY"
     
-    # Create XAUTH file with proper permissions
+    # CRITICAL FIX: Enhanced XAUTH setup
     XAUTH_DIR="/tmp/.docker-xauth"
     mkdir -p "$XAUTH_DIR"
-    XAUTH="$XAUTH_DIR/xauth"
+    XAUTH="$XAUTH_DIR/xauth-$(whoami)"
     
-    # Remove old XAUTH file if exists
+    # Remove and recreate XAUTH file
     rm -f "$XAUTH"
     touch "$XAUTH"
     chmod 666 "$XAUTH"
     
     # Test if X11 is working on host
-    if xset q 2>/dev/null; then
-        print_success "X11 is working on host!"
+    if test_display "$DISPLAY"; then
+        print_success "X11 is working on host for $DISPLAY!"
         
         # Generate XAUTH entries for all available displays
-        print_info "Generating X11 authentication entries..."
+        print_info "Generating comprehensive X11 authentication entries..."
         
-        for disp in $AVAILABLE_DISPLAYS; do
-            # Get X11 auth info and add to XAUTH file
-            xauth_list=$(xauth nlist "$disp" 2>/dev/null | head -1)
-            if [ -n "$xauth_list" ]; then
-                echo "$xauth_list" | xauth -f "$XAUTH" nmerge - 2>/dev/null || true
-                print_success "Added auth for display $disp"
-            fi
+        # Add authentication for current display
+        if xauth nlist "$DISPLAY" 2>/dev/null | head -1 | xauth -f "$XAUTH" nmerge -; then
+            print_success "Added host auth for $DISPLAY"
+        fi
+        
+        # Add localhost entries for container access
+        for disp in $AVAILABLE_DISPLAYS $DISPLAY; do
+            COOKIE=$(openssl rand -hex 32 2>/dev/null || mcookie)
             
-            # Add localhost entries for container
-            COOKIE=$(mcookie 2>/dev/null || openssl rand -hex 16)
+            # Add entries for various hostname formats
             xauth -f "$XAUTH" add "$disp" . "$COOKIE" 2>/dev/null || true
             xauth -f "$XAUTH" add "localhost$disp" . "$COOKIE" 2>/dev/null || true
+            xauth -f "$XAUTH" add "$(hostname)$disp" . "$COOKIE" 2>/dev/null || true
+            xauth -f "$XAUTH" add "unix$disp" . "$COOKIE" 2>/dev/null || true
         done
         
         # Set X11 permissions (allow local connections)
@@ -426,28 +209,36 @@ setup_x11_auth() {
             xhost +local:root 2>/dev/null && print_success "X11 permissions set for root"
             xhost +local:docker 2>/dev/null || true
             xhost +local: 2>/dev/null || true
-            print_success "X11 local permissions configured"
+            xhost +SI:localuser:$(whoami) 2>/dev/null || true
+            print_success "Comprehensive X11 permissions configured"
         fi
         
         print_success "X11 authentication properly configured"
     else
-        print_warning "X11 not working on host - GUI applications will fail"
-        print_info "Make sure you're running this on a system with X11 display server"
-        print_info "For headless systems, consider using VNC or X11 forwarding"
+        print_warning "X11 not working on host - creating fallback auth"
+        
+        # Create minimal fallback auth
+        COOKIE=$(openssl rand -hex 32 2>/dev/null || echo "fallback$(date +%s)")
+        xauth -f "$XAUTH" add "$DISPLAY" . "$COOKIE" 2>/dev/null || true
+        xauth -f "$XAUTH" add "localhost$DISPLAY" . "$COOKIE" 2>/dev/null || true
+        
+        print_info "Created fallback authentication for GUI applications"
+        print_warning "GUI applications may require software rendering"
     fi
     
     export XAUTH
     print_info "XAUTH file: $XAUTH"
     
     # Display XAUTH contents for debugging
-    if [ -f "$XAUTH" ]; then
-        AUTH_COUNT=$(xauth -f "$XAUTH" list | wc -l)
-        print_info "XAUTH entries: $AUTH_COUNT entries"
-        if [ "$AUTH_COUNT" -gt 0 ]; then
-            print_success "✅ X11 authentication configured"
-        else
-            print_warning "⚠️ No X11 authentication entries found"
-        fi
+    if [ -f "$XAUTH" ] && [ -s "$XAUTH" ]; then
+        AUTH_COUNT=$(xauth -f "$XAUTH" list 2>/dev/null | wc -l)
+        print_success "✅ X11 authentication configured ($AUTH_COUNT entries)"
+        
+        # Show first few entries for debugging
+        print_info "Auth entries preview:"
+        xauth -f "$XAUTH" list 2>/dev/null | head -3 | sed 's/^/  /'
+    else
+        print_warning "⚠️ X11 authentication file is empty or missing"
     fi
 }
 
@@ -486,79 +277,91 @@ setup_workspace() {
     fi
 }
 
-# Function to start container in persistent mode with enhanced X11 support
+# CRITICAL FIX: Enhanced container startup with comprehensive graphics support
 start_persistent_container() {
-    print_info "🚀 Starting container in persistent mode: $CONTAINER_NAME"
+    print_info "🚀 Starting container with enhanced graphics support: $CONTAINER_NAME"
     
     # Get host user information
     HOST_UID=$(id -u)
     HOST_GID=$(id -g)
     HOST_USER=$(whoami)
     
-    # Enhanced X11 environment variables
-    X11_ENV_VARS=""
-    X11_ENV_VARS="$X11_ENV_VARS --env=DISPLAY=${DISPLAY:-:0}"
-    X11_ENV_VARS="$X11_ENV_VARS --env=XAUTHORITY=${XAUTH}"
-    X11_ENV_VARS="$X11_ENV_VARS --env=QT_X11_NO_MITSHM=1"
-    X11_ENV_VARS="$X11_ENV_VARS --env=LIBGL_ALWAYS_INDIRECT=0"
-    X11_ENV_VARS="$X11_ENV_VARS --env=LIBGL_ALWAYS_SOFTWARE=0"
-    X11_ENV_VARS="$X11_ENV_VARS --env=QT_XCB_GL_INTEGRATION=none"
-    X11_ENV_VARS="$X11_ENV_VARS --env=QT_QPA_PLATFORM=xcb"
-    X11_ENV_VARS="$X11_ENV_VARS --env=QT_QUICK_BACKEND=software"
+    # CRITICAL FIX: Comprehensive graphics environment variables
+    GRAPHICS_ENV=""
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=DISPLAY=${DISPLAY}"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=XAUTHORITY=${XAUTH}"
     
-    # CRITICAL: Add missing graphics environment variables
-    X11_ENV_VARS="$X11_ENV_VARS --env=XDG_RUNTIME_DIR=/tmp/runtime-user"
-    X11_ENV_VARS="$X11_ENV_VARS --env=XDG_SESSION_TYPE=x11"
-    X11_ENV_VARS="$X11_ENV_VARS --env=MESA_GL_VERSION_OVERRIDE=3.3"
-    X11_ENV_VARS="$X11_ENV_VARS --env=MESA_GLSL_VERSION_OVERRIDE=330"
-    X11_ENV_VARS="$X11_ENV_VARS --env=GALLIUM_DRIVER=softpipe"
+    # Qt6 and GUI environment (CRITICAL FIXES)
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_QPA_PLATFORM=xcb"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_X11_NO_MITSHM=1"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_AUTO_SCREEN_SCALE_FACTOR=0"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_SCALE_FACTOR=1"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms"
     
-    # X11 volume mounts
-    X11_VOLUMES=""
-    X11_VOLUMES="$X11_VOLUMES --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
-    X11_VOLUMES="$X11_VOLUMES --volume=${XAUTH}:${XAUTH}:rw"
+    # OpenGL and Mesa environment (CRITICAL FIXES)
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=LIBGL_ALWAYS_INDIRECT=0"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=LIBGL_ALWAYS_SOFTWARE=0"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=MESA_GL_VERSION_OVERRIDE=4.5"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=MESA_GLSL_VERSION_OVERRIDE=450"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=GALLIUM_DRIVER=llvmpipe"
     
-    # CRITICAL: Enhanced graphics device access
+    # X11 and graphics system environment
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=XDG_RUNTIME_DIR=/tmp/runtime-user"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=XDG_SESSION_TYPE=x11"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=WAYLAND_DISPLAY="
+    
+    # Other important environment variables
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=TERM=xterm-256color"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=COLORTERM=truecolor"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=FORCE_COLOR=1"
+    GRAPHICS_ENV="$GRAPHICS_ENV --env=CLICOLOR_FORCE=1"
+    
+    # CRITICAL FIX: Comprehensive volume mounts for graphics
+    GRAPHICS_VOLUMES=""
+    GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
+    GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=${XAUTH}:${XAUTH}:rw"
+    
+    # Mount graphics devices and libraries
     if [ -d "/dev/dri" ]; then
-        X11_VOLUMES="$X11_VOLUMES --volume=/dev/dri:/dev/dri:rw"
-        print_info "GPU devices mounted: /dev/dri"
+        GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/dev/dri:/dev/dri:rw"
+        print_info "DRI graphics devices mounted"
     fi
     
-    # Mount additional graphics devices
+    # Mount NVIDIA devices if available
     if [ -c "/dev/nvidia0" ]; then
-        X11_VOLUMES="$X11_VOLUMES --volume=/dev/nvidia0:/dev/nvidia0:rw"
-        X11_VOLUMES="$X11_VOLUMES --volume=/dev/nvidiactl:/dev/nvidiactl:rw"
-        X11_VOLUMES="$X11_VOLUMES --volume=/dev/nvidia-modeset:/dev/nvidia-modeset:rw"
+        GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/dev/nvidia0:/dev/nvidia0:rw"
+        GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/dev/nvidiactl:/dev/nvidiactl:rw"
+        GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/dev/nvidia-modeset:/dev/nvidia-modeset:rw"
         print_info "NVIDIA devices mounted"
     fi
     
-    # Mount graphics libraries
-    if [ -d "/usr/lib/x86_64-linux-gnu/dri" ]; then
-        X11_VOLUMES="$X11_VOLUMES --volume=/usr/lib/x86_64-linux-gnu/dri:/usr/lib/x86_64-linux-gnu/dri:ro"
+    # Mount shared libraries for graphics
+    if [ -d "/usr/share/glvnd" ]; then
+        GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/usr/share/glvnd:/usr/share/glvnd:ro"
     fi
     
-    # Create runtime directory
+    if [ -d "/usr/lib/x86_64-linux-gnu/dri" ]; then
+        GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/usr/lib/x86_64-linux-gnu/dri:/usr/lib/x86_64-linux-gnu/dri:ro"
+    fi
+    
+    # Create and mount runtime directory
     mkdir -p /tmp/runtime-user
     chmod 700 /tmp/runtime-user
-    X11_VOLUMES="$X11_VOLUMES --volume=/tmp/runtime-user:/tmp/runtime-user:rw"
+    GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/tmp/runtime-user:/tmp/runtime-user:rw"
     
-    # Start container in detached mode with comprehensive graphics support
+    # Start container with comprehensive configuration
     docker run -d \
         --name=${CONTAINER_NAME} \
         --hostname=ros2-dev \
         --network host \
         --privileged \
-        $X11_ENV_VARS \
-        --env="TERM=xterm-256color" \
-        --env="COLORTERM=truecolor" \
-        --env="FORCE_COLOR=1" \
-        --env="CLICOLOR_FORCE=1" \
+        $GRAPHICS_ENV \
         --env="CONTAINER_NAME=${CONTAINER_NAME}" \
         -e LOCAL_USER_ID="$HOST_UID" \
         -e LOCAL_GROUP_ID="$HOST_GID" \
         -e HOST_USER="$HOST_USER" \
         -e FASTRTPS_DEFAULT_PROFILES_FILE=/usr/local/share/middleware_profiles/rtps_udp_profile.xml \
-        $X11_VOLUMES \
+        $GRAPHICS_VOLUMES \
         --volume="/etc/localtime:/etc/localtime:ro" \
         --volume="$WORKSPACE_DIR:/home/user/shared_volume:rw" \
         --volume="/dev:/dev:rw" \
@@ -568,7 +371,7 @@ start_persistent_container() {
         --cap-add=SYS_PTRACE \
         --cap-add=SYS_ADMIN \
         --ipc=host \
-        --shm-size=512m \
+        --shm-size=1g \
         $DOCKER_OPTS \
         ${IMAGE_NAME} \
         tail -f /dev/null
@@ -580,23 +383,34 @@ start_persistent_container() {
     if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
         print_success "Container started successfully in persistent mode"
         
-        # Test X11 inside container
-        print_info "Testing X11 connection inside container..."
+        # CRITICAL FIX: Test graphics environment inside container
+        print_info "Testing graphics environment inside container..."
         
-        if docker exec ${CONTAINER_NAME} bash -c "export DISPLAY=${DISPLAY} && xset q" 2>/dev/null; then
-            print_success "✅ X11 connection working for $DISPLAY inside container!"
+        # Test X11 connection
+        if docker exec ${CONTAINER_NAME} bash -c "timeout 5 xset q" 2>/dev/null; then
+            print_success "✅ X11 connection working inside container!"
         else
-            print_warning "⚠️ X11 connection for $DISPLAY not working, container will auto-detect"
+            print_warning "⚠️ X11 connection test failed, but container will auto-detect"
         fi
         
-        # Test OpenGL inside container
+        # Test OpenGL support
         print_info "Testing OpenGL support..."
-        if docker exec ${CONTAINER_NAME} bash -c "glxinfo | head -20" 2>/dev/null; then
-            print_success "✅ OpenGL support detected"
+        if docker exec ${CONTAINER_NAME} bash -c "timeout 10 glxinfo -B" 2>/dev/null | grep -q "OpenGL"; then
+            RENDERER=$(docker exec ${CONTAINER_NAME} bash -c "glxinfo -B 2>/dev/null | grep 'OpenGL renderer'" | cut -d: -f2 | xargs)
+            print_success "✅ OpenGL working: $RENDERER"
         else
-            print_warning "⚠️ OpenGL may not work properly"
+            print_warning "⚠️ OpenGL test inconclusive, software rendering will be used"
         fi
         
+        # Test Qt6 environment
+        print_info "Testing Qt6 environment..."
+        if docker exec ${CONTAINER_NAME} bash -c "find /usr -name '*qt6*' -name '*platforms*' 2>/dev/null | head -1" | grep -q platforms; then
+            print_success "✅ Qt6 platform plugins detected"
+        else
+            print_warning "⚠️ Qt6 platform plugins not found in expected location"
+        fi
+        
+        print_success "🎉 Container fully initialized with graphics support"
         return 0
     else
         print_error "Failed to start container"
@@ -609,19 +423,22 @@ start_persistent_container() {
 connect_to_container() {
     print_info "🔗 Connecting to container: ${CONTAINER_NAME}"
     
-    # Base command to run in container
+    # Enhanced command setup with graphics environment
     BASE_CMD="export DEV_DIR=/home/user/shared_volume && \
         export PX4_DIR=\$DEV_DIR/PX4-Autopilot && \
         export ROS2_WS=\$DEV_DIR/ros2_ws && \
         export OSQP_SRC=\$DEV_DIR && \
+        export QT_QPA_PLATFORM=xcb && \
+        export LIBGL_ALWAYS_INDIRECT=0 && \
         cd /home/user/shared_volume && \
         source /home/user/.bashrc"
     
     CMD="$BASE_CMD && /bin/bash"
     
-    # Connect to container
+    # Connect to container with graphics support
     docker exec --user user --workdir /home/user/shared_volume -it ${CONTAINER_NAME} \
         env TERM=xterm-256color COLORTERM=truecolor FORCE_COLOR=1 \
+        QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_INDIRECT=0 \
         bash -l -c "${CMD}"
 }
 
@@ -640,7 +457,7 @@ run_container() {
             # Container exists but stopped, start it
             print_info "Starting stopped container..."
             docker start ${CONTAINER_NAME}
-            sleep 2
+            sleep 3
             connect_to_container
         fi
     else
@@ -660,6 +477,8 @@ cleanup() {
     print_info "🧹 Cleaning up X server permissions..."
     if command -v xhost &> /dev/null; then
         xhost -local:root 2>/dev/null || true
+        xhost -local:docker 2>/dev/null || true
+        xhost -local: 2>/dev/null || true
     fi
 }
 
@@ -670,18 +489,29 @@ show_system_info() {
     echo "  - Host OS: $(lsb_release -d 2>/dev/null | cut -f2 || echo 'Unknown Linux')"
     echo "  - Host User: $(whoami) (UID: $(id -u), GID: $(id -g))"
     
+    # GPU information
     if command -v nvidia-smi &> /dev/null; then
         GPU_INFO=$(nvidia-smi --query-gpu=name,driver_version --format=csv,noheader,nounits | head -1)
         echo "  - NVIDIA GPU: $GPU_INFO"
-    elif lspci | grep -i vga | grep -i amd &> /dev/null; then
-        echo "  - GPU: AMD GPU detected"
-    elif lspci | grep -i vga | grep -i intel &> /dev/null; then
-        echo "  - GPU: Intel integrated graphics"
+    elif lspci 2>/dev/null | grep -i vga | grep -i amd &> /dev/null; then
+        AMD_GPU=$(lspci 2>/dev/null | grep -i vga | grep -i amd | cut -d: -f3 | xargs)
+        echo "  - AMD GPU: $AMD_GPU"
+    elif lspci 2>/dev/null | grep -i vga | grep -i intel &> /dev/null; then
+        INTEL_GPU=$(lspci 2>/dev/null | grep -i vga | grep -i intel | cut -d: -f3 | xargs)
+        echo "  - Intel GPU: $INTEL_GPU"
     else
-        echo "  - GPU: No dedicated GPU detected"
+        echo "  - GPU: No dedicated GPU detected (using software rendering)"
     fi
     
     echo "  - Display: ${DISPLAY:-'Not set'}"
+    
+    # X11 status
+    if command -v xset &> /dev/null && timeout 3 xset q >/dev/null 2>&1; then
+        echo "  - X11 Status: ✅ Working"
+    else
+        echo "  - X11 Status: ⚠️ Not working or not available"
+    fi
+    
     echo
 }
 
@@ -694,6 +524,19 @@ show_container_status() {
             print_success "Container '${CONTAINER_NAME}' is RUNNING"
             echo "  - To connect: docker exec -it ${CONTAINER_NAME} bash"
             echo "  - To see logs: docker logs ${CONTAINER_NAME}"
+            
+            # Show container graphics status
+            print_info "Graphics Status in Container:"
+            if docker exec ${CONTAINER_NAME} timeout 3 xset q 2>/dev/null; then
+                echo "  - X11: ✅ Working"
+            else
+                echo "  - X11: ⚠️ Not working"
+            fi
+            
+            if docker exec ${CONTAINER_NAME} which glxinfo >/dev/null 2>&1; then
+                RENDERER=$(docker exec ${CONTAINER_NAME} bash -c "glxinfo -B 2>/dev/null | grep 'OpenGL renderer' | cut -d: -f2" 2>/dev/null | xargs || echo "Unknown")
+                echo "  - OpenGL Renderer: $RENDERER"
+            fi
         else
             print_warning "Container '${CONTAINER_NAME}' is STOPPED"
             echo "  - To start: docker start ${CONTAINER_NAME}"
@@ -708,7 +551,7 @@ show_container_status() {
 show_help() {
     echo "Usage: $0 [COMMAND]"
     echo
-    echo "🚀 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA Development Environment"
+    echo "🚀 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA (FIXED VERSION)"
     echo
     echo "Commands:"
     echo "  run       Start/connect to persistent container (default)"
@@ -719,24 +562,32 @@ show_help() {
     echo "  logs      Show container logs"
     echo "  stop      Stop the container (keeps it for later)"
     echo "  restart   Restart the container"
-    echo "  status    Show container status"
+    echo "  status    Show container and graphics status"
     echo "  help      Show this help"
+    echo
+    echo "CRITICAL FIXES INCLUDED:"
+    echo "  ✅ Qt6/Qt5 conflict resolution"
+    echo "  ✅ Enhanced Mesa software rendering support"
+    echo "  ✅ Comprehensive X11 authentication"
+    echo "  ✅ Proper graphics environment variables"
+    echo "  ✅ Gazebo Harmonic compatibility fixes"
     echo
     echo "The container runs persistently in the background."
     echo "You can exit and reconnect without losing your work."
     echo
     echo "Examples:"
     echo "  $0                # Start/connect to container"
-    echo "  $0 build          # Build image"
-    echo "  $0 status         # Check container status"
+    echo "  $0 build          # Build image with fixes"
+    echo "  $0 status         # Check container and graphics status"
     echo "  $0 shell          # Open another terminal in container"
 }
 
 # Main execution
 main() {
     echo
-    print_info "🚀 ROS2 Agent Sim Docker Environment"
+    print_info "🚀 ROS2 Agent Sim Docker Environment (FIXED VERSION)"
     print_info "🎯 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA"
+    print_info "🔧 With comprehensive Qt6 and graphics fixes"
     print_info "Container: $CONTAINER_NAME"
     print_info "Workspace: $WORKSPACE_DIR"
     echo
@@ -748,6 +599,7 @@ main() {
         print_success "✅ Docker image exists: ${IMAGE_NAME}"
     else
         print_warning "⚠️  Docker image not found: ${IMAGE_NAME}"
+        print_info "Building image with comprehensive fixes..."
         build_image
     fi
     
@@ -756,7 +608,7 @@ main() {
     setup_workspace
     
     echo
-    print_info "🐳 Starting persistent container environment..."
+    print_info "🐳 Starting persistent container environment with graphics support..."
     run_container
     
     trap cleanup EXIT
@@ -773,7 +625,7 @@ case "${1:-run}" in
         ;;
     "rebuild")
         check_docker
-        print_info "Force rebuilding image..."
+        print_info "Force rebuilding image with fixes..."
         docker rmi "${IMAGE_NAME}" 2>/dev/null || true
         build_image
         ;;

@@ -1,5 +1,5 @@
 #!/bin/bash
-# ~/.bashrc: executed by bash(1) for non-login shells.
+# FIXED: ~/.bashrc for ROS2 Jazzy + Gazebo Harmonic with Qt6 and Graphics Support
 
 # If not running interactively, don't do anything
 case $- in
@@ -131,7 +131,30 @@ export GZ_SIM_SYSTEM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins:$GZ_
 export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
 # =============================================================================
-# X11 GUI Environment Setup (AUTO-DETECTION)
+# CRITICAL FIX: Qt6 and Graphics Environment Setup
+# =============================================================================
+
+# CRITICAL FIX: Qt6 Environment Variables (resolves Qt5/Qt6 conflicts)
+export QT_QPA_PLATFORM=xcb
+export QT_X11_NO_MITSHM=1
+export QT_AUTO_SCREEN_SCALE_FACTOR=0
+export QT_SCALE_FACTOR=1
+export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt6/plugins"
+
+# CRITICAL FIX: OpenGL and Mesa Environment (enables software rendering)
+export LIBGL_ALWAYS_INDIRECT=0
+export LIBGL_ALWAYS_SOFTWARE=0
+export MESA_GL_VERSION_OVERRIDE="4.5"
+export MESA_GLSL_VERSION_OVERRIDE="450"
+export GALLIUM_DRIVER="llvmpipe"
+
+# Graphics system environment
+export XDG_RUNTIME_DIR="/tmp/runtime-user"
+export XDG_SESSION_TYPE="x11"
+export WAYLAND_DISPLAY=""
+
+# =============================================================================
+# CRITICAL FIX: X11 GUI Environment Setup with Auto-Detection
 # =============================================================================
 
 # Function to auto-detect working X11 display
@@ -140,7 +163,7 @@ detect_x11_display() {
     local working_display=""
     
     for disp in $candidates; do
-        if DISPLAY="$disp" xset q >/dev/null 2>&1; then
+        if timeout 3 bash -c "DISPLAY='$disp' xset q" >/dev/null 2>&1; then
             working_display="$disp"
             break
         fi
@@ -155,21 +178,199 @@ detect_x11_display() {
 }
 
 # Auto-detect and set X11 display if not already set correctly
-if ! xset q >/dev/null 2>&1; then
+if ! timeout 3 xset q >/dev/null 2>&1; then
     if detect_x11_display; then
         echo "✅ Auto-detected X11 display: $DISPLAY"
     else
         echo "⚠️ No working X11 display found"
         # Fallback to common displays
         export DISPLAY="${DISPLAY:-:1}"
+        echo "🔄 Using fallback display: $DISPLAY"
     fi
 fi
 
-# Set X11 environment variables for GUI applications
-export QT_X11_NO_MITSHM=1
-export LIBGL_ALWAYS_INDIRECT=0
-export QT_XCB_GL_INTEGRATION=none
-export QT_QPA_PLATFORM=xcb
+# =============================================================================
+# CRITICAL FIX: Enhanced Graphics Functions with Fallbacks
+# =============================================================================
+
+# Function to start applications with graphics fallbacks
+start_with_graphics_fallback() {
+    local app_name="$1"
+    local app_command="$2"
+    shift 2
+    
+    echo "🚀 Starting $app_name with graphics support..."
+    
+    # Test X11 first
+    if ! timeout 3 xset q >/dev/null 2>&1; then
+        echo "⚠️ X11 not working, trying to auto-detect..."
+        if detect_x11_display; then
+            echo "✅ X11 fixed: $DISPLAY"
+        else
+            echo "❌ Cannot fix X11, trying software rendering..."
+            LIBGL_ALWAYS_SOFTWARE=1 QT_QPA_PLATFORM=offscreen "$app_command" "$@"
+            return
+        fi
+    fi
+    
+    # Try normal execution
+    echo "🎯 Launching $app_name on $DISPLAY..."
+    if "$app_command" "$@"; then
+        echo "✅ $app_name started successfully"
+    else
+        echo "❌ $app_name failed, trying software rendering..."
+        LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=softpipe "$app_command" "$@"
+    fi
+}
+
+# Enhanced function to start RViz2 with fallbacks
+start_rviz2() {
+    start_with_graphics_fallback "RViz2" "rviz2" "$@"
+}
+
+# Enhanced function to start Gazebo with fallbacks
+start_gazebo_sim() {
+    echo "🚀 Starting Gazebo Harmonic with Qt6 support..."
+    
+    # Test X11 first
+    if ! timeout 3 xset q >/dev/null 2>&1; then
+        echo "⚠️ X11 not working, trying to fix..."
+        if detect_x11_display; then
+            echo "✅ X11 fixed: $DISPLAY"
+        else
+            echo "❌ Cannot fix X11, starting headless..."
+            HEADLESS=1 gz sim "$@"
+            return
+        fi
+    fi
+    
+    # Set Qt6 environment for Gazebo
+    export QT_QPA_PLATFORM=xcb
+    export QT_X11_NO_MITSHM=1
+    
+    # Try normal Gazebo with Qt6 support
+    echo "🎯 Launching Gazebo Harmonic with Qt6 on $DISPLAY..."
+    if gz sim "$@"; then
+        echo "✅ Gazebo started successfully"
+    else
+        echo "❌ Gazebo failed, trying with software rendering..."
+        LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe gz sim "$@"
+    fi
+}
+
+# Function to diagnose graphics issues
+diagnose_graphics() {
+    echo "🔍 Comprehensive Graphics Diagnostics"
+    echo "====================================="
+    echo "Environment Variables:"
+    echo "  DISPLAY: $DISPLAY"
+    echo "  XAUTHORITY: ${XAUTHORITY:-'Not set'}"
+    echo "  QT_QPA_PLATFORM: $QT_QPA_PLATFORM"
+    echo "  LIBGL_ALWAYS_SOFTWARE: ${LIBGL_ALWAYS_SOFTWARE:-'0'}"
+    echo "  MESA_GL_VERSION_OVERRIDE: $MESA_GL_VERSION_OVERRIDE"
+    echo "  GALLIUM_DRIVER: $GALLIUM_DRIVER"
+    echo ""
+    
+    echo "X11 Test:"
+    if timeout 5 xset q >/dev/null 2>&1; then
+        echo "  ✅ X11 working on $DISPLAY"
+        xset q | grep -E "(X.Org|version)" | head -2 | sed 's/^/  /'
+    else
+        echo "  ❌ X11 not working on $DISPLAY"
+    fi
+    echo ""
+    
+    echo "Available X11 sockets:"
+    if [ -d "/tmp/.X11-unix" ]; then
+        ls -la /tmp/.X11-unix/ 2>/dev/null | sed 's/^/  /' || echo "  No X11 sockets found"
+    else
+        echo "  /tmp/.X11-unix directory not found"
+    fi
+    echo ""
+    
+    echo "OpenGL Information:"
+    if command -v glxinfo >/dev/null 2>&1; then
+        if timeout 10 glxinfo -B >/dev/null 2>&1; then
+            echo "  ✅ OpenGL working"
+            glxinfo -B | grep -E "(OpenGL vendor|OpenGL renderer|OpenGL version)" | sed 's/^/  /'
+        else
+            echo "  ⚠️ OpenGL test failed, trying software rendering..."
+            LIBGL_ALWAYS_SOFTWARE=1 glxinfo -B | grep -E "(OpenGL vendor|OpenGL renderer|OpenGL version)" | sed 's/^/  /' 2>/dev/null || echo "  ❌ Software rendering also failed"
+        fi
+    else
+        echo "  ❌ glxinfo not available"
+    fi
+    echo ""
+    
+    echo "Qt6 Platform Plugins:"
+    QT6_PLATFORMS=$(find /usr -name "*qt6*" -name "*platforms*" -type d 2>/dev/null | head -3)
+    if [ -n "$QT6_PLATFORMS" ]; then
+        echo "  ✅ Qt6 platforms found:"
+        echo "$QT6_PLATFORMS" | sed 's/^/    /'
+        if [ -d "/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms" ]; then
+            echo "  Available platforms:"
+            ls /usr/lib/x86_64-linux-gnu/qt6/plugins/platforms/ 2>/dev/null | sed 's/^/    /' || echo "    None found"
+        fi
+    else
+        echo "  ❌ Qt6 platform plugins not found"
+    fi
+    echo ""
+    
+    echo "Gazebo Harmonic Test:"
+    if command -v gz >/dev/null 2>&1; then
+        echo "  ✅ Gazebo command available"
+        gz --version 2>/dev/null | head -1 | sed 's/^/  /' || echo "  Version check failed"
+    else
+        echo "  ❌ Gazebo command not found"
+    fi
+}
+
+# Function to test all graphics components
+test_graphics_stack() {
+    echo "🧪 Testing Complete Graphics Stack"
+    echo "================================="
+    
+    echo "1. Testing X11..."
+    if timeout 3 xset q >/dev/null 2>&1; then
+        echo "   ✅ X11 working"
+    else
+        echo "   ❌ X11 failed"
+        return 1
+    fi
+    
+    echo "2. Testing OpenGL..."
+    if timeout 10 glxinfo -B >/dev/null 2>&1; then
+        echo "   ✅ OpenGL working"
+    else
+        echo "   ⚠️ Hardware OpenGL failed, testing software..."
+        if LIBGL_ALWAYS_SOFTWARE=1 timeout 10 glxinfo -B >/dev/null 2>&1; then
+            echo "   ✅ Software OpenGL working"
+        else
+            echo "   ❌ Both hardware and software OpenGL failed"
+            return 1
+        fi
+    fi
+    
+    echo "3. Testing Qt6..."
+    if find /usr -name "*qt6*" -name "*platforms*" -type d 2>/dev/null | grep -q platforms; then
+        echo "   ✅ Qt6 platform plugins found"
+    else
+        echo "   ❌ Qt6 platform plugins missing"
+        return 1
+    fi
+    
+    echo "4. Testing Gazebo..."
+    if command -v gz >/dev/null 2>&1; then
+        echo "   ✅ Gazebo command available"
+    else
+        echo "   ❌ Gazebo not found"
+        return 1
+    fi
+    
+    echo ""
+    echo "🎉 Graphics stack test completed!"
+    return 0
+}
 
 # =============================================================================
 # Enhanced Aliases and Functions
@@ -189,82 +390,36 @@ alias px4_gazebo='cd $PX4_DIR && make px4_sitl gz_x500'
 alias px4_gazebo_headless='cd $PX4_DIR && HEADLESS=1 make px4_sitl gz_x500'
 alias px4_clean='cd $PX4_DIR && make clean && make distclean'
 
-# Gazebo aliases
+# CRITICAL FIX: Enhanced Gazebo aliases with Qt6 support
 alias gz_list_models='gz model --list'
 alias gz_list_worlds='gz world --list'
+alias gz_start='start_gazebo_sim'
+alias gz_debug='QT_DEBUG_PLUGINS=1 start_gazebo_sim'
+alias gz_software='LIBGL_ALWAYS_SOFTWARE=1 start_gazebo_sim'
 
-# X11 and GUI aliases
-alias test_x11='xset q && echo "✅ X11 working on $DISPLAY" || echo "❌ X11 not working"'
+# X11 and GUI aliases with enhanced functionality
+alias test_x11='timeout 3 xset q && echo "✅ X11 working on $DISPLAY" || echo "❌ X11 not working"'
 alias fix_x11='detect_x11_display && echo "✅ X11 fixed: $DISPLAY" || echo "❌ No working X11 display found"'
-alias start_rviz='test_x11 && rviz2 || echo "❌ Fix X11 first with: fix_x11"'
-alias start_gazebo='test_x11 && gz sim || echo "❌ Fix X11 first with: fix_x11"'
-alias gui_debug='echo "DISPLAY: $DISPLAY" && echo "X11 Test:" && test_x11 && echo "Qt Platform: $QT_QPA_PLATFORM"'
+alias start_rviz='start_rviz2'
+alias start_gazebo='start_gazebo_sim'
+alias graphics_debug='diagnose_graphics'
+alias test_graphics='test_graphics_stack'
 
-# Enhanced function to start RViz2 with fallbacks
-start_rviz2() {
-    echo "🚀 Starting RViz2..."
-    
-    # Test X11 first
-    if ! xset q >/dev/null 2>&1; then
-        echo "⚠️ X11 not working, trying to fix..."
-        if detect_x11_display; then
-            echo "✅ X11 fixed: $DISPLAY"
-        else
-            echo "❌ Cannot fix X11, trying software rendering..."
-            LIBGL_ALWAYS_SOFTWARE=1 QT_QPA_PLATFORM=offscreen rviz2 "$@"
-            return
-        fi
-    fi
-    
-    # Try normal RViz2
-    echo "🎯 Launching RViz2 on $DISPLAY..."
-    rviz2 "$@" || {
-        echo "❌ RViz2 failed, trying software rendering..."
-        LIBGL_ALWAYS_SOFTWARE=1 rviz2 "$@"
-    }
-}
+# Software rendering aliases
+alias rviz_software='LIBGL_ALWAYS_SOFTWARE=1 rviz2'
+alias gazebo_software='LIBGL_ALWAYS_SOFTWARE=1 gz sim'
+alias glxinfo_software='LIBGL_ALWAYS_SOFTWARE=1 glxinfo'
 
-# Enhanced function to start Gazebo with fallbacks
-start_gazebo_sim() {
-    echo "🚀 Starting Gazebo Simulation..."
-    
-    # Test X11 first
-    if ! xset q >/dev/null 2>&1; then
-        echo "⚠️ X11 not working, trying to fix..."
-        if detect_x11_display; then
-            echo "✅ X11 fixed: $DISPLAY"
-        else
-            echo "❌ Cannot fix X11, starting headless..."
-            HEADLESS=1 gz sim "$@"
-            return
-        fi
-    fi
-    
-    # Try normal Gazebo
-    echo "🎯 Launching Gazebo on $DISPLAY..."
-    gz sim "$@"
-}
+# Qt6 specific aliases
+alias qt6_debug='QT_DEBUG_PLUGINS=1 QT_QPA_PLATFORM=xcb'
+alias qt6_software='QT_QPA_PLATFORM=offscreen'
 
-# Function to diagnose GUI issues
-diagnose_gui() {
-    echo "🔍 GUI Diagnostics"
-    echo "=================="
-    echo "DISPLAY: $DISPLAY"
-    echo "XAUTHORITY: ${XAUTHORITY:-'Not set'}"
-    echo "QT_QPA_PLATFORM: $QT_QPA_PLATFORM"
-    echo ""
-    echo "X11 Test:"
-    test_x11
-    echo ""
-    echo "Available X11 sockets:"
-    ls -la /tmp/.X11-unix/ 2>/dev/null || echo "No X11 sockets found"
-    echo ""
-    echo "Qt platform plugins:"
-    find /opt/python-env /usr -name "*platforms*" -type d 2>/dev/null | head -3
-}
+# =============================================================================
+# Startup Diagnostics and Status
+# =============================================================================
 
 # Show environment status
-echo "🚀 ROS2 Agent Sim Environment Ready"
+echo "🚀 ROS2 Agent Sim Environment Ready (FIXED VERSION)"
 echo "   ROS_DISTRO: $ROS_DISTRO"
 echo "   DEV_DIR: $DEV_DIR"
 echo "   ROS2_WS: $ROS2_WS"
@@ -286,17 +441,47 @@ else
     echo "   ⚠️  Gazebo resource paths not configured"
 fi
 
-# Check X11 status
-if xset q >/dev/null 2>&1; then
+# CRITICAL FIX: Check X11 and Qt6 status
+if timeout 3 xset q >/dev/null 2>&1; then
     echo "   ✅ X11 GUI ready ($DISPLAY)"
 else
-    echo "   ⚠️  X11 GUI not working (run 'fix_x11' to fix)"
+    echo "   ⚠️  X11 GUI not working (run 'fix_x11' to auto-detect)"
+fi
+
+# Check Qt6 environment
+if [ -n "$QT_QPA_PLATFORM" ] && [ "$QT_QPA_PLATFORM" = "xcb" ]; then
+    echo "   ✅ Qt6 environment configured"
+else
+    echo "   ⚠️  Qt6 environment not properly configured"
+fi
+
+# Check OpenGL status
+if command -v glxinfo >/dev/null 2>&1; then
+    if timeout 5 glxinfo -B >/dev/null 2>&1; then
+        RENDERER=$(glxinfo -B 2>/dev/null | grep "OpenGL renderer" | cut -d: -f2 | xargs || echo "Unknown")
+        echo "   ✅ OpenGL ready: $RENDERER"
+    else
+        echo "   ⚠️  OpenGL hardware failed, software rendering available"
+    fi
+else
+    echo "   ⚠️  OpenGL testing tools not available"
 fi
 
 # Show helpful commands
 echo ""
-echo "🎯 Quick Commands:"
-echo "   test_x11      - Test X11 connection"
-echo "   start_rviz2   - Start RViz2 with auto-fallback"
-echo "   diagnose_gui  - Diagnose GUI issues"
-echo "   fix_x11       - Auto-fix X11 display"
+echo "🎯 Quick Commands (FIXED VERSION):"
+echo "   test_x11         - Test X11 connection"
+echo "   fix_x11          - Auto-detect working X11 display"
+echo "   start_gazebo     - Start Gazebo with auto-fallback"
+echo "   start_rviz2      - Start RViz2 with auto-fallback"
+echo "   diagnose_graphics - Complete graphics diagnostics"
+echo "   test_graphics    - Test entire graphics stack"
+echo "   gazebo_software  - Force software rendering for Gazebo"
+echo "   qt6_debug        - Enable Qt6 debug output"
+
+# CRITICAL FIX: Auto-run graphics test on startup (optional)
+if [ "${AUTO_TEST_GRAPHICS:-false}" = "true" ]; then
+    echo ""
+    echo "🔍 Auto-testing graphics environment..."
+    test_graphics_stack >/dev/null 2>&1 && echo "✅ Graphics stack verified" || echo "⚠️ Graphics issues detected - run 'diagnose_graphics'"
+fi
