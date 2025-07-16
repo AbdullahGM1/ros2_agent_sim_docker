@@ -361,7 +361,6 @@ setup_gpu_support() {
 }
 
 # X11 authentication and graphics setup
-# Enhanced X11 authentication and graphics setup
 setup_x11_auth() {
     print_info "🖥️  Setting up X11 authentication..."
     
@@ -449,6 +448,41 @@ setup_x11_auth() {
         else
             print_warning "⚠️ No X11 authentication entries found"
         fi
+    fi
+}
+
+# Function to setup workspace directory
+setup_workspace() {
+    print_info "📁 Setting up workspace directory: $WORKSPACE_DIR"
+    
+    # Create workspace directory if it doesn't exist
+    if [ ! -d "$WORKSPACE_DIR" ]; then
+        mkdir -p "$WORKSPACE_DIR"
+        print_success "Created workspace directory: $WORKSPACE_DIR"
+    else
+        print_info "Workspace directory already exists: $WORKSPACE_DIR"
+    fi
+    
+    # Set proper permissions
+    HOST_UID=$(id -u)
+    HOST_GID=$(id -g)
+    
+    if [ -d "$WORKSPACE_DIR" ]; then
+        # Fix ownership to current user
+        chown -R "$HOST_UID:$HOST_GID" "$WORKSPACE_DIR" 2>/dev/null || {
+            print_warning "Could not change ownership of workspace directory"
+            print_info "This may cause permission issues inside the container"
+        }
+        
+        # Make sure it's writable
+        chmod 755 "$WORKSPACE_DIR" 2>/dev/null || {
+            print_warning "Could not set permissions on workspace directory"
+        }
+        
+        print_success "Workspace directory setup completed"
+    else
+        print_error "Failed to create workspace directory"
+        exit 1
     fi
 }
 
