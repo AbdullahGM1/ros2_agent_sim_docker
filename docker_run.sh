@@ -415,6 +415,41 @@ setup_x11_auth() {
     print_success "X11 setup completed"
 }
 
+# Function to setup workspace directory
+setup_workspace() {
+    print_info "📁 Setting up workspace directory: $WORKSPACE_DIR"
+    
+    # Create workspace directory if it doesn't exist
+    if [ ! -d "$WORKSPACE_DIR" ]; then
+        mkdir -p "$WORKSPACE_DIR"
+        print_success "Created workspace directory: $WORKSPACE_DIR"
+    else
+        print_info "Workspace directory already exists: $WORKSPACE_DIR"
+    fi
+    
+    # Set proper permissions
+    HOST_UID=$(id -u)
+    HOST_GID=$(id -g)
+    
+    if [ -d "$WORKSPACE_DIR" ]; then
+        # Fix ownership to current user
+        chown -R "$HOST_UID:$HOST_GID" "$WORKSPACE_DIR" 2>/dev/null || {
+            print_warning "Could not change ownership of workspace directory"
+            print_info "This may cause permission issues inside the container"
+        }
+        
+        # Make sure it's writable
+        chmod 755 "$WORKSPACE_DIR" 2>/dev/null || {
+            print_warning "Could not set permissions on workspace directory"
+        }
+        
+        print_success "Workspace directory setup completed"
+    else
+        print_error "Failed to create workspace directory"
+        exit 1
+    fi
+}
+
 # Function to start container in persistent mode
 start_persistent_container() {
     print_info "🚀 Starting container in persistent mode: $CONTAINER_NAME"
@@ -466,6 +501,26 @@ start_persistent_container() {
         docker logs ${CONTAINER_NAME}
         return 1
     fi
+}
+
+# Function to connect to running container
+connect_to_container() {
+    print_info "🔗 Connecting to container: ${CONTAINER_NAME}"
+    
+    # Base command to run in container
+    BASE_CMD="export DEV_DIR=/home/user/shared_volume && \
+        export PX4_DIR=\$DEV_DIR/PX4-Autopilot && \
+        export ROS2_WS=\$DEV_DIR/ros2_ws && \
+        export OSQP_SRC=\$DEV_DIR && \
+        cd /home/user/shared_volume && \
+        source /home/user/.bashrc"
+    
+    CMD="$BASE_CMD && /bin/bash"
+    
+    # Connect to container
+    docker exec --user user --workdir /home/user/shared_volume -it ${CONTAINER_NAME} \
+        env TERM=xterm-256color COLORTERM=truecolor FORCE_COLOR=1 \
+        bash -l -c "${CMD}"
 }
 
 # Function to run or connect to container
