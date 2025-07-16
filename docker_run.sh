@@ -364,58 +364,55 @@ setup_gpu_support() {
 setup_x11_auth() {
     print_info "🖥️  Setting up X11 authentication..."
     
-    # Ensure DISPLAY is set
+    # Try to detect display
     if [ -z "$DISPLAY" ]; then
-        export DISPLAY=:0
+        # Try common display values
+        for disp in ":0" ":1" ":10"; do
+            if xset -display $disp q 2>/dev/null; then
+                export DISPLAY=$disp
+                print_success "Found working display: $DISPLAY"
+                break
+            fi
+        done
+        
+        # If still no display, use default
+        if [ -z "$DISPLAY" ]; then
+            export DISPLAY=:0
+            print_warning "No working display found, using default :0"
+        fi
     fi
     
     print_info "Display set to: $DISPLAY"
     
-    # Allow X server connections (the key fix)
-    if command -v xhost &> /dev/null; then
-        xhost +local:root 2>/dev/null || print_warning "Could not set X11 permissions"
-        xhost +local:docker 2>/dev/null || true
-        print_success "X11 permissions configured"
+    # Test if X11 is actually working
+    if xset q 2>/dev/null; then
+        print_success "X11 is working!"
+        
+        # Set X11 permissions
+        if command -v xhost &> /dev/null; then
+            xhost +local:root 2>/dev/null && print_success "X11 permissions set"
+            xhost +local:docker 2>/dev/null || true
+        fi
     else
-        print_warning "xhost command not found. Installing..."
-        sudo apt-get update && sudo apt-get install -y x11-xserver-utils 2>/dev/null || true
+        print_warning "X11 not working, but continuing anyway"
+        print_info "Simulation will run headlessly (no GUI windows)"
     fi
     
-    # Setup XAUTH file (simpler version)
+    # Setup XAUTH file
     XAUTH=/tmp/.docker.xauth
-    if [ -n "$DISPLAY" ]; then
-        # Create auth file if it doesn't exist
-        if [ ! -f $XAUTH ]; then
-            touch $XAUTH
-            chmod 666 $XAUTH
-        fi
-        
-        # Add current display to auth file
+    touch $XAUTH
+    chmod 666 $XAUTH
+    
+    # Add auth if possible
+    if command -v xauth &> /dev/null && xset q 2>/dev/null; then
         xauth_list=$(xauth nlist $DISPLAY 2>/dev/null | sed -e 's/^..../ffff/' || true)
         if [ -n "$xauth_list" ]; then
             echo $xauth_list | xauth -f $XAUTH nmerge - 2>/dev/null || true
-            print_success "X11 authentication configured"
         fi
     fi
     
     export XAUTH
-}
-
-# Function to setup workspace
-setup_workspace() {
-    print_info "📁 Setting up workspace directory: $WORKSPACE_DIR"
-    
-    if [ ! -d $WORKSPACE_DIR ]; then
-        mkdir -p $WORKSPACE_DIR
-        print_success "Created workspace directory: $WORKSPACE_DIR"
-    fi
-    
-    # Fix permissions
-    HOST_UID=$(id -u)
-    HOST_GID=$(id -g)
-    if [ -d "$WORKSPACE_DIR" ]; then
-        chown -R $(whoami):$(whoami) "$WORKSPACE_DIR" 2>/dev/null || true
-    fi
+    print_success "X11 setup completed"
 }
 
 # Function to start container in persistent mode
