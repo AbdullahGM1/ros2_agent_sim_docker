@@ -16,6 +16,50 @@ print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_info "Starting container initialization..."
 
 # ========================================================================
+# Create X11 Detection Script (AS ROOT - BEFORE USER SWITCH)
+# ========================================================================
+
+print_info "Creating X11 detection script..."
+mkdir -p /opt/scripts
+cat > /opt/scripts/detect_x11_display.sh << 'EOF'
+#!/bin/bash
+# X11 Display Detection Script
+
+echo "🔍 Detecting working X11 display..."
+
+DISPLAY_CANDIDATES=":1 :0 :10 :2 :1003"
+WORKING_DISPLAY=""
+
+for disp in $DISPLAY_CANDIDATES; do
+    if DISPLAY="$disp" xset q >/dev/null 2>&1; then
+        WORKING_DISPLAY="$disp"
+        echo "✅ Found working display: $disp"
+        break
+    fi
+done
+
+if [ -n "$WORKING_DISPLAY" ]; then
+    export DISPLAY="$WORKING_DISPLAY"
+    export QT_X11_NO_MITSHM=1
+    export LIBGL_ALWAYS_INDIRECT=0
+    export QT_XCB_GL_INTEGRATION=none
+    export QT_QPA_PLATFORM=xcb
+    
+    echo "✅ X11 environment updated:"
+    echo "   DISPLAY=$DISPLAY"
+    echo "   Test with: xset q"
+    echo "   Start RViz2 with: rviz2"
+else
+    echo "❌ No working X11 display found"
+    echo "Available X11 sockets:"
+    ls -la /tmp/.X11-unix/ 2>/dev/null || echo "No X11 sockets found"
+fi
+EOF
+
+chmod +x /opt/scripts/detect_x11_display.sh
+print_success "X11 detection script created"
+
+# ========================================================================
 # Force UID/GID Mapping 
 # ========================================================================
 
@@ -25,9 +69,8 @@ print_info "Setting up FORCED UID/GID mapping..."
 HOST_UID=${LOCAL_USER_ID:-1000}
 HOST_GID=${LOCAL_GROUP_ID:-1000}
 HOST_USER=${HOST_USER:-"user"}
-UBUNTU_VERSION=${UBUNTU_VERSION:-"unknown"}
 
-print_info "Host: $HOST_USER (UID: $HOST_UID, GID: $HOST_GID) on Ubuntu $UBUNTU_VERSION"
+print_info "Host: $HOST_USER (UID: $HOST_UID, GID: $HOST_GID)"
 
 # Check current container user UID/GID
 CURRENT_USER_UID=$(id -u user)
@@ -48,7 +91,6 @@ if [ "$HOST_UID" != "$CURRENT_USER_UID" ] || [ "$HOST_GID" != "$CURRENT_USER_GID
     # FORCE update user UID/GID to match host exactly
     usermod -u "$HOST_UID" user 2>/dev/null || {
         print_error "CRITICAL: Failed to change user UID to $HOST_UID"
-        print_error "This will cause permission issues!"
     }
     
     groupmod -g "$HOST_GID" user 2>/dev/null || {
@@ -220,49 +262,6 @@ fi
 # Set ROS2 Jazzy environment
 export ROS_DISTRO="jazzy"
 source "/opt/ros/jazzy/setup.bash"
-
-# ========================================================================
-# Create X11 Detection Script
-# ========================================================================
-
-print_info "Creating X11 detection script..."
-mkdir -p /opt/scripts
-cat > /opt/scripts/detect_x11_display.sh << 'EOF'
-#!/bin/bash
-# X11 Display Detection Script
-
-echo "🔍 Detecting working X11 display..."
-
-DISPLAY_CANDIDATES=":1 :0 :10 :2 :1003"
-WORKING_DISPLAY=""
-
-for disp in $DISPLAY_CANDIDATES; do
-    if DISPLAY="$disp" xset q >/dev/null 2>&1; then
-        WORKING_DISPLAY="$disp"
-        echo "✅ Found working display: $disp"
-        break
-    fi
-done
-
-if [ -n "$WORKING_DISPLAY" ]; then
-    export DISPLAY="$WORKING_DISPLAY"
-    export QT_X11_NO_MITSHM=1
-    export LIBGL_ALWAYS_INDIRECT=0
-    export QT_XCB_GL_INTEGRATION=none
-    export QT_QPA_PLATFORM=xcb
-    
-    echo "✅ X11 environment updated:"
-    echo "   DISPLAY=$DISPLAY"
-    echo "   Test with: xset q"
-    echo "   Start RViz2 with: rviz2"
-else
-    echo "❌ No working X11 display found"
-    echo "Available X11 sockets:"
-    ls -la /tmp/.X11-unix/ 2>/dev/null || echo "No X11 sockets found"
-fi
-EOF
-
-chmod +x /opt/scripts/detect_x11_display.sh
 
 # ========================================================================
 # Shared Volume Setup with Correct Ownership
