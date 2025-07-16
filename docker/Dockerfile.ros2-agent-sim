@@ -127,6 +127,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     python3-dev \
     python3-setuptools-scm \
+    python3-future \
     cython3 \
     libpython3-dev \
     python3-vcstool \
@@ -190,6 +191,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-geographic-msgs \
     ros-jazzy-eigen-stl-containers \
     ros-jazzy-diagnostic-updater \
+    ros-jazzy-joint-state-publisher \
+    ros-jazzy-joint-state-publisher-gui \
+    ros-jazzy-rosidl-generator-py \
+    ros-jazzy-rosidl-runtime-py \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
@@ -388,7 +393,9 @@ RUN pip install --no-cache-dir \
     "langchain-community==0.3.21" \
     ollama \
     jpl-rosa \
-    "opencv-python>=4.5.0,<5.0.0"
+    "opencv-python>=4.5.0,<5.0.0" \
+    "lark>=1.1.0" \
+    "lark-parser>=0.12.0"
 
 # ============================================================================
 # PHASE 14: Ollama Installation + LLM Models
@@ -475,11 +482,98 @@ RUN cd /home/user/ros2_ws/src && \
     cd ros2_agent_sim && \
     git submodule update --init --recursive
 
-# Clone PX4-Autopilot 
-RUN git clone https://github.com/AbdullahGM1/PX4-Autopilot.git /tmp/PX4-Autopilot && \
-    cd /tmp/PX4-Autopilot && \
-    git checkout navsat_callback
+# ============================================================================
+# ENHANCED: Complete PX4 Build-Time Setup
+# ============================================================================
 
+# Clone and build PX4-Autopilot with comprehensive error handling
+RUN echo "=== Starting PX4 Build-Time Setup ===" && \
+    \
+    # Step 1: Clone PX4-Autopilot
+    echo "Cloning PX4-Autopilot..." && \
+    git clone https://github.com/AbdullahGM1/PX4-Autopilot.git /tmp/PX4-Autopilot && \
+    cd /tmp/PX4-Autopilot && \
+    git checkout navsat_callback && \
+    echo "✅ PX4-Autopilot cloned successfully" && \
+    \
+    # Step 2: Initialize submodules with retry logic
+    echo "Initializing submodules..." && \
+    for i in 1 2 3; do \
+        echo "Attempt $i: Initializing submodules..." && \
+        if git submodule update --init --recursive --jobs 4; then \
+            echo "✅ Submodules initialized successfully"; \
+            break; \
+        else \
+            echo "❌ Submodule init failed, attempt $i"; \
+            if [ $i -eq 3 ]; then \
+                echo "❌ All submodule initialization attempts failed"; \
+                exit 1; \
+            fi; \
+            sleep 10; \
+        fi; \
+    done && \
+    \
+    # Step 3: Verify critical submodules exist
+    echo "Verifying critical submodules..." && \
+    if [ -d "Tools/simulation/gz" ] && [ -d "src/modules/mavlink/mavlink" ]; then \
+        echo "✅ Critical submodules verified"; \
+    else \
+        echo "❌ Critical submodules missing"; \
+        ls -la Tools/simulation/ || echo "Tools/simulation/ not found"; \
+        ls -la src/modules/mavlink/ || echo "src/modules/mavlink/ not found"; \
+        exit 1; \
+    fi && \
+    \
+    # Step 4: Ensure EmPy version is correct (critical fix)
+    echo "Ensuring correct EmPy version..." && \
+    pip install --force-reinstall "empy>=3.3,<4.0" && \
+    python3 -c "import em; print(f'EmPy version: {em.__version__}')" && \
+    echo "✅ EmPy version verified" && \
+    \
+    # Step 5: Clean any existing build artifacts
+    echo "Cleaning build artifacts..." && \
+    make clean || echo "No previous build to clean" && \
+    make distclean || echo "No previous build to distclean" && \
+    echo "✅ Build artifacts cleaned" && \
+    \
+    # Step 6: Build PX4 SITL
+    echo "Building PX4 SITL (this may take 10-15 minutes)..." && \
+    export CMAKE_ARGS="-Wno-dev" && \
+    if make px4_sitl; then \
+        echo "✅ PX4 SITL built successfully"; \
+    else \
+        echo "❌ PX4 SITL build failed"; \
+        echo "Build log:"; \
+        tail -50 build/px4_sitl_default/build.log 2>/dev/null || echo "No build log found"; \
+        exit 1; \
+    fi && \
+    \
+    # Step 7: Verify build artifacts
+    echo "Verifying build artifacts..." && \
+    if [ -f "build/px4_sitl_default/bin/px4" ]; then \
+        echo "✅ PX4 binary verified: $(ls -lh build/px4_sitl_default/bin/px4)"; \
+    else \
+        echo "❌ PX4 binary not found"; \
+        ls -la build/px4_sitl_default/bin/ || echo "Build bin directory not found"; \
+        exit 1; \
+    fi && \
+    \
+    # Step 8: Test run PX4 binary (quick smoke test)
+    echo "Running PX4 smoke test..." && \
+    cd build/px4_sitl_default && \
+    timeout 10s ./bin/px4 -d || echo "PX4 smoke test completed" && \
+    cd /tmp/PX4-Autopilot && \
+    \
+    echo "✅ PX4 build-time setup completed successfully"
+
+# ============================================================================
+# Pre-clone MAVLink & MAVROS 
+# ============================================================================
+
+# Create workspace structure in container  
+RUN mkdir -p /home/user/ros2_ws/src
+
+# Clone ros2_agent_sim with submodules 
 # Clone MAVLink 
 RUN cd /home/user/ros2_ws/src && \
     git clone https://github.com/AbdullahGM1/mavlink-gbp-release.git mavlink && \

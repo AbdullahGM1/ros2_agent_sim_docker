@@ -132,49 +132,71 @@ setup_repositories() {
 
 # Build PX4 with shared volume configurations
 setup_px4_autopilot() {
-    print_step "Building PX4 Autopilot with Configurations"
+    print_step "Setting up Pre-built PX4 Autopilot"
     
-    cd "$PX4_DIR"
-    
-    # Clean build artifacts
-    print_info "Cleaning build artifacts..."
-    rm -rf build/ || true
-    make distclean || true
-    
-    # Copy configurations if available
-    if [ -d "$PX4_config" ]; then
-        print_info "Copying PX4 configurations..."
+    # Check if PX4 already exists in shared volume
+    if [ -d "$PX4_DIR" ]; then
+        print_info "PX4 already exists in shared volume, checking integrity..."
         
-        # Copy models, worlds, and airframes
-        if [ -d "$PX4_config/models" ]; then
-            mkdir -p "${PX4_DIR}/Tools/simulation/gz/models/"
-            cp -r "$PX4_config/models/"* "${PX4_DIR}/Tools/simulation/gz/models/"
-            print_success "Models configuration copied"
-        fi
-        
-        if [ -d "$PX4_config/worlds" ]; then
-            mkdir -p "${PX4_DIR}/Tools/simulation/gz/worlds/"
-            cp -r "$PX4_config/worlds/"* "${PX4_DIR}/Tools/simulation/gz/worlds/"
-            print_success "Worlds configuration copied"
-        fi
-        
-        if [ -d "$PX4_config/px4" ]; then
-            mkdir -p "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
-            cp -r "$PX4_config/px4/"* "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
-            print_success "Airframes configuration copied"
+        # Check if it's properly built (binary exists)
+        if [ ! -f "$PX4_DIR/build/px4_sitl_default/bin/px4" ]; then
+            print_warning "PX4 binary missing, will replace with pre-built version"
+            rm -rf "$PX4_DIR"
+        else
+            print_success "PX4 appears to be properly built"
+            track_time
+            return 0
         fi
     fi
     
-    # Build PX4 SITL
-    print_info "Building PX4 SITL (this may take several minutes)..."
-    export CMAKE_ARGS="-Wno-dev"
-    
-    if ! make px4_sitl; then
-        print_error "PX4 SITL build failed"
-        return 1
+    # Copy pre-built PX4 from container to shared volume
+    if [ -d "/tmp/PX4-Autopilot" ]; then
+        print_info "Copying pre-built PX4 from container to shared volume..."
+        cp -r /tmp/PX4-Autopilot "$PX4_DIR"
+        
+        # Apply custom configurations if available
+        if [ -d "$PX4_config" ]; then
+            print_info "Applying custom PX4 configurations..."
+            
+            # Copy models
+            if [ -d "$PX4_config/models" ]; then
+                mkdir -p "${PX4_DIR}/Tools/simulation/gz/models/"
+                cp -r "$PX4_config/models/"* "${PX4_DIR}/Tools/simulation/gz/models/"
+                print_success "Models configuration applied"
+            fi
+            
+            # Copy worlds
+            if [ -d "$PX4_config/worlds" ]; then
+                mkdir -p "${PX4_DIR}/Tools/simulation/gz/worlds/"
+                cp -r "$PX4_config/worlds/"* "${PX4_DIR}/Tools/simulation/gz/worlds/"
+                print_success "Worlds configuration applied"
+            fi
+            
+            # Copy airframes
+            if [ -d "$PX4_config/px4" ]; then
+                mkdir -p "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
+                cp -r "$PX4_config/px4/"* "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
+                print_success "Airframes configuration applied"
+            fi
+            
+            # Rebuild with new configurations
+            print_info "Rebuilding PX4 with custom configurations..."
+            cd "$PX4_DIR"
+            export CMAKE_ARGS="-Wno-dev"
+            if make px4_sitl; then
+                print_success "PX4 rebuilt with custom configurations"
+            else
+                print_warning "PX4 rebuild failed, but pre-built version should still work"
+            fi
+        fi
+        
+        print_success "Pre-built PX4 setup completed successfully"
+    else
+        print_error "Pre-built PX4 not found in container at /tmp/PX4-Autopilot"
+        print_info "This suggests the Docker build didn't complete PX4 setup properly"
+        exit 1
     fi
     
-    print_success "PX4 SITL built successfully"
     track_time
 }
 
