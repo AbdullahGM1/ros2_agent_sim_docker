@@ -625,156 +625,9 @@ EOF
     track_time
 }
 
-# CRITICAL FIX: Graphics verification step (Ubuntu 24.04)
-verify_graphics_installation() {
-    print_step "Verifying Graphics Installation (Ubuntu 24.04)"
-    
-    print_info "Running comprehensive graphics verification for Ubuntu 24.04..."
-    
-    # Test Gazebo specifically
-    print_info "Testing Gazebo Harmonic..."
-    if timeout 10 gz --version >/dev/null 2>&1; then
-        GZ_VERSION_FULL=$(gz --version 2>/dev/null | head -1)
-        print_success "Gazebo verified: $GZ_VERSION_FULL"
-    else
-        print_error "Gazebo command test failed"
-        return 1
-    fi
-    
-    # Test critical ROS2 packages
-    print_info "Testing ROS2 packages..."
-    CRITICAL_PACKAGES="ros2_agent drone_sim"
-    for pkg in $CRITICAL_PACKAGES; do
-        if ros2 pkg list | grep -q "$pkg" 2>/dev/null; then
-            print_success "Package verified: $pkg"
-        else
-            print_warning "Package not found: $pkg (may need manual installation)"
-        fi
-    done
-    
-    # Create test scripts for user (Ubuntu 24.04 specific)
-    print_info "Creating Ubuntu 24.04 test scripts..."
-    
-    cat > "$DEV_DIR/test_graphics.sh" << 'EOF'
-#!/bin/bash
-# Graphics test script - automatically generated for Ubuntu 24.04
-
-echo "🔍 Graphics Environment Test (Ubuntu 24.04)"
-echo "=========================================="
-
-echo -n "Ubuntu Version: "
-lsb_release -rs 2>/dev/null || echo "Unknown"
-
-echo -n "X11 Test: "
-if timeout 5 xset q >/dev/null 2>&1; then
-    echo "✅ PASS (Display: $DISPLAY)"
-else
-    echo "❌ FAIL"
-fi
-
-echo -n "OpenGL Test: "
-if timeout 10 glxinfo -B >/dev/null 2>&1; then
-    RENDERER=$(glxinfo -B 2>/dev/null | grep "OpenGL renderer" | cut -d: -f2 | xargs)
-    echo "✅ PASS ($RENDERER)"
-elif LIBGL_ALWAYS_SOFTWARE=1 timeout 10 glxinfo -B >/dev/null 2>&1; then
-    echo "⚠️ SOFTWARE ONLY"
-else
-    echo "❌ FAIL"
-fi
-
-echo -n "Qt6 Test: "
-if find /usr -name "*qt6*" -name "*platforms*" 2>/dev/null | grep -q .; then
-    echo "✅ PASS"
-else
-    echo "❌ FAIL"
-fi
-
-echo -n "Gazebo Test: "
-if timeout 10 gz --version >/dev/null 2>&1; then
-    echo "✅ PASS"
-else
-    echo "❌ FAIL"
-fi
-
-echo -n "ROS2 Test: "
-if ros2 pkg list >/dev/null 2>&1; then
-    echo "✅ PASS"
-else
-    echo "❌ FAIL"
-fi
-
-echo ""
-echo "Ubuntu 24.04 Packages:"
-echo "  libgl1: $(dpkg -l 2>/dev/null | grep -c '^ii.*libgl1[^-]' || echo '0')"
-echo "  libglx-mesa0: $(dpkg -l 2>/dev/null | grep -c '^ii.*libglx-mesa0' || echo '0')"
-echo "  libglut3.12: $(dpkg -l 2>/dev/null | grep -c '^ii.*libglut3.12' || echo '0')"
-echo "  qt6-base: $(dpkg -l 2>/dev/null | grep -c '^ii.*qt6-base' || echo '0')"
-
-echo ""
-echo "Deprecated Packages (should be 0):"
-echo "  libgl1-mesa-glx: $(dpkg -l 2>/dev/null | grep -c '^ii.*libgl1-mesa-glx' || echo '0')"
-echo "  freeglut3: $(dpkg -l 2>/dev/null | grep -c '^ii.*freeglut3[^-]' || echo '0')"
-
-echo ""
-echo "Environment Variables:"
-echo "  DISPLAY: $DISPLAY"
-echo "  QT_QPA_PLATFORM: $QT_QPA_PLATFORM"
-echo "  LIBGL_ALWAYS_SOFTWARE: ${LIBGL_ALWAYS_SOFTWARE:-0}"
-echo "  MESA_GL_VERSION_OVERRIDE: $MESA_GL_VERSION_OVERRIDE"
-EOF
-    
-    chmod +x "$DEV_DIR/test_graphics.sh"
-    chown $(whoami):$(whoami) "$DEV_DIR/test_graphics.sh" 2>/dev/null || true
-    
-    print_success "Test script created: $DEV_DIR/test_graphics.sh"
-    
-    # Create Ubuntu 24.04 package checker
-    cat > "$DEV_DIR/check_ubuntu_packages.sh" << 'EOF'
-#!/bin/bash
-# Ubuntu 24.04 package compatibility checker
-
-echo "🔍 Ubuntu 24.04 Package Compatibility Check"
-echo "==========================================="
-
-UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "unknown")
-echo "Ubuntu Version: $UBUNTU_VERSION"
-
-echo ""
-echo "Required Ubuntu 24.04 packages:"
-for pkg in libgl1 libglx-mesa0 libglut3.12 qt6-base-dev; do
-    if dpkg -l | grep -q "^ii.*$pkg"; then
-        echo "  ✅ $pkg: INSTALLED"
-    else
-        echo "  ❌ $pkg: MISSING"
-    fi
-done
-
-echo ""
-echo "Deprecated packages (should not be present):"
-for pkg in libgl1-mesa-glx freeglut3; do
-    if dpkg -l | grep -q "^ii.*$pkg"; then
-        echo "  ⚠️ $pkg: PRESENT (may cause conflicts)"
-    else
-        echo "  ✅ $pkg: NOT PRESENT (good)"
-    fi
-done
-
-echo ""
-echo "Graphics libraries:"
-find /usr/lib -name "libGL*.so*" -o -name "libglut*.so*" -o -name "libglx*.so*" 2>/dev/null | head -10
-EOF
-    
-    chmod +x "$DEV_DIR/check_ubuntu_packages.sh"
-    chown $(whoami):$(whoami) "$DEV_DIR/check_ubuntu_packages.sh" 2>/dev/null || true
-    
-    print_success "Package checker created: $DEV_DIR/check_ubuntu_packages.sh"
-    
-    track_time
-}
-
 # Main execution
 main() {
-    print_header "ROS2 Agent Sim - FIXED Runtime Setup (Ubuntu 24.04)"
+    print_header "ROS2 Agent Sim - Runtime Setup (Ubuntu 24.04)"
     print_info "Log file: ${LOG_FILE}"
     print_info "Installation started at $(date)"
     print_info "FIXES: Ubuntu 24.04 compatibility, Qt6 conflicts, graphics support, enhanced error handling"
@@ -788,11 +641,10 @@ main() {
     handle_dependencies
     build_workspace
     finalize_installation
-    verify_graphics_installation  # Enhanced: Ubuntu 24.04 verification
     
     # Final summary
     local total_time=$(( $(date +%s) - start_time ))
-    print_header "FIXED Runtime Setup Completed Successfully (Ubuntu 24.04)!"
+    print_header "Runtime Setup Completed Successfully (Ubuntu 24.04)!"
     print_success "Total setup time: ${total_time}s"
     print_info "Log file saved: ${LOG_FILE}"
     
@@ -803,14 +655,6 @@ main() {
     echo -e "${CYAN}4. Launch simulation:${NC}     ros2 launch drone_sim drone.launch.py"
     echo -e "${CYAN}5. Run ROS2 agent:${NC}        ros2 run ros2_agent ros2_agent_node"
     echo -e "${CYAN}6. Start Gazebo manually:${NC}  gz sim (or gazebo_start alias)"
-    
-    echo -e "\n${YELLOW}🔧 Troubleshooting commands (Ubuntu 24.04):${NC}"
-    echo -e "${CYAN}- Graphics issues:${NC}        diagnose_graphics"
-    echo -e "${CYAN}- Software rendering:${NC}     gazebo_software"
-    echo -e "${CYAN}- Qt6 debug:${NC}              QT_DEBUG_PLUGINS=1 gz sim"
-    echo -e "${CYAN}- Test environment:${NC}       graphics_test"
-    echo -e "${CYAN}- Check packages:${NC}         check_packages_ubuntu"
-    echo -e "${CYAN}- Check deprecated:${NC}       check_deprecated"
     
     print_success "🎯 Installation completed with comprehensive Ubuntu 24.04 support!"
     
