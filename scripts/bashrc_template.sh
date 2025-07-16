@@ -130,6 +130,51 @@ export GZ_SIM_RESOURCE_PATH=/home/user/shared_volume/PX4-Autopilot/Tools/simulat
 export GZ_SIM_SYSTEM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins:$GZ_SIM_SYSTEM_PLUGIN_PATH
 export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
+# =============================================================================
+# X11 GUI Environment Setup (AUTO-DETECTION)
+# =============================================================================
+
+# Function to auto-detect working X11 display
+detect_x11_display() {
+    local candidates=":1 :0 :10 :2 :1003"
+    local working_display=""
+    
+    for disp in $candidates; do
+        if DISPLAY="$disp" xset q >/dev/null 2>&1; then
+            working_display="$disp"
+            break
+        fi
+    done
+    
+    if [ -n "$working_display" ]; then
+        export DISPLAY="$working_display"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Auto-detect and set X11 display if not already set correctly
+if ! xset q >/dev/null 2>&1; then
+    if detect_x11_display; then
+        echo "✅ Auto-detected X11 display: $DISPLAY"
+    else
+        echo "⚠️ No working X11 display found"
+        # Fallback to common displays
+        export DISPLAY="${DISPLAY:-:1}"
+    fi
+fi
+
+# Set X11 environment variables for GUI applications
+export QT_X11_NO_MITSHM=1
+export LIBGL_ALWAYS_INDIRECT=0
+export QT_XCB_GL_INTEGRATION=none
+export QT_QPA_PLATFORM=xcb
+
+# =============================================================================
+# Enhanced Aliases and Functions
+# =============================================================================
+
 # Add useful aliases for ROS2 development
 alias rosdep_install='rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy'
 alias colcon_build='colcon build --executor sequential --event-handlers console_direct+'
@@ -148,6 +193,76 @@ alias px4_clean='cd $PX4_DIR && make clean && make distclean'
 alias gz_list_models='gz model --list'
 alias gz_list_worlds='gz world --list'
 
+# X11 and GUI aliases
+alias test_x11='xset q && echo "✅ X11 working on $DISPLAY" || echo "❌ X11 not working"'
+alias fix_x11='detect_x11_display && echo "✅ X11 fixed: $DISPLAY" || echo "❌ No working X11 display found"'
+alias start_rviz='test_x11 && rviz2 || echo "❌ Fix X11 first with: fix_x11"'
+alias start_gazebo='test_x11 && gz sim || echo "❌ Fix X11 first with: fix_x11"'
+alias gui_debug='echo "DISPLAY: $DISPLAY" && echo "X11 Test:" && test_x11 && echo "Qt Platform: $QT_QPA_PLATFORM"'
+
+# Enhanced function to start RViz2 with fallbacks
+start_rviz2() {
+    echo "🚀 Starting RViz2..."
+    
+    # Test X11 first
+    if ! xset q >/dev/null 2>&1; then
+        echo "⚠️ X11 not working, trying to fix..."
+        if detect_x11_display; then
+            echo "✅ X11 fixed: $DISPLAY"
+        else
+            echo "❌ Cannot fix X11, trying software rendering..."
+            LIBGL_ALWAYS_SOFTWARE=1 QT_QPA_PLATFORM=offscreen rviz2 "$@"
+            return
+        fi
+    fi
+    
+    # Try normal RViz2
+    echo "🎯 Launching RViz2 on $DISPLAY..."
+    rviz2 "$@" || {
+        echo "❌ RViz2 failed, trying software rendering..."
+        LIBGL_ALWAYS_SOFTWARE=1 rviz2 "$@"
+    }
+}
+
+# Enhanced function to start Gazebo with fallbacks
+start_gazebo_sim() {
+    echo "🚀 Starting Gazebo Simulation..."
+    
+    # Test X11 first
+    if ! xset q >/dev/null 2>&1; then
+        echo "⚠️ X11 not working, trying to fix..."
+        if detect_x11_display; then
+            echo "✅ X11 fixed: $DISPLAY"
+        else
+            echo "❌ Cannot fix X11, starting headless..."
+            HEADLESS=1 gz sim "$@"
+            return
+        fi
+    fi
+    
+    # Try normal Gazebo
+    echo "🎯 Launching Gazebo on $DISPLAY..."
+    gz sim "$@"
+}
+
+# Function to diagnose GUI issues
+diagnose_gui() {
+    echo "🔍 GUI Diagnostics"
+    echo "=================="
+    echo "DISPLAY: $DISPLAY"
+    echo "XAUTHORITY: ${XAUTHORITY:-'Not set'}"
+    echo "QT_QPA_PLATFORM: $QT_QPA_PLATFORM"
+    echo ""
+    echo "X11 Test:"
+    test_x11
+    echo ""
+    echo "Available X11 sockets:"
+    ls -la /tmp/.X11-unix/ 2>/dev/null || echo "No X11 sockets found"
+    echo ""
+    echo "Qt platform plugins:"
+    find /opt/python-env /usr -name "*platforms*" -type d 2>/dev/null | head -3
+}
+
 # Show environment status
 echo "🚀 ROS2 Agent Sim Environment Ready"
 echo "   ROS_DISTRO: $ROS_DISTRO"
@@ -155,6 +270,7 @@ echo "   DEV_DIR: $DEV_DIR"
 echo "   ROS2_WS: $ROS2_WS"
 echo "   PX4_DIR: $PX4_DIR"
 echo "   GZ_VERSION: $GZ_VERSION"
+echo "   DISPLAY: $DISPLAY"
 
 # Check if workspaces are properly sourced
 if [ -n "$AMENT_PREFIX_PATH" ]; then
@@ -169,3 +285,18 @@ if [ -n "$GZ_SIM_RESOURCE_PATH" ]; then
 else
     echo "   ⚠️  Gazebo resource paths not configured"
 fi
+
+# Check X11 status
+if xset q >/dev/null 2>&1; then
+    echo "   ✅ X11 GUI ready ($DISPLAY)"
+else
+    echo "   ⚠️  X11 GUI not working (run 'fix_x11' to fix)"
+fi
+
+# Show helpful commands
+echo ""
+echo "🎯 Quick Commands:"
+echo "   test_x11      - Test X11 connection"
+echo "   start_rviz2   - Start RViz2 with auto-fallback"
+echo "   diagnose_gui  - Diagnose GUI issues"
+echo "   fix_x11       - Auto-fix X11 display"

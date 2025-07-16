@@ -64,6 +64,75 @@ else
 fi
 
 # ========================================================================
+# AUTO-DETECT WORKING X11 DISPLAY
+# ========================================================================
+
+print_info "Auto-detecting working X11 display..."
+
+# Function to test X11 display
+test_display() {
+    local disp="$1"
+    DISPLAY="$disp" xset q >/dev/null 2>&1
+}
+
+# List of displays to try in order of preference
+DISPLAY_CANDIDATES=":1 :0 :10 :2 :1003"
+WORKING_DISPLAY=""
+
+# Find working display
+for disp in $DISPLAY_CANDIDATES; do
+    if test_display "$disp"; then
+        WORKING_DISPLAY="$disp"
+        print_success "Found working X11 display: $disp"
+        break
+    fi
+done
+
+# Set the working display or fallback
+if [ -n "$WORKING_DISPLAY" ]; then
+    export DISPLAY="$WORKING_DISPLAY"
+    print_success "Set DISPLAY=$WORKING_DISPLAY"
+else
+    # Fallback to environment or default
+    DISPLAY=${DISPLAY:-:0}
+    print_warning "No working X11 display found, using fallback: $DISPLAY"
+    export DISPLAY
+fi
+
+# ========================================================================
+# Setup X11 Environment Variables
+# ========================================================================
+
+print_info "Setting up X11 environment..."
+
+# Set Qt environment for GUI applications
+export QT_X11_NO_MITSHM=1
+export LIBGL_ALWAYS_INDIRECT=0
+export QT_XCB_GL_INTEGRATION=none
+export QT_QPA_PLATFORM=xcb
+
+# Fix XAUTH if needed
+if [ -n "$XAUTHORITY" ] && [ -f "$XAUTHORITY" ]; then
+    if [ ! -s "$XAUTHORITY" ]; then
+        print_warning "XAUTH file is empty, creating authentication"
+        COOKIE=$(mcookie 2>/dev/null || openssl rand -hex 16)
+        xauth -f "$XAUTHORITY" add "$DISPLAY" . "$COOKIE" 2>/dev/null || true
+        xauth -f "$XAUTHORITY" add "localhost$DISPLAY" . "$COOKIE" 2>/dev/null || true
+        chown "$HOST_UID:$HOST_GID" "$XAUTHORITY" 2>/dev/null || true
+    fi
+    print_success "X11 authentication configured"
+fi
+
+# Test X11 connection
+if test_display "$DISPLAY"; then
+    print_success "✅ X11 connection verified for $DISPLAY"
+else
+    print_warning "⚠️ X11 connection not working for $DISPLAY"
+fi
+
+print_success "X11 environment setup completed"
+
+# ========================================================================
 # Setup Proper .bashrc
 # ========================================================================
 
@@ -79,12 +148,29 @@ fi
 if [ -f "/opt/bashrc_templates/bashrc_template.sh" ]; then
     print_info "Installing proper .bashrc template..."
     cp /opt/bashrc_templates/bashrc_template.sh /home/user/.bashrc
+    
+    # Add X11 environment to bashrc
+    cat >> /home/user/.bashrc << EOF
+
+# X11 environment for GUI applications (auto-detected)
+export DISPLAY="$DISPLAY"
+export QT_X11_NO_MITSHM=1
+export LIBGL_ALWAYS_INDIRECT=0
+export QT_XCB_GL_INTEGRATION=none
+export QT_QPA_PLATFORM=xcb
+
+# X11 aliases for convenience
+alias test_x11='xset q && echo "✅ X11 working on \$DISPLAY"'
+alias fix_x11='source /opt/scripts/detect_x11_display.sh'
+alias start_rviz='test_x11 && rviz2'
+EOF
+    
     chown "$HOST_UID:$HOST_GID" /home/user/.bashrc
     chmod 644 /home/user/.bashrc
-    print_success "New .bashrc installed with proper paths"
+    print_success "New .bashrc installed with X11 environment"
 else
     print_warning "Template .bashrc not found, creating minimal version..."
-    cat > /home/user/.bashrc << 'EOF'
+    cat > /home/user/.bashrc << EOF
 # Minimal .bashrc for ROS2 Agent Sim
 
 # Basic bash settings
@@ -98,10 +184,10 @@ PS1='\u@\h:\w\$ '
 
 # Development environment
 export DEV_DIR="/home/user/shared_volume"
-export PX4_DIR="$DEV_DIR/PX4-Autopilot"
-export ROS2_WS="$DEV_DIR/ros2_ws"
-export OSQP_SRC="$DEV_DIR"
-export PATH="$HOME/.local/bin:$PATH"
+export PX4_DIR="\$DEV_DIR/PX4-Autopilot"
+export ROS2_WS="\$DEV_DIR/ros2_ws"
+export OSQP_SRC="\$DEV_DIR"
+export PATH="\$HOME/.local/bin:\$PATH"
 
 # ROS2 Jazzy setup
 export ROS_DISTRO="jazzy"
@@ -110,14 +196,22 @@ if [ -f "/opt/ros/jazzy/setup.bash" ]; then
 fi
 
 # Source workspace setup if it exists
-if [ -f "$ROS2_WS/install/setup.bash" ]; then
-    source "$ROS2_WS/install/setup.bash"
+if [ -f "\$ROS2_WS/install/setup.bash" ]; then
+    source "\$ROS2_WS/install/setup.bash"
 fi
 
 # Gazebo environment
 export GZ_VERSION="harmonic"
 
+# X11 environment (auto-detected)
+export DISPLAY="$DISPLAY"
+export QT_X11_NO_MITSHM=1
+export LIBGL_ALWAYS_INDIRECT=0
+export QT_XCB_GL_INTEGRATION=none
+export QT_QPA_PLATFORM=xcb
+
 echo "🚀 ROS2 Agent Sim Environment Ready"
+echo "   DISPLAY: \$DISPLAY"
 EOF
     chown "$HOST_UID:$HOST_GID" /home/user/.bashrc
     chmod 644 /home/user/.bashrc
@@ -126,6 +220,49 @@ fi
 # Set ROS2 Jazzy environment
 export ROS_DISTRO="jazzy"
 source "/opt/ros/jazzy/setup.bash"
+
+# ========================================================================
+# Create X11 Detection Script
+# ========================================================================
+
+print_info "Creating X11 detection script..."
+mkdir -p /opt/scripts
+cat > /opt/scripts/detect_x11_display.sh << 'EOF'
+#!/bin/bash
+# X11 Display Detection Script
+
+echo "🔍 Detecting working X11 display..."
+
+DISPLAY_CANDIDATES=":1 :0 :10 :2 :1003"
+WORKING_DISPLAY=""
+
+for disp in $DISPLAY_CANDIDATES; do
+    if DISPLAY="$disp" xset q >/dev/null 2>&1; then
+        WORKING_DISPLAY="$disp"
+        echo "✅ Found working display: $disp"
+        break
+    fi
+done
+
+if [ -n "$WORKING_DISPLAY" ]; then
+    export DISPLAY="$WORKING_DISPLAY"
+    export QT_X11_NO_MITSHM=1
+    export LIBGL_ALWAYS_INDIRECT=0
+    export QT_XCB_GL_INTEGRATION=none
+    export QT_QPA_PLATFORM=xcb
+    
+    echo "✅ X11 environment updated:"
+    echo "   DISPLAY=$DISPLAY"
+    echo "   Test with: xset q"
+    echo "   Start RViz2 with: rviz2"
+else
+    echo "❌ No working X11 display found"
+    echo "Available X11 sockets:"
+    ls -la /tmp/.X11-unix/ 2>/dev/null || echo "No X11 sockets found"
+fi
+EOF
+
+chmod +x /opt/scripts/detect_x11_display.sh
 
 # ========================================================================
 # Shared Volume Setup with Correct Ownership
@@ -197,6 +334,7 @@ exec sudo -u user -H bash -c "
     if [ -f ~/.bashrc ]; then
         source ~/.bashrc
         echo '✅ .bashrc sourced successfully'
+        echo '🖥️  X11 Environment: DISPLAY=\$DISPLAY'
     else
         echo '❌ .bashrc not found!'
         # Create emergency bashrc
@@ -204,6 +342,8 @@ exec sudo -u user -H bash -c "
         echo 'source /opt/ros/jazzy/setup.bash' >> ~/.bashrc
         echo 'export DEV_DIR=/home/user/shared_volume' >> ~/.bashrc
         echo 'export ROS2_WS=\$DEV_DIR/ros2_ws' >> ~/.bashrc
+        echo 'export DISPLAY=$DISPLAY' >> ~/.bashrc
+        echo 'export QT_X11_NO_MITSHM=1' >> ~/.bashrc
         source ~/.bashrc
     fi
     
@@ -221,6 +361,8 @@ exec sudo -u user -H bash -c "
     echo \"Current directory: \$(pwd)\"
     echo \"User: \$(whoami) (UID: \$(id -u), GID: \$(id -g))\"
     echo \"ROS_DISTRO: \$ROS_DISTRO\"
+    echo \"DISPLAY: \$DISPLAY\"
+    echo \"X11 Test: \$(xset q >/dev/null 2>&1 && echo '✅ Working' || echo '❌ Not Working')\"
     echo \"AMENT_PREFIX_PATH: \${AMENT_PREFIX_PATH:-'Not set'}\"
     if [ -f 'install.sh' ]; then
         echo \"install.sh: \$(ls -l install.sh | awk '{print \$1, \$3, \$4}')\"

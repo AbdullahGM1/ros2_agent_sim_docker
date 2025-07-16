@@ -361,96 +361,98 @@ setup_gpu_support() {
 }
 
 # X11 authentication and graphics setup
+# Enhanced X11 authentication and graphics setup
 setup_x11_auth() {
     print_info "🖥️  Setting up X11 authentication..."
     
-    # Try to detect display
-    if [ -z "$DISPLAY" ]; then
-        # Try common display values
-        for disp in ":0" ":1" ":10"; do
-            if xset -display $disp q 2>/dev/null; then
-                export DISPLAY=$disp
-                print_success "Found working display: $DISPLAY"
-                break
+    # Auto-detect available displays
+    print_info "Auto-detecting available X11 displays..."
+    AVAILABLE_DISPLAYS=""
+    
+    # Check common display locations
+    for disp in ":0" ":1" ":10" ":2"; do
+        if xset -display "$disp" q 2>/dev/null; then
+            AVAILABLE_DISPLAYS="$AVAILABLE_DISPLAYS $disp"
+            print_success "Found working display: $disp"
+        fi
+    done
+    
+    # Set primary display (prefer :1 if available, then :0)
+    if echo "$AVAILABLE_DISPLAYS" | grep -q ":1"; then
+        export DISPLAY=":1"
+        print_success "Using preferred display: :1"
+    elif echo "$AVAILABLE_DISPLAYS" | grep -q ":0"; then
+        export DISPLAY=":0"
+        print_success "Using display: :0"
+    else
+        export DISPLAY=":0"
+        print_warning "No working displays found, using fallback :0"
+    fi
+    
+    print_info "Selected DISPLAY: $DISPLAY"
+    
+    # Create XAUTH file with proper permissions
+    XAUTH_DIR="/tmp/.docker-xauth"
+    mkdir -p "$XAUTH_DIR"
+    XAUTH="$XAUTH_DIR/xauth"
+    
+    # Remove old XAUTH file if exists
+    rm -f "$XAUTH"
+    touch "$XAUTH"
+    chmod 666 "$XAUTH"
+    
+    # Test if X11 is working on host
+    if xset q 2>/dev/null; then
+        print_success "X11 is working on host!"
+        
+        # Generate XAUTH entries for all available displays
+        print_info "Generating X11 authentication entries..."
+        
+        for disp in $AVAILABLE_DISPLAYS; do
+            # Get X11 auth info and add to XAUTH file
+            xauth_list=$(xauth nlist "$disp" 2>/dev/null | head -1)
+            if [ -n "$xauth_list" ]; then
+                echo "$xauth_list" | xauth -f "$XAUTH" nmerge - 2>/dev/null || true
+                print_success "Added auth for display $disp"
             fi
+            
+            # Add localhost entries for container
+            COOKIE=$(mcookie 2>/dev/null || openssl rand -hex 16)
+            xauth -f "$XAUTH" add "$disp" . "$COOKIE" 2>/dev/null || true
+            xauth -f "$XAUTH" add "localhost$disp" . "$COOKIE" 2>/dev/null || true
         done
         
-        # If still no display, use default
-        if [ -z "$DISPLAY" ]; then
-            export DISPLAY=:0
-            print_warning "No working display found, using default :0"
-        fi
-    fi
-    
-    print_info "Display set to: $DISPLAY"
-    
-    # Test if X11 is actually working
-    if xset q 2>/dev/null; then
-        print_success "X11 is working!"
-        
-        # Set X11 permissions
+        # Set X11 permissions (allow local connections)
         if command -v xhost &> /dev/null; then
-            xhost +local:root 2>/dev/null && print_success "X11 permissions set"
+            xhost +local:root 2>/dev/null && print_success "X11 permissions set for root"
             xhost +local:docker 2>/dev/null || true
+            xhost +local: 2>/dev/null || true
+            print_success "X11 local permissions configured"
         fi
+        
+        print_success "X11 authentication properly configured"
     else
-        print_warning "X11 not working, but continuing anyway"
-        print_info "Simulation will run headlessly (no GUI windows)"
-    fi
-    
-    # Setup XAUTH file
-    XAUTH=/tmp/.docker.xauth
-    touch $XAUTH
-    chmod 666 $XAUTH
-    
-    # Add auth if possible
-    if command -v xauth &> /dev/null && xset q 2>/dev/null; then
-        xauth_list=$(xauth nlist $DISPLAY 2>/dev/null | sed -e 's/^..../ffff/' || true)
-        if [ -n "$xauth_list" ]; then
-            echo $xauth_list | xauth -f $XAUTH nmerge - 2>/dev/null || true
-        fi
+        print_warning "X11 not working on host - GUI applications will fail"
+        print_info "Make sure you're running this on a system with X11 display server"
+        print_info "For headless systems, consider using VNC or X11 forwarding"
     fi
     
     export XAUTH
-    print_success "X11 setup completed"
-}
-
-# Function to setup workspace directory
-setup_workspace() {
-    print_info "📁 Setting up workspace directory: $WORKSPACE_DIR"
+    print_info "XAUTH file: $XAUTH"
     
-    # Create workspace directory if it doesn't exist
-    if [ ! -d "$WORKSPACE_DIR" ]; then
-        mkdir -p "$WORKSPACE_DIR"
-        print_success "Created workspace directory: $WORKSPACE_DIR"
-    else
-        print_info "Workspace directory already exists: $WORKSPACE_DIR"
-    fi
-    
-    # Set proper permissions
-    HOST_UID=$(id -u)
-    HOST_GID=$(id -g)
-    
-    if [ -d "$WORKSPACE_DIR" ]; then
-        # Fix ownership to current user
-        chown -R "$HOST_UID:$HOST_GID" "$WORKSPACE_DIR" 2>/dev/null || {
-            print_warning "Could not change ownership of workspace directory"
-            print_info "This may cause permission issues inside the container"
-        }
-        
-        # Make sure it's writable
-        chmod 755 "$WORKSPACE_DIR" 2>/dev/null || {
-            print_warning "Could not set permissions on workspace directory"
-        }
-        
-        print_success "Workspace directory setup completed"
-    else
-        print_error "Failed to create workspace directory"
-        exit 1
+    # Display XAUTH contents for debugging
+    if [ -f "$XAUTH" ]; then
+        AUTH_COUNT=$(xauth -f "$XAUTH" list | wc -l)
+        print_info "XAUTH entries: $AUTH_COUNT entries"
+        if [ "$AUTH_COUNT" -gt 0 ]; then
+            print_success "✅ X11 authentication configured"
+        else
+            print_warning "⚠️ No X11 authentication entries found"
+        fi
     fi
 }
 
-# Function to start container in persistent mode
+# Function to start container in persistent mode with enhanced X11 support
 start_persistent_container() {
     print_info "🚀 Starting container in persistent mode: $CONTAINER_NAME"
     
@@ -459,15 +461,34 @@ start_persistent_container() {
     HOST_GID=$(id -g)
     HOST_USER=$(whoami)
     
-    # Start container in detached mode with proper X11 support
+    # Enhanced X11 environment variables
+    X11_ENV_VARS=""
+    X11_ENV_VARS="$X11_ENV_VARS --env=DISPLAY=${DISPLAY:-:0}"
+    X11_ENV_VARS="$X11_ENV_VARS --env=XAUTHORITY=${XAUTH}"
+    X11_ENV_VARS="$X11_ENV_VARS --env=QT_X11_NO_MITSHM=1"
+    X11_ENV_VARS="$X11_ENV_VARS --env=LIBGL_ALWAYS_INDIRECT=0"
+    X11_ENV_VARS="$X11_ENV_VARS --env=LIBGL_ALWAYS_SOFTWARE=0"
+    X11_ENV_VARS="$X11_ENV_VARS --env=QT_XCB_GL_INTEGRATION=none"
+    X11_ENV_VARS="$X11_ENV_VARS --env=QT_QPA_PLATFORM=xcb"
+    X11_ENV_VARS="$X11_ENV_VARS --env=QT_QUICK_BACKEND=software"
+    
+    # X11 volume mounts
+    X11_VOLUMES=""
+    X11_VOLUMES="$X11_VOLUMES --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
+    X11_VOLUMES="$X11_VOLUMES --volume=${XAUTH}:${XAUTH}:rw"
+    
+    # Add GPU support if available
+    if [ -d "/dev/dri" ]; then
+        X11_VOLUMES="$X11_VOLUMES --volume=/dev/dri:/dev/dri:rw"
+    fi
+    
+    # Start container in detached mode with comprehensive X11 support
     docker run -d \
         --name=${CONTAINER_NAME} \
         --hostname=ros2-dev \
         --network host \
-        --env="DISPLAY=${DISPLAY:-:0}" \
-        --env="XAUTHORITY=${XAUTH:-/tmp/.docker.xauth}" \
-        --env="QT_X11_NO_MITSHM=1" \
-        --env="LIBGL_ALWAYS_INDIRECT=0" \
+        --privileged \
+        $X11_ENV_VARS \
         --env="TERM=xterm-256color" \
         --env="COLORTERM=truecolor" \
         --env="FORCE_COLOR=1" \
@@ -477,24 +498,40 @@ start_persistent_container() {
         -e LOCAL_GROUP_ID="$HOST_GID" \
         -e HOST_USER="$HOST_USER" \
         -e FASTRTPS_DEFAULT_PROFILES_FILE=/usr/local/share/middleware_profiles/rtps_udp_profile.xml \
-        --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-        --volume="${XAUTH:-/tmp/.docker.xauth}:${XAUTH:-/tmp/.docker.xauth}:rw" \
+        $X11_VOLUMES \
         --volume="/etc/localtime:/etc/localtime:ro" \
         --volume="$WORKSPACE_DIR:/home/user/shared_volume:rw" \
         --volume="/dev:/dev:rw" \
         --workdir /home/user/shared_volume \
         --security-opt seccomp=unconfined \
         --security-opt apparmor=unconfined \
+        --cap-add=SYS_PTRACE \
+        --ipc=host \
         $DOCKER_OPTS \
         ${IMAGE_NAME} \
         tail -f /dev/null
     
     # Wait for container to be ready
-    sleep 2
+    sleep 3
     
     # Check if container is running
     if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
         print_success "Container started successfully in persistent mode"
+        
+        # Test X11 inside container with multiple displays
+        print_info "Testing X11 connection inside container..."
+        
+        # Test the selected display
+        if docker exec ${CONTAINER_NAME} bash -c "export DISPLAY=${DISPLAY} && xset q" 2>/dev/null; then
+            print_success "✅ X11 connection working for $DISPLAY inside container!"
+        else
+            print_warning "⚠️ X11 connection for $DISPLAY not working, container will auto-detect"
+        fi
+        
+        # Show available displays in container
+        print_info "Available X11 sockets in container:"
+        docker exec ${CONTAINER_NAME} ls -la /tmp/.X11-unix/ 2>/dev/null || print_warning "No X11 sockets found"
+        
         return 0
     else
         print_error "Failed to start container"
