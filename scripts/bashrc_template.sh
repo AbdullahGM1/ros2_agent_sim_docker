@@ -1,5 +1,5 @@
 #!/bin/bash
-# FIXED: ~/.bashrc for ROS2 Jazzy + Gazebo Harmonic with Qt6 and Graphics Support
+# FIXED: ~/.bashrc for ROS2 Jazzy + Gazebo Harmonic with Qt6 and Graphics Support (Ubuntu 24.04)
 
 # If not running interactively, don't do anything
 case $- in
@@ -131,7 +131,7 @@ export GZ_SIM_SYSTEM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins:$GZ_
 export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
 # =============================================================================
-# CRITICAL FIX: Qt6 and Graphics Environment Setup
+# CRITICAL FIX: Qt6 and Graphics Environment Setup (Ubuntu 24.04)
 # =============================================================================
 
 # CRITICAL FIX: Qt6 Environment Variables (resolves Qt5/Qt6 conflicts)
@@ -141,7 +141,7 @@ export QT_AUTO_SCREEN_SCALE_FACTOR=0
 export QT_SCALE_FACTOR=1
 export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt6/plugins"
 
-# CRITICAL FIX: OpenGL and Mesa Environment (enables software rendering)
+# CRITICAL FIX: OpenGL and Mesa Environment (enables software rendering for Ubuntu 24.04)
 export LIBGL_ALWAYS_INDIRECT=0
 export LIBGL_ALWAYS_SOFTWARE=0
 export MESA_GL_VERSION_OVERRIDE="4.5"
@@ -190,7 +190,7 @@ if ! timeout 3 xset q >/dev/null 2>&1; then
 fi
 
 # =============================================================================
-# CRITICAL FIX: Enhanced Graphics Functions with Fallbacks
+# CRITICAL FIX: Enhanced Graphics Functions with Fallbacks (Ubuntu 24.04)
 # =============================================================================
 
 # Function to start applications with graphics fallbacks
@@ -228,7 +228,7 @@ start_rviz2() {
     start_with_graphics_fallback "RViz2" "rviz2" "$@"
 }
 
-# Enhanced function to start Gazebo with fallbacks
+# Enhanced function to start Gazebo with fallbacks (Ubuntu 24.04 compatible)
 start_gazebo_sim() {
     echo "🚀 Starting Gazebo Harmonic with Qt6 support..."
     
@@ -258,10 +258,10 @@ start_gazebo_sim() {
     fi
 }
 
-# Function to diagnose graphics issues
+# Function to diagnose graphics issues (Ubuntu 24.04 aware)
 diagnose_graphics() {
-    echo "🔍 Comprehensive Graphics Diagnostics"
-    echo "====================================="
+    echo "🔍 Comprehensive Graphics Diagnostics (Ubuntu 24.04)"
+    echo "================================================="
     echo "Environment Variables:"
     echo "  DISPLAY: $DISPLAY"
     echo "  XAUTHORITY: ${XAUTHORITY:-'Not set'}"
@@ -288,7 +288,7 @@ diagnose_graphics() {
     fi
     echo ""
     
-    echo "OpenGL Information:"
+    echo "OpenGL Information (Ubuntu 24.04):"
     if command -v glxinfo >/dev/null 2>&1; then
         if timeout 10 glxinfo -B >/dev/null 2>&1; then
             echo "  ✅ OpenGL working"
@@ -302,7 +302,7 @@ diagnose_graphics() {
     fi
     echo ""
     
-    echo "Qt6 Platform Plugins:"
+    echo "Qt6 Platform Plugins (Ubuntu 24.04):"
     QT6_PLATFORMS=$(find /usr -name "*qt6*" -name "*platforms*" -type d 2>/dev/null | head -3)
     if [ -n "$QT6_PLATFORMS" ]; then
         echo "  ✅ Qt6 platforms found:"
@@ -316,6 +316,12 @@ diagnose_graphics() {
     fi
     echo ""
     
+    echo "Mesa/OpenGL Libraries (Ubuntu 24.04):"
+    echo "  libgl1: $(dpkg -l | grep libgl1 | awk '{print $2,$3}' || echo 'Not found')"
+    echo "  libglx-mesa0: $(dpkg -l | grep libglx-mesa0 | awk '{print $2,$3}' || echo 'Not found')"
+    echo "  libglut3.12: $(dpkg -l | grep libglut3.12 | awk '{print $2,$3}' || echo 'Not found')"
+    echo ""
+    
     echo "Gazebo Harmonic Test:"
     if command -v gz >/dev/null 2>&1; then
         echo "  ✅ Gazebo command available"
@@ -325,10 +331,10 @@ diagnose_graphics() {
     fi
 }
 
-# Function to test all graphics components
+# Function to test all graphics components (Ubuntu 24.04)
 test_graphics_stack() {
-    echo "🧪 Testing Complete Graphics Stack"
-    echo "================================="
+    echo "🧪 Testing Complete Graphics Stack (Ubuntu 24.04)"
+    echo "=============================================="
     
     echo "1. Testing X11..."
     if timeout 3 xset q >/dev/null 2>&1; then
@@ -368,12 +374,12 @@ test_graphics_stack() {
     fi
     
     echo ""
-    echo "🎉 Graphics stack test completed!"
+    echo "🎉 Graphics stack test completed for Ubuntu 24.04!"
     return 0
 }
 
 # =============================================================================
-# Enhanced Aliases and Functions
+# Enhanced Aliases and Functions (Ubuntu 24.04)
 # =============================================================================
 
 # Add useful aliases for ROS2 development
@@ -390,7 +396,7 @@ alias px4_gazebo='cd $PX4_DIR && make px4_sitl gz_x500'
 alias px4_gazebo_headless='cd $PX4_DIR && HEADLESS=1 make px4_sitl gz_x500'
 alias px4_clean='cd $PX4_DIR && make clean && make distclean'
 
-# CRITICAL FIX: Enhanced Gazebo aliases with Qt6 support
+# CRITICAL FIX: Enhanced Gazebo aliases with Qt6 support (Ubuntu 24.04)
 alias gz_list_models='gz model --list'
 alias gz_list_worlds='gz world --list'
 alias gz_start='start_gazebo_sim'
@@ -414,12 +420,16 @@ alias glxinfo_software='LIBGL_ALWAYS_SOFTWARE=1 glxinfo'
 alias qt6_debug='QT_DEBUG_PLUGINS=1 QT_QPA_PLATFORM=xcb'
 alias qt6_software='QT_QPA_PLATFORM=offscreen'
 
+# Ubuntu 24.04 specific package check aliases
+alias check_packages='echo "Checking Ubuntu 24.04 packages:"; dpkg -l | grep -E "(libgl1|libglx-mesa0|libglut3.12|qt6-base)" | awk "{print \$2,\$3}"'
+alias check_mesa='echo "Mesa packages:"; dpkg -l | grep mesa | awk "{print \$2,\$3}"'
+
 # =============================================================================
-# Startup Diagnostics and Status
+# Startup Diagnostics and Status (Ubuntu 24.04)
 # =============================================================================
 
 # Show environment status
-echo "🚀 ROS2 Agent Sim Environment Ready (FIXED VERSION)"
+echo "🚀 ROS2 Agent Sim Environment Ready (FIXED VERSION - Ubuntu 24.04)"
 echo "   ROS_DISTRO: $ROS_DISTRO"
 echo "   DEV_DIR: $DEV_DIR"
 echo "   ROS2_WS: $ROS2_WS"
@@ -441,7 +451,7 @@ else
     echo "   ⚠️  Gazebo resource paths not configured"
 fi
 
-# CRITICAL FIX: Check X11 and Qt6 status
+# CRITICAL FIX: Check X11 and Qt6 status (Ubuntu 24.04)
 if timeout 3 xset q >/dev/null 2>&1; then
     echo "   ✅ X11 GUI ready ($DISPLAY)"
 else
@@ -455,7 +465,7 @@ else
     echo "   ⚠️  Qt6 environment not properly configured"
 fi
 
-# Check OpenGL status
+# Check OpenGL status (Ubuntu 24.04 aware)
 if command -v glxinfo >/dev/null 2>&1; then
     if timeout 5 glxinfo -B >/dev/null 2>&1; then
         RENDERER=$(glxinfo -B 2>/dev/null | grep "OpenGL renderer" | cut -d: -f2 | xargs || echo "Unknown")
@@ -467,9 +477,16 @@ else
     echo "   ⚠️  OpenGL testing tools not available"
 fi
 
+# Check Ubuntu 24.04 specific packages
+if dpkg -l | grep -q "libgl1.*24\|libglx-mesa0.*24"; then
+    echo "   ✅ Ubuntu 24.04 Mesa packages detected"
+else
+    echo "   ⚠️  Ubuntu 24.04 Mesa packages may not be properly installed"
+fi
+
 # Show helpful commands
 echo ""
-echo "🎯 Quick Commands (FIXED VERSION):"
+echo "🎯 Quick Commands (FIXED VERSION - Ubuntu 24.04):"
 echo "   test_x11         - Test X11 connection"
 echo "   fix_x11          - Auto-detect working X11 display"
 echo "   start_gazebo     - Start Gazebo with auto-fallback"
@@ -478,6 +495,7 @@ echo "   diagnose_graphics - Complete graphics diagnostics"
 echo "   test_graphics    - Test entire graphics stack"
 echo "   gazebo_software  - Force software rendering for Gazebo"
 echo "   qt6_debug        - Enable Qt6 debug output"
+echo "   check_packages   - Check Ubuntu 24.04 packages"
 
 # CRITICAL FIX: Auto-run graphics test on startup (optional)
 if [ "${AUTO_TEST_GRAPHICS:-false}" = "true" ]; then

@@ -112,20 +112,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
     x11vnc \
     \
-    # Core OpenGL and Mesa Libraries
+    # FIXED: Core OpenGL and Mesa Libraries (Ubuntu 24.04 compatible)
     libgl1-mesa-dri \
-    libgl1-mesa-glx \
+    libgl1 \
+    libglx-mesa0 \
     libgl1-mesa-dev \
     libglu1-mesa \
     libglu1-mesa-dev \
     libegl1 \
-    libegl1-mesa \
     libegl1-mesa-dev \
     libgles2 \
-    libgles2-mesa \
     libgles2-mesa-dev \
-    libglx-mesa0 \
-    libglx-dev \
     \
     # Software Rendering Support
     libosmesa6 \
@@ -134,14 +131,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     mesa-vdpau-drivers \
     mesa-vulkan-drivers \
     \
-    # Advanced OpenGL Libraries
+    # FIXED: OpenGL Libraries (Ubuntu 24.04 compatible)
     libglew-dev \
     libglfw3-dev \
-    freeglut3-dev \
+    libglut3.12 \
+    libglut-dev \
     libgbm1 \
     libgbm-dev \
     \
-    # Qt6 Installation (Ubuntu 24.04 Compatible)
+    # FIXED: Qt6 Installation (Ubuntu 24.04 Compatible)
     qt6-base-dev \
     qt6-base-dev-tools \
     libqt6core6 \
@@ -172,7 +170,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxv1 \
     libxxf86vm1 \
     \
-    # System Libraries
+    # FIXED: System Libraries (Ubuntu 24.04 compatible)
     libnss3 \
     libasound2t64 \
     \
@@ -637,6 +635,6 @@ CMD ["/bin/bash"]
 # ============================================================================
 # Build Information (FIXED VERSION)
 # ============================================================================
-LABEL build.optimization="fixed-qt6-graphics"
+LABEL build.optimization="fixed-ubuntu24.04-packages"
 LABEL build.features="ros2-jazzy,gazebo-harmonic-fixed,px4,mavros,rosa,ai-ml"
-LABEL build.approach="qt6-native-software-rendering"
+LABEL build.approach="ubuntu24.04-native-packages"

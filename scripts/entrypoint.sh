@@ -1,5 +1,5 @@
 #!/bin/bash
-# FIXED: Enhanced entrypoint.sh with comprehensive Qt6 and graphics support
+# FIXED: Enhanced entrypoint.sh with Ubuntu 24.04 compatibility and comprehensive Qt6/graphics support
 set -e
 
 # Colors for output
@@ -16,7 +16,7 @@ print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_debug() { echo -e "${PURPLE}[DEBUG]${NC} $1"; }
 
-print_info "Starting container initialization with comprehensive graphics support..."
+print_info "Starting container initialization with Ubuntu 24.04 compatibility and comprehensive graphics support..."
 
 # ========================================================================
 # CRITICAL: Force UID/GID Mapping
@@ -111,23 +111,23 @@ fi
 print_info "Final DISPLAY setting: $DISPLAY"
 
 # ========================================================================
-# CRITICAL FIX: Qt6 and Graphics Environment Setup
+# CRITICAL FIX: Qt6 and Graphics Environment Setup (Ubuntu 24.04)
 # ========================================================================
 
-print_info "Setting up comprehensive Qt6 and graphics environment..."
+print_info "Setting up comprehensive Qt6 and graphics environment for Ubuntu 24.04..."
 
-# CRITICAL FIX: Qt6 Environment Variables (prevents Qt5/Qt6 conflicts)
+# CRITICAL FIX: Qt6 Environment Variables (prevents Qt5/Qt6 conflicts in Ubuntu 24.04)
 export QT_QPA_PLATFORM=xcb
 export QT_X11_NO_MITSHM=1
 export QT_AUTO_SCREEN_SCALE_FACTOR=0
 export QT_SCALE_FACTOR=1
 
-# Set Qt6 plugin paths explicitly
+# Set Qt6 plugin paths explicitly for Ubuntu 24.04
 QT6_PLUGIN_PATHS="/usr/lib/x86_64-linux-gnu/qt6/plugins:/usr/lib/qt6/plugins"
 export QT_QPA_PLATFORM_PLUGIN_PATH="$QT6_PLUGIN_PATHS/platforms"
 export QT_PLUGIN_PATH="$QT6_PLUGIN_PATHS"
 
-# CRITICAL FIX: OpenGL and Mesa Environment (comprehensive rendering support)
+# CRITICAL FIX: OpenGL and Mesa Environment (comprehensive rendering support for Ubuntu 24.04)
 export LIBGL_ALWAYS_INDIRECT=0
 export LIBGL_ALWAYS_SOFTWARE=0
 export MESA_GL_VERSION_OVERRIDE="4.5"
@@ -139,11 +139,11 @@ export XDG_RUNTIME_DIR="/tmp/runtime-user"
 export XDG_SESSION_TYPE="x11"
 export WAYLAND_DISPLAY=""
 
-# Additional Mesa and DRI configuration
+# Additional Mesa and DRI configuration for Ubuntu 24.04
 export MESA_LOADER_DRIVER_OVERRIDE="llvmpipe"
 export EGL_PLATFORM="x11"
 
-print_success "Qt6 and graphics environment configured"
+print_success "Qt6 and graphics environment configured for Ubuntu 24.04"
 
 # ========================================================================
 # CRITICAL FIX: X11 Authentication Setup  
@@ -221,10 +221,10 @@ chown -R $HOST_UID:$HOST_GID /home/user/.cache 2>/dev/null || true
 print_success "Graphics runtime environment setup completed"
 
 # ========================================================================
-# CRITICAL FIX: OpenGL Environment Testing and Configuration
+# CRITICAL FIX: OpenGL Environment Testing and Configuration (Ubuntu 24.04)
 # ========================================================================
 
-print_info "Testing and configuring OpenGL environment..."
+print_info "Testing and configuring OpenGL environment for Ubuntu 24.04..."
 
 # Test OpenGL availability
 if command -v glxinfo >/dev/null 2>&1; then
@@ -265,10 +265,46 @@ else
 fi
 
 # ========================================================================
-# CRITICAL FIX: Gazebo-Specific Environment Setup
+# CRITICAL FIX: Ubuntu 24.04 Package Verification
 # ========================================================================
 
-print_info "Configuring Gazebo Harmonic environment..."
+print_info "Verifying Ubuntu 24.04 package compatibility..."
+
+# Check for critical packages that were changed in Ubuntu 24.04
+PACKAGE_ISSUES=""
+
+# Check libgl1 vs libgl1-mesa-glx
+if ! dpkg -l | grep -q "^ii.*libgl1[^-]"; then
+    PACKAGE_ISSUES="$PACKAGE_ISSUES libgl1(missing)"
+fi
+
+# Check libglx-mesa0
+if ! dpkg -l | grep -q "^ii.*libglx-mesa0"; then
+    PACKAGE_ISSUES="$PACKAGE_ISSUES libglx-mesa0(missing)"
+fi
+
+# Check libglut3.12 vs freeglut3
+if ! dpkg -l | grep -q "^ii.*libglut3.12"; then
+    PACKAGE_ISSUES="$PACKAGE_ISSUES libglut3.12(missing)"
+fi
+
+# Check Qt6 packages
+if ! dpkg -l | grep -q "^ii.*qt6-base"; then
+    PACKAGE_ISSUES="$PACKAGE_ISSUES qt6-base(missing)"
+fi
+
+if [ -n "$PACKAGE_ISSUES" ]; then
+    print_warning "Ubuntu 24.04 package issues detected: $PACKAGE_ISSUES"
+    print_info "These may cause graphics issues but fallbacks are configured"
+else
+    print_success "✅ Ubuntu 24.04 package compatibility verified"
+fi
+
+# ========================================================================
+# CRITICAL FIX: Gazebo-Specific Environment Setup (Ubuntu 24.04)
+# ========================================================================
+
+print_info "Configuring Gazebo Harmonic environment for Ubuntu 24.04..."
 
 # Gazebo-specific environment variables
 export GAZEBO_MODEL_PATH="/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/models:$GAZEBO_MODEL_PATH"
@@ -278,17 +314,17 @@ export IGN_GAZEBO_RESOURCE_PATH="/home/user/shared_volume/PX4-Autopilot/Tools/si
 # Gazebo GUI optimizations for containers
 export GZ_GUI_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins:$GZ_GUI_PLUGIN_PATH"
 
-# CRITICAL FIX: Ogre2 rendering configuration for Gazebo
+# CRITICAL FIX: Ogre2 rendering configuration for Gazebo (Ubuntu 24.04)
 export OGRE_RTT_MODE="Copy"  # Helps with rendering in containers
 export OGRE_CONFIG_PATH="/home/user/.ogre"
 
-print_success "Gazebo environment configured"
+print_success "Gazebo environment configured for Ubuntu 24.04"
 
 # ========================================================================
-# CRITICAL FIX: Enhanced Bashrc Setup
+# CRITICAL FIX: Enhanced Bashrc Setup (Ubuntu 24.04)
 # ========================================================================
 
-print_info "Setting up enhanced user environment..."
+print_info "Setting up enhanced user environment for Ubuntu 24.04..."
 
 # Backup existing bashrc
 if [ -f "/home/user/.bashrc" ]; then
@@ -298,14 +334,14 @@ fi
 
 # Install enhanced bashrc template
 if [ -f "/opt/bashrc_templates/bashrc_template.sh" ]; then
-    print_info "Installing enhanced .bashrc template with graphics support..."
+    print_info "Installing enhanced .bashrc template with Ubuntu 24.04 graphics support..."
     cp /opt/bashrc_templates/bashrc_template.sh /home/user/.bashrc
     
     # Add container-specific environment to bashrc
     cat >> /home/user/.bashrc << EOF
 
 # =============================================================================
-# Container-Specific Environment (Auto-added by entrypoint)
+# Container-Specific Environment (Auto-added by entrypoint - Ubuntu 24.04)
 # =============================================================================
 
 # CRITICAL FIX: Container graphics environment
@@ -330,22 +366,23 @@ export AUTO_TEST_GRAPHICS=false  # Set to true for automatic testing
 
 # Welcome message
 echo ""
-echo "🎉 ROS2 Agent Sim Container Ready (FIXED VERSION)"
-echo "   📊 Graphics: Qt6 + OpenGL configured"
+echo "🎉 ROS2 Agent Sim Container Ready (FIXED VERSION - Ubuntu 24.04)"
+echo "   📊 Graphics: Qt6 + OpenGL configured for Ubuntu 24.04"
 echo "   🖥️  Display: $DISPLAY"
 echo "   🎮 Rendering: Hardware + Software fallback"
 echo "   🚁 Gazebo: Harmonic with Ogre2 support"
+echo "   📦 Packages: Ubuntu 24.04 compatible (libgl1 + libglx-mesa0 + libglut3.12)"
 echo ""
 
 EOF
     
     chown "$HOST_UID:$HOST_GID" /home/user/.bashrc
     chmod 644 /home/user/.bashrc
-    print_success "Enhanced .bashrc installed with graphics environment"
+    print_success "Enhanced .bashrc installed with Ubuntu 24.04 graphics environment"
 else
-    print_warning "Template .bashrc not found, creating minimal version..."
+    print_warning "Template .bashrc not found, creating Ubuntu 24.04 compatible minimal version..."
     cat > /home/user/.bashrc << EOF
-# Minimal .bashrc for ROS2 Agent Sim (Emergency Fallback)
+# Minimal .bashrc for ROS2 Agent Sim (Emergency Fallback - Ubuntu 24.04)
 
 # Basic bash settings
 export HISTCONTROL=ignoreboth
@@ -375,18 +412,18 @@ fi
 # Gazebo environment
 export GZ_VERSION="harmonic"
 
-# CRITICAL FIX: Graphics environment
+# CRITICAL FIX: Graphics environment for Ubuntu 24.04
 export DISPLAY="$DISPLAY"
 export QT_QPA_PLATFORM="$QT_QPA_PLATFORM"
 export QT_X11_NO_MITSHM="$QT_X11_NO_MITSHM"
 export LIBGL_ALWAYS_INDIRECT="$LIBGL_ALWAYS_INDIRECT"
 export MESA_GL_VERSION_OVERRIDE="$MESA_GL_VERSION_OVERRIDE"
 
-echo "🚀 ROS2 Agent Sim Environment Ready (Minimal)"
+echo "🚀 ROS2 Agent Sim Environment Ready (Minimal - Ubuntu 24.04)"
 EOF
     chown "$HOST_UID:$HOST_GID" /home/user/.bashrc
     chmod 644 /home/user/.bashrc
-    print_warning "Minimal .bashrc created"
+    print_warning "Minimal .bashrc created for Ubuntu 24.04"
 fi
 
 # Set ROS2 environment
@@ -462,10 +499,10 @@ else
 fi
 
 # ========================================================================
-# CRITICAL FIX: Final Environment Verification
+# CRITICAL FIX: Final Environment Verification (Ubuntu 24.04)
 # ========================================================================
 
-print_info "Performing final environment verification..."
+print_info "Performing final environment verification for Ubuntu 24.04..."
 
 # Verify Qt6 environment
 if [ -n "$QT_QPA_PLATFORM" ] && [ "$QT_QPA_PLATFORM" = "xcb" ]; then
@@ -488,6 +525,16 @@ else
     print_error "❌ X11 display not configured"
 fi
 
+# Verify Ubuntu 24.04 specific packages
+UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "unknown")
+print_info "Ubuntu version detected: $UBUNTU_VERSION"
+
+if [ "$UBUNTU_VERSION" = "24.04" ]; then
+    print_success "✅ Ubuntu 24.04 confirmed - using correct package configuration"
+else
+    print_warning "⚠️ Ubuntu version may not be 24.04 - package compatibility uncertain"
+fi
+
 # ========================================================================
 # Switch to User Context and Execute Command
 # ========================================================================
@@ -501,7 +548,7 @@ if [ "$1" = "tail" ] && [ "$2" = "-f" ] && [ "$3" = "/dev/null" ]; then
     print_info "Use 'docker exec -it ros2_agent_sim bash' to connect"
     
     # Final status report
-    print_info "=== CONTAINER INITIALIZATION COMPLETE ==="
+    print_info "=== CONTAINER INITIALIZATION COMPLETE (Ubuntu 24.04) ==="
     print_info "User: user (UID: $(id -u user), GID: $(id -g user))"
     print_info "ROS_DISTRO: $ROS_DISTRO"
     print_info "DISPLAY: $DISPLAY"
@@ -509,8 +556,9 @@ if [ "$1" = "tail" ] && [ "$2" = "-f" ] && [ "$3" = "/dev/null" ]; then
     print_info "OpenGL: Mesa $MESA_GL_VERSION_OVERRIDE (Gallium: $GALLIUM_DRIVER)"
     print_info "X11 Status: $(timeout 3 xset q >/dev/null 2>&1 && echo '✅ Working' || echo '⚠️ Fallback Mode')"
     print_info "Shared Volume: $([ -d '/home/user/shared_volume' ] && echo '✅ Ready' || echo '❌ Not Found')"
-    print_info "Graphics: Qt6 + OpenGL + Software Rendering Fallbacks"
-    print_info "=============================================\n"
+    print_info "Graphics: Qt6 + OpenGL + Software Rendering Fallbacks (Ubuntu 24.04)"
+    print_info "Packages: libgl1 + libglx-mesa0 + libglut3.12 (Ubuntu 24.04 compatible)"
+    print_info "================================================="
     
     exec "$@"
 fi
@@ -521,12 +569,13 @@ exec sudo -u user -H bash -c "
     # Load enhanced environment
     if [ -f ~/.bashrc ]; then
         source ~/.bashrc
-        echo '✅ Enhanced .bashrc loaded successfully'
+        echo '✅ Enhanced .bashrc loaded successfully (Ubuntu 24.04)'
         echo '🖥️  Graphics Environment:'
         echo '   Display: \$DISPLAY'
         echo '   Qt6 Platform: \$QT_QPA_PLATFORM'
         echo '   OpenGL: Mesa \$MESA_GL_VERSION_OVERRIDE'
         echo '   Renderer: \$GALLIUM_DRIVER'
+        echo '   Ubuntu: 24.04 compatible packages'
     else
         echo '❌ .bashrc not found!'
         # Create emergency environment
@@ -553,7 +602,7 @@ exec sudo -u user -H bash -c "
     
     # Final status check
     echo ''
-    echo '=== INTERACTIVE CONTAINER READY ==='
+    echo '=== INTERACTIVE CONTAINER READY (Ubuntu 24.04) ==='
     echo \"Current directory: \$(pwd)\"
     echo \"User: \$(whoami) (UID: \$(id -u), GID: \$(id -g))\"
     echo \"ROS_DISTRO: \$ROS_DISTRO\"
@@ -562,19 +611,21 @@ exec sudo -u user -H bash -c "
     echo \"OpenGL: \$(command -v glxinfo >/dev/null && echo '✅ Available' || echo '⚠️ Limited')\"
     echo \"Qt6: \$(echo \$QT_QPA_PLATFORM | grep -q xcb && echo '✅ Ready' || echo '⚠️ Basic')\"
     echo \"AMENT_PREFIX_PATH: \${AMENT_PREFIX_PATH:-'Not set'}\"
+    echo \"Ubuntu 24.04 packages: \$(dpkg -l 2>/dev/null | grep -c 'libgl1\\|libglx-mesa0\\|libglut3.12' || echo '0') installed\"
     
     if [ -f 'install.sh' ]; then
         echo \"install.sh: \$(ls -l install.sh | awk '{print \$1, \$3, \$4}')\"
         echo \"Can edit install.sh: \$([ -w install.sh ] && echo 'YES ✅' || echo 'NO ❌')\"
     fi
     
-    echo '===================================='
+    echo '=================================================='
     echo ''
-    echo '🎯 Ready to use:'
+    echo '🎯 Ready to use (Ubuntu 24.04 compatible):'
     echo '   • ros2 launch drone_sim drone.launch.py'
     echo '   • ros2 run ros2_agent ros2_agent_node'
-    echo '   • start_gazebo (enhanced with fallbacks)'
+    echo '   • start_gazebo (enhanced with Ubuntu 24.04 fallbacks)'
     echo '   • diagnose_graphics (if issues occur)'
+    echo '   • check_packages (verify Ubuntu 24.04 packages)'
     echo ''
     
     # Execute the command

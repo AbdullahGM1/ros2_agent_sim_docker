@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 # ============================================================================
-# ROS2 Agent Sim - FIXED Runtime Installation Script
+# ROS2 Agent Sim - FIXED Runtime Installation Script (Ubuntu 24.04)
 # Handles runtime-specific tasks with comprehensive graphics and Qt6 support
 # ============================================================================
 
@@ -19,7 +19,7 @@ BOLD='\033[1m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="${SCRIPT_DIR}/install_$(date +%Y%m%d_%H%M%S).log"
 STEP_COUNTER=0
-TOTAL_STEPS=7  # Updated for graphics verification step
+TOTAL_STEPS=8  # Updated for Ubuntu 24.04 verification step
 
 # Enhanced logging functions
 log() {
@@ -48,6 +48,7 @@ cleanup_on_error() {
     print_error "Installation failed at step ${STEP_COUNTER}/${TOTAL_STEPS}"
     print_info "Check log file: ${LOG_FILE}"
     print_info "For graphics issues, try: diagnose_graphics"
+    print_info "For Ubuntu 24.04 package issues, try: check_packages"
     exit 1
 }
 
@@ -62,11 +63,85 @@ track_time() {
     start_time=$(date +%s)
 }
 
-# CRITICAL FIX: Graphics environment validation
-validate_graphics_environment() {
-    print_step "Validating Graphics Environment"
+# CRITICAL FIX: Ubuntu 24.04 package verification
+verify_ubuntu_packages() {
+    print_step "Verifying Ubuntu 24.04 Package Compatibility"
     
-    print_info "Testing comprehensive graphics stack..."
+    UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "unknown")
+    print_info "Detected Ubuntu version: $UBUNTU_VERSION"
+    
+    if [ "$UBUNTU_VERSION" = "24.04" ]; then
+        print_success "Ubuntu 24.04 confirmed"
+    else
+        print_warning "Ubuntu version may not be 24.04 - proceeding with compatibility mode"
+    fi
+    
+    # Check for critical Ubuntu 24.04 packages
+    print_info "Checking Ubuntu 24.04 package availability..."
+    
+    MISSING_PACKAGES=""
+    PACKAGE_WARNINGS=""
+    
+    # Check libgl1 (replaces libgl1-mesa-glx)
+    if ! dpkg -l | grep -q "^ii.*libgl1[^-]"; then
+        MISSING_PACKAGES="$MISSING_PACKAGES libgl1"
+    else
+        print_success "libgl1 package found (Ubuntu 24.04 compatible)"
+    fi
+    
+    # Check libglx-mesa0 (part of libgl1-mesa-glx replacement)
+    if ! dpkg -l | grep -q "^ii.*libglx-mesa0"; then
+        MISSING_PACKAGES="$MISSING_PACKAGES libglx-mesa0"
+    else
+        print_success "libglx-mesa0 package found (Ubuntu 24.04 compatible)"
+    fi
+    
+    # Check libglut3.12 (replaces freeglut3)
+    if ! dpkg -l | grep -q "^ii.*libglut3.12"; then
+        MISSING_PACKAGES="$MISSING_PACKAGES libglut3.12"
+    else
+        print_success "libglut3.12 package found (Ubuntu 24.04 compatible)"
+    fi
+    
+    # Check Qt6 packages
+    if ! dpkg -l | grep -q "^ii.*qt6-base"; then
+        MISSING_PACKAGES="$MISSING_PACKAGES qt6-base-dev"
+    else
+        print_success "Qt6 packages found (Ubuntu 24.04 compatible)"
+    fi
+    
+    # Check for deprecated packages that shouldn't be present
+    if dpkg -l | grep -q "^ii.*libgl1-mesa-glx"; then
+        PACKAGE_WARNINGS="$PACKAGE_WARNINGS libgl1-mesa-glx(deprecated)"
+    fi
+    
+    if dpkg -l | grep -q "^ii.*freeglut3[^-]"; then
+        PACKAGE_WARNINGS="$PACKAGE_WARNINGS freeglut3(deprecated)"
+    fi
+    
+    # Report results
+    if [ -n "$MISSING_PACKAGES" ]; then
+        print_warning "Missing Ubuntu 24.04 packages: $MISSING_PACKAGES"
+        print_info "These packages should have been installed during Docker build"
+    fi
+    
+    if [ -n "$PACKAGE_WARNINGS" ]; then
+        print_warning "Deprecated packages detected: $PACKAGE_WARNINGS"
+        print_info "These may cause conflicts but fallbacks are configured"
+    fi
+    
+    if [ -z "$MISSING_PACKAGES" ] && [ -z "$PACKAGE_WARNINGS" ]; then
+        print_success "All Ubuntu 24.04 packages properly configured"
+    fi
+    
+    track_time
+}
+
+# CRITICAL FIX: Graphics environment validation (Ubuntu 24.04)
+validate_graphics_environment() {
+    print_step "Validating Graphics Environment (Ubuntu 24.04)"
+    
+    print_info "Testing comprehensive graphics stack for Ubuntu 24.04..."
     
     # Test X11 connection
     if timeout 5 xset q >/dev/null 2>&1; then
@@ -89,15 +164,20 @@ validate_graphics_environment() {
         fi
     fi
     
-    # Test OpenGL capabilities
+    # Test OpenGL capabilities (Ubuntu 24.04 aware)
     if command -v glxinfo >/dev/null 2>&1; then
-        print_info "Testing OpenGL support..."
+        print_info "Testing OpenGL support (Ubuntu 24.04)..."
         
         if timeout 10 glxinfo -B >/dev/null 2>&1; then
             RENDERER=$(glxinfo -B 2>/dev/null | grep "OpenGL renderer" | cut -d: -f2 | xargs || echo "Hardware")
             GL_VERSION=$(glxinfo -B 2>/dev/null | grep "OpenGL version" | cut -d: -f2 | xargs || echo "Unknown")
             print_success "OpenGL working: $RENDERER"
             print_info "OpenGL Version: $GL_VERSION"
+            
+            # Check if Mesa software rendering
+            if echo "$RENDERER" | grep -qi "llvmpipe\|softpipe\|swrast"; then
+                print_info "Mesa software rendering detected (normal for containers)"
+            fi
         else
             print_info "Hardware OpenGL failed, testing software rendering..."
             if LIBGL_ALWAYS_SOFTWARE=1 timeout 10 glxinfo -B >/dev/null 2>&1; then
@@ -112,8 +192,8 @@ validate_graphics_environment() {
         print_warning "glxinfo not available for OpenGL testing"
     fi
     
-    # Test Qt6 environment
-    print_info "Verifying Qt6 environment..."
+    # Test Qt6 environment (Ubuntu 24.04 specific)
+    print_info "Verifying Qt6 environment (Ubuntu 24.04)..."
     
     # Check Qt6 platform plugins
     QT6_PLATFORMS_DIR="/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms"
@@ -140,7 +220,7 @@ validate_graphics_environment() {
         return 1
     fi
     
-    print_success "Graphics environment validation completed"
+    print_success "Graphics environment validation completed for Ubuntu 24.04"
     track_time
 }
 
@@ -166,14 +246,14 @@ validate_environment() {
     # Create necessary directories
     mkdir -p "$ROS2_SRC"
     
-    # CRITICAL FIX: Set graphics environment for build process
+    # CRITICAL FIX: Set graphics environment for build process (Ubuntu 24.04)
     export QT_QPA_PLATFORM=xcb
     export QT_X11_NO_MITSHM=1
     export LIBGL_ALWAYS_INDIRECT=0
     export MESA_GL_VERSION_OVERRIDE="4.5"
     export GALLIUM_DRIVER="llvmpipe"
     
-    print_success "Environment validation completed with graphics support"
+    print_success "Environment validation completed with Ubuntu 24.04 graphics support"
     track_time
 }
 
@@ -239,9 +319,9 @@ setup_repositories() {
     track_time
 }
 
-# Build PX4 with shared volume configurations
+# Build PX4 with shared volume configurations (Ubuntu 24.04 compatible)
 setup_px4_autopilot() {
-    print_step "Setting up PX4 Autopilot (Runtime Build)"
+    print_step "Setting up PX4 Autopilot (Runtime Build - Ubuntu 24.04)"
     
     # Check if PX4 already exists and is properly built
     if [ -d "$PX4_DIR" ] && [ -f "$PX4_DIR/build/px4_sitl_default/bin/px4" ]; then
@@ -291,7 +371,7 @@ setup_px4_autopilot() {
     print_info "Building PX4 in final location (this may take 10-15 minutes)..."
     cd "$PX4_DIR"
     
-    # CRITICAL FIX: Set build environment variables
+    # CRITICAL FIX: Set build environment variables for Ubuntu 24.04
     export CMAKE_ARGS="-Wno-dev"
     export MAKEFLAGS="-j$(nproc)"
     
@@ -301,8 +381,8 @@ setup_px4_autopilot() {
         rm -rf build/
     fi
     
-    # CRITICAL FIX: Build with graphics environment set
-    print_info "Building with graphics-aware environment..."
+    # CRITICAL FIX: Build with graphics environment set for Ubuntu 24.04
+    print_info "Building with Ubuntu 24.04 graphics-aware environment..."
     
     if make px4_sitl; then
         print_success "PX4 built successfully in final location"
@@ -331,14 +411,14 @@ setup_px4_autopilot() {
     track_time
 }
 
-# Handle ROS2 dependencies (runtime-specific)
+# Handle ROS2 dependencies (Ubuntu 24.04 specific)
 handle_dependencies() {
-    print_step "Resolving ROS2 Dependencies"
+    print_step "Resolving ROS2 Dependencies (Ubuntu 24.04)"
     
     cd "$ROS2_WS"
     
-    # Install missing Python dependencies
-    print_info "Installing missing Python dependencies..."
+    # Install missing Python dependencies (Ubuntu 24.04 compatible)
+    print_info "Installing missing Python dependencies for Ubuntu 24.04..."
     pip install --no-cache-dir \
         "lark>=1.1.0" \
         "lark-parser>=0.12.0" \
@@ -354,18 +434,18 @@ handle_dependencies() {
     # Update rosdep
     rosdep update
     
-    # Install dependencies with enhanced error handling
-    print_info "Installing ROS2 dependencies..."
+    # Install dependencies with enhanced error handling for Ubuntu 24.04
+    print_info "Installing ROS2 dependencies (Ubuntu 24.04 mode)..."
     if rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy; then
         print_success "ROS2 dependencies installed successfully"
     else
         print_warning "Some rosdep dependencies failed, trying manual installation..."
         
-        # Install critical packages manually
-        print_info "Installing critical packages manually..."
+        # Install critical packages manually (Ubuntu 24.04 compatible)
+        print_info "Installing critical packages manually for Ubuntu 24.04..."
         sudo apt-get update 2>/dev/null || true
         
-        # Install packages that definitely exist in Ubuntu 24.04
+        # CRITICAL FIX: Install Ubuntu 24.04 compatible packages
         sudo apt-get install -y \
             python3-future \
             ros-jazzy-joint-state-publisher \
@@ -376,7 +456,10 @@ handle_dependencies() {
             libqt6opengl6-dev \
             qt6-qpa-plugins \
             mesa-utils \
-            libgl1-mesa-dev \
+            libgl1 \
+            libglx-mesa0 \
+            libglut3.12 \
+            libglut-dev \
             libosmesa6 \
             2>/dev/null || print_warning "Some manual installations failed"
     fi
@@ -384,19 +467,19 @@ handle_dependencies() {
     track_time
 }
 
-# Build workspace (runtime-specific)
+# Build workspace (Ubuntu 24.04 compatible)
 build_workspace() {
-    print_step "Building ROS2 Workspace"
+    print_step "Building ROS2 Workspace (Ubuntu 24.04)"
     
     cd "$ROS2_WS"
     
-    # CRITICAL FIX: Set comprehensive build environment
+    # CRITICAL FIX: Set comprehensive build environment for Ubuntu 24.04
     export GZ_VERSION=harmonic
     export QT_QPA_PLATFORM=xcb
     export LIBGL_ALWAYS_INDIRECT=0
     
     # Build with progress indication and enhanced error handling
-    print_info "Building workspace with graphics support (this may take several minutes)..."
+    print_info "Building workspace with Ubuntu 24.04 graphics support (this may take several minutes)..."
     
     # Try sequential build first (more reliable)
     if colcon build --executor sequential --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo; then
@@ -411,10 +494,11 @@ build_workspace() {
             print_success "Workspace built successfully with parallel executor"
         else
             print_error "Both sequential and parallel builds failed"
-            print_info "Common issues:"
+            print_info "Common issues for Ubuntu 24.04:"
             print_info "  1. Check for Qt6/Qt5 conflicts"
             print_info "  2. Verify graphics environment"
             print_info "  3. Check available memory"
+            print_info "  4. Run 'check_packages' to verify Ubuntu 24.04 packages"
             return 1
         fi
     fi
@@ -437,9 +521,9 @@ build_workspace() {
     track_time
 }
 
-# Finalize installation with enhanced graphics support
+# Finalize installation with enhanced graphics support (Ubuntu 24.04)
 finalize_installation() {
-    print_step "Finalizing Installation"
+    print_step "Finalizing Installation (Ubuntu 24.04)"
     
     # Source the workspace
     cd "$ROS2_WS"
@@ -456,7 +540,7 @@ finalize_installation() {
     print_info "Backed up existing .bashrc"
     
     # Add workspace sourcing
-    local workspace_source_line="# Auto-added by install script (FIXED VERSION)"
+    local workspace_source_line="# Auto-added by install script (FIXED VERSION - Ubuntu 24.04)"
     local workspace_command="if [ -f \"$ROS2_WS/install/setup.bash\" ]; then source \"$ROS2_WS/install/setup.bash\"; fi"
     
     if ! grep -q "$workspace_source_line" ~/.bashrc; then
@@ -468,8 +552,8 @@ finalize_installation() {
         print_info "Workspace sourcing already configured"
     fi
     
-    # CRITICAL FIX: Add comprehensive environment variables
-    local env_comment="# ROS2 Agent Sim environment - FIXED VERSION"
+    # CRITICAL FIX: Add comprehensive environment variables for Ubuntu 24.04
+    local env_comment="# ROS2 Agent Sim environment - FIXED VERSION (Ubuntu 24.04)"
     if ! grep -q "$env_comment" ~/.bashrc; then
         cat >> ~/.bashrc << EOF
 
@@ -480,7 +564,7 @@ export ROS2_WS="$ROS2_WS"
 export OSQP_SRC="$OSQP_SRC"
 export GZ_VERSION="harmonic"
 
-# CRITICAL FIX: Graphics environment
+# CRITICAL FIX: Graphics environment (Ubuntu 24.04)
 export QT_QPA_PLATFORM=xcb
 export QT_X11_NO_MITSHM=1
 export LIBGL_ALWAYS_INDIRECT=0
@@ -494,14 +578,18 @@ alias source_ws='if [ -f "\$ROS2_WS/install/setup.bash" ]; then source "\$ROS2_W
 alias rosdep_install='rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy'
 alias colcon_build='colcon build --executor sequential --event-handlers console_direct+'
 
-# CRITICAL FIX: Enhanced graphics aliases
+# CRITICAL FIX: Enhanced graphics aliases (Ubuntu 24.04)
 alias gazebo_start='QT_QPA_PLATFORM=xcb gz sim'
 alias gazebo_software='LIBGL_ALWAYS_SOFTWARE=1 gz sim'
 alias rviz_start='QT_QPA_PLATFORM=xcb rviz2'
 alias graphics_test='echo "X11: \$(timeout 3 xset q >/dev/null 2>&1 && echo OK || echo FAIL)"; echo "OpenGL: \$(timeout 5 glxinfo -B >/dev/null 2>&1 && echo OK || echo FAIL)"; echo "Qt6: \$(find /usr -name "*qt6*" -name "*platforms*" 2>/dev/null | grep -q . && echo OK || echo FAIL)"'
 
+# Ubuntu 24.04 specific aliases
+alias check_packages_ubuntu='echo "Ubuntu 24.04 packages:"; dpkg -l | grep -E "(libgl1|libglx-mesa0|libglut3.12|qt6-base)" | awk "{print \$2,\$3}"'
+alias check_deprecated='echo "Deprecated packages (should not be present):"; dpkg -l | grep -E "(libgl1-mesa-glx|freeglut3)" | awk "{print \$2,\$3}" || echo "None found (good)"'
+
 EOF
-        print_success "Added comprehensive environment variables and aliases to .bashrc"
+        print_success "Added comprehensive environment variables and aliases to .bashrc for Ubuntu 24.04"
     else
         print_info "Environment variables already configured"
     fi
@@ -516,8 +604,8 @@ EOF
         return 1
     fi
     
-    # CRITICAL FIX: Test graphics environment after installation
-    print_info "Testing graphics environment after installation..."
+    # CRITICAL FIX: Test graphics environment after installation (Ubuntu 24.04)
+    print_info "Testing graphics environment after installation (Ubuntu 24.04)..."
     
     # Test X11
     if timeout 3 xset q >/dev/null 2>&1; then
@@ -537,11 +625,11 @@ EOF
     track_time
 }
 
-# CRITICAL FIX: Graphics verification step
+# CRITICAL FIX: Graphics verification step (Ubuntu 24.04)
 verify_graphics_installation() {
-    print_step "Verifying Graphics Installation"
+    print_step "Verifying Graphics Installation (Ubuntu 24.04)"
     
-    print_info "Running comprehensive graphics verification..."
+    print_info "Running comprehensive graphics verification for Ubuntu 24.04..."
     
     # Test Gazebo specifically
     print_info "Testing Gazebo Harmonic..."
@@ -564,15 +652,18 @@ verify_graphics_installation() {
         fi
     done
     
-    # Create test scripts for user
-    print_info "Creating test scripts..."
+    # Create test scripts for user (Ubuntu 24.04 specific)
+    print_info "Creating Ubuntu 24.04 test scripts..."
     
     cat > "$DEV_DIR/test_graphics.sh" << 'EOF'
 #!/bin/bash
-# Graphics test script - automatically generated
+# Graphics test script - automatically generated for Ubuntu 24.04
 
-echo "🔍 Graphics Environment Test"
-echo "=========================="
+echo "🔍 Graphics Environment Test (Ubuntu 24.04)"
+echo "=========================================="
+
+echo -n "Ubuntu Version: "
+lsb_release -rs 2>/dev/null || echo "Unknown"
 
 echo -n "X11 Test: "
 if timeout 5 xset q >/dev/null 2>&1; then
@@ -613,6 +704,18 @@ else
 fi
 
 echo ""
+echo "Ubuntu 24.04 Packages:"
+echo "  libgl1: $(dpkg -l 2>/dev/null | grep -c '^ii.*libgl1[^-]' || echo '0')"
+echo "  libglx-mesa0: $(dpkg -l 2>/dev/null | grep -c '^ii.*libglx-mesa0' || echo '0')"
+echo "  libglut3.12: $(dpkg -l 2>/dev/null | grep -c '^ii.*libglut3.12' || echo '0')"
+echo "  qt6-base: $(dpkg -l 2>/dev/null | grep -c '^ii.*qt6-base' || echo '0')"
+
+echo ""
+echo "Deprecated Packages (should be 0):"
+echo "  libgl1-mesa-glx: $(dpkg -l 2>/dev/null | grep -c '^ii.*libgl1-mesa-glx' || echo '0')"
+echo "  freeglut3: $(dpkg -l 2>/dev/null | grep -c '^ii.*freeglut3[^-]' || echo '0')"
+
+echo ""
 echo "Environment Variables:"
 echo "  DISPLAY: $DISPLAY"
 echo "  QT_QPA_PLATFORM: $QT_QPA_PLATFORM"
@@ -625,46 +728,91 @@ EOF
     
     print_success "Test script created: $DEV_DIR/test_graphics.sh"
     
+    # Create Ubuntu 24.04 package checker
+    cat > "$DEV_DIR/check_ubuntu_packages.sh" << 'EOF'
+#!/bin/bash
+# Ubuntu 24.04 package compatibility checker
+
+echo "🔍 Ubuntu 24.04 Package Compatibility Check"
+echo "==========================================="
+
+UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "unknown")
+echo "Ubuntu Version: $UBUNTU_VERSION"
+
+echo ""
+echo "Required Ubuntu 24.04 packages:"
+for pkg in libgl1 libglx-mesa0 libglut3.12 qt6-base-dev; do
+    if dpkg -l | grep -q "^ii.*$pkg"; then
+        echo "  ✅ $pkg: INSTALLED"
+    else
+        echo "  ❌ $pkg: MISSING"
+    fi
+done
+
+echo ""
+echo "Deprecated packages (should not be present):"
+for pkg in libgl1-mesa-glx freeglut3; do
+    if dpkg -l | grep -q "^ii.*$pkg"; then
+        echo "  ⚠️ $pkg: PRESENT (may cause conflicts)"
+    else
+        echo "  ✅ $pkg: NOT PRESENT (good)"
+    fi
+done
+
+echo ""
+echo "Graphics libraries:"
+find /usr/lib -name "libGL*.so*" -o -name "libglut*.so*" -o -name "libglx*.so*" 2>/dev/null | head -10
+EOF
+    
+    chmod +x "$DEV_DIR/check_ubuntu_packages.sh"
+    chown $(whoami):$(whoami) "$DEV_DIR/check_ubuntu_packages.sh" 2>/dev/null || true
+    
+    print_success "Package checker created: $DEV_DIR/check_ubuntu_packages.sh"
+    
     track_time
 }
 
 # Main execution
 main() {
-    print_header "ROS2 Agent Sim - FIXED Runtime Setup"
+    print_header "ROS2 Agent Sim - FIXED Runtime Setup (Ubuntu 24.04)"
     print_info "Log file: ${LOG_FILE}"
     print_info "Installation started at $(date)"
-    print_info "FIXES: Qt6 conflicts, graphics support, enhanced error handling"
+    print_info "FIXES: Ubuntu 24.04 compatibility, Qt6 conflicts, graphics support, enhanced error handling"
     
-    # Run installation steps with graphics validation
-    validate_graphics_environment  # NEW: Validate graphics first
+    # Run installation steps with Ubuntu 24.04 validation
+    verify_ubuntu_packages        # NEW: Verify Ubuntu 24.04 packages first
+    validate_graphics_environment # Enhanced: Ubuntu 24.04 graphics validation
     validate_environment
     setup_repositories
     setup_px4_autopilot
     handle_dependencies
     build_workspace
     finalize_installation
-    verify_graphics_installation   # NEW: Final verification
+    verify_graphics_installation  # Enhanced: Ubuntu 24.04 verification
     
     # Final summary
     local total_time=$(( $(date +%s) - start_time ))
-    print_header "FIXED Runtime Setup Completed Successfully!"
+    print_header "FIXED Runtime Setup Completed Successfully (Ubuntu 24.04)!"
     print_success "Total setup time: ${total_time}s"
     print_info "Log file saved: ${LOG_FILE}"
     
-    echo -e "\n${GREEN}🎉 Next steps (FIXED VERSION):${NC}"
+    echo -e "\n${GREEN}🎉 Next steps (FIXED VERSION - Ubuntu 24.04):${NC}"
     echo -e "${CYAN}1. Test graphics:${NC}         ./test_graphics.sh"
-    echo -e "${CYAN}2. Source workspace:${NC}      source $ROS2_WS/install/setup.bash"
-    echo -e "${CYAN}3. Launch simulation:${NC}     ros2 launch drone_sim drone.launch.py"
-    echo -e "${CYAN}4. Run ROS2 agent:${NC}        ros2 run ros2_agent ros2_agent_node"
-    echo -e "${CYAN}5. Start Gazebo manually:${NC}  gz sim (or gazebo_start alias)"
+    echo -e "${CYAN}2. Check packages:${NC}        ./check_ubuntu_packages.sh"
+    echo -e "${CYAN}3. Source workspace:${NC}      source $ROS2_WS/install/setup.bash"
+    echo -e "${CYAN}4. Launch simulation:${NC}     ros2 launch drone_sim drone.launch.py"
+    echo -e "${CYAN}5. Run ROS2 agent:${NC}        ros2 run ros2_agent ros2_agent_node"
+    echo -e "${CYAN}6. Start Gazebo manually:${NC}  gz sim (or gazebo_start alias)"
     
-    echo -e "\n${YELLOW}🔧 Troubleshooting commands:${NC}"
+    echo -e "\n${YELLOW}🔧 Troubleshooting commands (Ubuntu 24.04):${NC}"
     echo -e "${CYAN}- Graphics issues:${NC}        diagnose_graphics"
     echo -e "${CYAN}- Software rendering:${NC}     gazebo_software"
     echo -e "${CYAN}- Qt6 debug:${NC}              QT_DEBUG_PLUGINS=1 gz sim"
     echo -e "${CYAN}- Test environment:${NC}       graphics_test"
+    echo -e "${CYAN}- Check packages:${NC}         check_packages_ubuntu"
+    echo -e "${CYAN}- Check deprecated:${NC}       check_deprecated"
     
-    print_success "🎯 Installation completed with comprehensive graphics support!"
+    print_success "🎯 Installation completed with comprehensive Ubuntu 24.04 support!"
     
     cd "$HOME"
 }

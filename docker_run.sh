@@ -1,6 +1,6 @@
 #!/bin/bash
 # FIXED: ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA
-# Enhanced with comprehensive graphics and Qt6 support fixes
+# Enhanced with comprehensive graphics and Qt6 support fixes for Ubuntu 24.04
 
 set -e
 
@@ -291,14 +291,14 @@ start_persistent_container() {
     GRAPHICS_ENV="$GRAPHICS_ENV --env=DISPLAY=${DISPLAY}"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=XAUTHORITY=${XAUTH}"
     
-    # Qt6 and GUI environment (CRITICAL FIXES)
+    # Qt6 and GUI environment (CRITICAL FIXES for Ubuntu 24.04)
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_QPA_PLATFORM=xcb"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_X11_NO_MITSHM=1"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_AUTO_SCREEN_SCALE_FACTOR=0"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_SCALE_FACTOR=1"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms"
     
-    # OpenGL and Mesa environment (CRITICAL FIXES)
+    # OpenGL and Mesa environment (CRITICAL FIXES for Ubuntu 24.04)
     GRAPHICS_ENV="$GRAPHICS_ENV --env=LIBGL_ALWAYS_INDIRECT=0"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=LIBGL_ALWAYS_SOFTWARE=0"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=MESA_GL_VERSION_OVERRIDE=4.5"
@@ -566,11 +566,11 @@ show_help() {
     echo "  help      Show this help"
     echo
     echo "CRITICAL FIXES INCLUDED:"
-    echo "  ✅ Qt6/Qt5 conflict resolution"
-    echo "  ✅ Enhanced Mesa software rendering support"
-    echo "  ✅ Comprehensive X11 authentication"
-    echo "  ✅ Proper graphics environment variables"
-    echo "  ✅ Gazebo Harmonic compatibility fixes"
+    echo "  ✅ Ubuntu 24.04 package compatibility"
+    echo "  ✅ Qt6 platform plugin fixes"
+    echo "  ✅ Mesa/OpenGL package corrections"
+    echo "  ✅ Enhanced X11 authentication"
+    echo "  ✅ Gazebo Harmonic compatibility"
     echo
     echo "The container runs persistently in the background."
     echo "You can exit and reconnect without losing your work."
@@ -587,7 +587,7 @@ main() {
     echo
     print_info "🚀 ROS2 Agent Sim Docker Environment (FIXED VERSION)"
     print_info "🎯 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA"
-    print_info "🔧 With comprehensive Qt6 and graphics fixes"
+    print_info "🔧 With Ubuntu 24.04 package fixes and enhanced graphics support"
     print_info "Container: $CONTAINER_NAME"
     print_info "Workspace: $WORKSPACE_DIR"
     echo
@@ -599,7 +599,7 @@ main() {
         print_success "✅ Docker image exists: ${IMAGE_NAME}"
     else
         print_warning "⚠️  Docker image not found: ${IMAGE_NAME}"
-        print_info "Building image with comprehensive fixes..."
+        print_info "Building image with Ubuntu 24.04 fixes..."
         build_image
     fi
     
@@ -625,7 +625,7 @@ case "${1:-run}" in
         ;;
     "rebuild")
         check_docker
-        print_info "Force rebuilding image with fixes..."
+        print_info "Force rebuilding image with Ubuntu 24.04 fixes..."
         docker rmi "${IMAGE_NAME}" 2>/dev/null || true
         build_image
         ;;
