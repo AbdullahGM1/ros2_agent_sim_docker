@@ -506,17 +506,43 @@ start_persistent_container() {
     X11_ENV_VARS="$X11_ENV_VARS --env=QT_QPA_PLATFORM=xcb"
     X11_ENV_VARS="$X11_ENV_VARS --env=QT_QUICK_BACKEND=software"
     
+    # CRITICAL: Add missing graphics environment variables
+    X11_ENV_VARS="$X11_ENV_VARS --env=XDG_RUNTIME_DIR=/tmp/runtime-user"
+    X11_ENV_VARS="$X11_ENV_VARS --env=XDG_SESSION_TYPE=x11"
+    X11_ENV_VARS="$X11_ENV_VARS --env=MESA_GL_VERSION_OVERRIDE=3.3"
+    X11_ENV_VARS="$X11_ENV_VARS --env=MESA_GLSL_VERSION_OVERRIDE=330"
+    X11_ENV_VARS="$X11_ENV_VARS --env=GALLIUM_DRIVER=softpipe"
+    
     # X11 volume mounts
     X11_VOLUMES=""
     X11_VOLUMES="$X11_VOLUMES --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
     X11_VOLUMES="$X11_VOLUMES --volume=${XAUTH}:${XAUTH}:rw"
     
-    # Add GPU support if available
+    # CRITICAL: Enhanced graphics device access
     if [ -d "/dev/dri" ]; then
         X11_VOLUMES="$X11_VOLUMES --volume=/dev/dri:/dev/dri:rw"
+        print_info "GPU devices mounted: /dev/dri"
     fi
     
-    # Start container in detached mode with comprehensive X11 support
+    # Mount additional graphics devices
+    if [ -c "/dev/nvidia0" ]; then
+        X11_VOLUMES="$X11_VOLUMES --volume=/dev/nvidia0:/dev/nvidia0:rw"
+        X11_VOLUMES="$X11_VOLUMES --volume=/dev/nvidiactl:/dev/nvidiactl:rw"
+        X11_VOLUMES="$X11_VOLUMES --volume=/dev/nvidia-modeset:/dev/nvidia-modeset:rw"
+        print_info "NVIDIA devices mounted"
+    fi
+    
+    # Mount graphics libraries
+    if [ -d "/usr/lib/x86_64-linux-gnu/dri" ]; then
+        X11_VOLUMES="$X11_VOLUMES --volume=/usr/lib/x86_64-linux-gnu/dri:/usr/lib/x86_64-linux-gnu/dri:ro"
+    fi
+    
+    # Create runtime directory
+    mkdir -p /tmp/runtime-user
+    chmod 700 /tmp/runtime-user
+    X11_VOLUMES="$X11_VOLUMES --volume=/tmp/runtime-user:/tmp/runtime-user:rw"
+    
+    # Start container in detached mode with comprehensive graphics support
     docker run -d \
         --name=${CONTAINER_NAME} \
         --hostname=ros2-dev \
@@ -540,7 +566,9 @@ start_persistent_container() {
         --security-opt seccomp=unconfined \
         --security-opt apparmor=unconfined \
         --cap-add=SYS_PTRACE \
+        --cap-add=SYS_ADMIN \
         --ipc=host \
+        --shm-size=512m \
         $DOCKER_OPTS \
         ${IMAGE_NAME} \
         tail -f /dev/null
@@ -552,19 +580,22 @@ start_persistent_container() {
     if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
         print_success "Container started successfully in persistent mode"
         
-        # Test X11 inside container with multiple displays
+        # Test X11 inside container
         print_info "Testing X11 connection inside container..."
         
-        # Test the selected display
         if docker exec ${CONTAINER_NAME} bash -c "export DISPLAY=${DISPLAY} && xset q" 2>/dev/null; then
             print_success "✅ X11 connection working for $DISPLAY inside container!"
         else
             print_warning "⚠️ X11 connection for $DISPLAY not working, container will auto-detect"
         fi
         
-        # Show available displays in container
-        print_info "Available X11 sockets in container:"
-        docker exec ${CONTAINER_NAME} ls -la /tmp/.X11-unix/ 2>/dev/null || print_warning "No X11 sockets found"
+        # Test OpenGL inside container
+        print_info "Testing OpenGL support..."
+        if docker exec ${CONTAINER_NAME} bash -c "glxinfo | head -20" 2>/dev/null; then
+            print_success "✅ OpenGL support detected"
+        else
+            print_warning "⚠️ OpenGL may not work properly"
+        fi
         
         return 0
     else

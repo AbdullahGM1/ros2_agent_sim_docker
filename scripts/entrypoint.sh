@@ -132,6 +132,47 @@ fi
 print_success "X11 environment setup completed"
 
 # ========================================================================
+# CRITICAL: Graphics and OpenGL Environment Setup
+# ========================================================================
+
+print_info "Setting up graphics and OpenGL environment..."
+
+# Create XDG runtime directory if it doesn't exist
+if [ ! -d "/tmp/runtime-user" ]; then
+    mkdir -p /tmp/runtime-user
+    chmod 700 /tmp/runtime-user
+fi
+chown -R $HOST_UID:$HOST_GID /tmp/runtime-user
+
+# Set graphics environment variables
+export XDG_RUNTIME_DIR="/tmp/runtime-user"
+export XDG_SESSION_TYPE="x11"
+export MESA_GL_VERSION_OVERRIDE="3.3"
+export MESA_GLSL_VERSION_OVERRIDE="330"
+export LIBGL_ALWAYS_INDIRECT=0
+export LIBGL_ALWAYS_SOFTWARE=0
+
+# Test OpenGL availability
+if command -v glxinfo >/dev/null 2>&1; then
+    if glxinfo >/dev/null 2>&1; then
+        print_success "✅ OpenGL hardware acceleration available"
+    else
+        print_warning "⚠️ OpenGL hardware acceleration not available, using software rendering"
+        export LIBGL_ALWAYS_SOFTWARE=1
+        export GALLIUM_DRIVER=softpipe
+    fi
+else
+    print_warning "⚠️ glxinfo not available, cannot test OpenGL"
+fi
+
+# Gazebo-specific environment variables
+export GAZEBO_MODEL_PATH="/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/models:$GAZEBO_MODEL_PATH"
+export GAZEBO_RESOURCE_PATH="/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/worlds:$GAZEBO_RESOURCE_PATH"
+export IGN_GAZEBO_RESOURCE_PATH="/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/models:/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/worlds:$IGN_GAZEBO_RESOURCE_PATH"
+
+print_success "Graphics environment setup completed"
+
+# ========================================================================
 # CRITICAL: Setup Proper .bashrc
 # ========================================================================
 

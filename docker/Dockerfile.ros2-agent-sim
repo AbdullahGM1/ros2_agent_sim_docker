@@ -90,19 +90,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     x11-xserver-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Graphics, GUI, and multimedia support
+# Enhanced Graphics, GUI, OpenGL, and multimedia support (merged and de-duplicated)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     mesa-utils \
+    mesa-utils-extra \
     x11-apps \
+    xvfb \
+    x11vnc \
+    libgl1-mesa-glx \
     libgl1-mesa-dri \
     libglu1-mesa \
     libegl1 \
+    libegl1-mesa-dev \
     libgles2 \
+    libgles2-mesa-dev \
     libglx-mesa0 \
+    libglew-dev \
+    libglfw3-dev \
+    freeglut3-dev \
     libxrender1 \
     libxext6 \
     libx11-6 \
     libxrandr2 \
+    libxinerama1 \
     libxss1 \
     libxcursor1 \
     libxcomposite1 \
@@ -110,6 +120,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxfixes3 \
     libxi6 \
     libxtst6 \
+    libxmu6 \
+    libxpm4 \
+    libxaw7 \
+    libxv1 \
+    libxxf86vm1 \
     libnss3 \
     libasound2t64 \
     gstreamer1.0-plugins-base \
@@ -119,6 +134,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gstreamer1.0-libav \
     libgstreamer-plugins-base1.0-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Set up graphics environment variables
+ENV LIBGL_ALWAYS_INDIRECT=0
+ENV LIBGL_ALWAYS_SOFTWARE=0
+ENV MESA_GL_VERSION_OVERRIDE=3.3
+ENV MESA_GLSL_VERSION_OVERRIDE=330
+ENV XDG_RUNTIME_DIR=/tmp/runtime-user
+ENV XDG_SESSION_TYPE=x11
+
+# Create runtime directory for graphics
+RUN mkdir -p /tmp/runtime-user && chmod 700 /tmp/runtime-user
 
 # ============================================================================
 # PHASE 3: Python Environment Setup 
