@@ -118,11 +118,19 @@ setup_repositories() {
         print_info "mavros already exists in shared volume"
     fi
     
-    # Copy PX4-Autopilot if not exists
+    # Copy PX4-Autopilot 
     if [ ! -d "$PX4_DIR" ]; then
         print_info "Copying PX4-Autopilot from container..."
-        cp -r /tmp/PX4-Autopilot "$PX4_DIR"
-        print_success "PX4-Autopilot copied"
+        if [ -d "/opt/px4-source" ]; then
+            cp -r /opt/px4-source "$PX4_DIR"
+            print_success "PX4-Autopilot copied from /opt/px4-source"
+        else
+            print_error "PX4 source not found at /opt/px4-source"
+            print_info "Available directories:"
+            ls -la /opt/ | grep px4 || echo "No px4 directories found in /opt/"
+            ls -la /tmp/ | grep -i px4 || echo "No px4 directories found in /tmp/"
+            exit 1
+        fi
     else
         print_info "PX4-Autopilot already exists in shared volume"
     fi
@@ -141,59 +149,60 @@ setup_px4_autopilot() {
         return 0
     fi
     
-    # Copy source from container to shared volume for building
-    if [ -d "/opt/px4-source" ]; then
-        print_info "Copying PX4 source to shared volume for building..."
-        rm -rf "$PX4_DIR"
-        cp -r /opt/px4-source "$PX4_DIR"
+    # Verify PX4 directory exists
+    if [ ! -d "$PX4_DIR" ]; then
+        print_error "PX4 directory not found at $PX4_DIR"
+        print_info "Run setup_repositories first"
+        exit 1
+    fi
+    
+    # Apply custom configurations
+    if [ -d "$PX4_config" ]; then
+        print_info "Applying custom PX4 configurations..."
         
-        # Apply custom configurations
-        if [ -d "$PX4_config" ]; then
-            print_info "Applying custom PX4 configurations..."
-            
-            if [ -d "$PX4_config/models" ]; then
-                mkdir -p "${PX4_DIR}/Tools/simulation/gz/models/"
-                cp -r "$PX4_config/models/"* "${PX4_DIR}/Tools/simulation/gz/models/"
-                print_success "Models configuration applied"
-            fi
-            
-            if [ -d "$PX4_config/worlds" ]; then
-                mkdir -p "${PX4_DIR}/Tools/simulation/gz/worlds/"
-                cp -r "$PX4_config/worlds/"* "${PX4_DIR}/Tools/simulation/gz/worlds/"
-                print_success "Worlds configuration applied"
-            fi
-            
-            if [ -d "$PX4_config/px4" ]; then
-                mkdir -p "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
-                cp -r "$PX4_config/px4/"* "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
-                print_success "Airframes configuration applied"
-            fi
+        if [ -d "$PX4_config/models" ]; then
+            mkdir -p "${PX4_DIR}/Tools/simulation/gz/models/"
+            cp -r "$PX4_config/models/"* "${PX4_DIR}/Tools/simulation/gz/models/"
+            print_success "Models configuration applied"
         fi
         
-        # Build PX4 in the final location (no path conflicts)
-        print_info "Building PX4 in final location (this may take 10-15 minutes)..."
-        cd "$PX4_DIR"
-        export CMAKE_ARGS="-Wno-dev"
+        if [ -d "$PX4_config/worlds" ]; then
+            mkdir -p "${PX4_DIR}/Tools/simulation/gz/worlds/"
+            cp -r "$PX4_config/worlds/"* "${PX4_DIR}/Tools/simulation/gz/worlds/"
+            print_success "Worlds configuration applied"
+        fi
         
-        if make px4_sitl; then
-            print_success "PX4 built successfully in final location"
-            
-            # Test the binary
-            if [ -f "build/px4_sitl_default/bin/px4" ]; then
-                print_success "PX4 binary verified: $(ls -lh build/px4_sitl_default/bin/px4)"
-            else
-                print_error "PX4 binary not found after build"
-                return 1
-            fi
+        if [ -d "$PX4_config/px4" ]; then
+            mkdir -p "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
+            cp -r "$PX4_config/px4/"* "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
+            print_success "Airframes configuration applied"
+        fi
+    fi
+    
+    # Build PX4 in the final location
+    print_info "Building PX4 in final location (this may take 10-15 minutes)..."
+    cd "$PX4_DIR"
+    export CMAKE_ARGS="-Wno-dev"
+    
+    # Clean any previous build attempts
+    if [ -d "build" ]; then
+        print_info "Cleaning previous build..."
+        rm -rf build/
+    fi
+    
+    if make px4_sitl; then
+        print_success "PX4 built successfully in final location"
+        
+        # Test the binary
+        if [ -f "build/px4_sitl_default/bin/px4" ]; then
+            print_success "PX4 binary verified: $(ls -lh build/px4_sitl_default/bin/px4)"
         else
-            print_error "PX4 build failed"
+            print_error "PX4 binary not found after build"
             return 1
         fi
-        
     else
-        print_error "PX4 source not found in container at /opt/px4-source"
-        print_info "This suggests the Docker build didn't complete PX4 setup properly"
-        exit 1
+        print_error "PX4 build failed"
+        return 1
     fi
     
     track_time
