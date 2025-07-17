@@ -7,61 +7,75 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
+# ----------------------------------------------------------------------------
+# SIMULATOR & WORLD SETUP
+# ----------------------------------------------------------------------------
 PX4_SIMULATOR=${PX4_SIMULATOR:=gz}
 PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
 PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
-
 param set-default SIM_GZ_EN 1
 
-# XRCE-DDS configuration
+# ----------------------------------------------------------------------------
+# XRCE-DDS CONFIGURATION (for ROS 2 bridge)
+# ----------------------------------------------------------------------------
 param set-default UXRCE_DDS_DOM_ID 0
+uxrce_dds_client start -t udp -h 127.0.0.1 -p 8888
 
-# EKF2 configuration
-param set-default EKF2_HGT_REF 0
+# ----------------------------------------------------------------------------
+# EKF2 & HEIGHT SOURCE CONFIG
+# ----------------------------------------------------------------------------
+param set-default EKF2_HGT_REF 0          # Use barometer as height reference
+param set-default EKF2_GPS_CHECK 0
+param set-default EKF2_REQ_GPS_H 0.5
 
-# ============================================================================
-# CORRECTED SENSOR SIMULATION - Enable PX4's Built-in Simulators
-# ============================================================================
-# Enable GPS simulation (required for magnetometer simulation)
-param set-default SENS_EN_GPSSIM 1
-param set-default SENS_EN_BAROSIM 1
+# ----------------------------------------------------------------------------
+# ENABLE SENSOR SIMULATORS
+# ----------------------------------------------------------------------------
+param set-default SENS_EN_GPSSIM 1        # Simulated GPS
+param set-default SENS_EN_BAROSIM 1       # Simulated Barometer
+param set-default SENS_EN_MAGSIM 1        # Simulated Magnetometer
 
-# CRITICAL: Enable PX4's built-in magnetometer simulator
-param set-default SENS_EN_MAGSIM 1
+param set-default SENS_EN_GPS 0           # Disable real GPS (HIL)
+param set-default SENS_EN_MAG 0           # Disable real compass
 
-# Configure magnetometer simulation parameters
+# Magnetometer offsets (adjust if needed)
 param set-default SIM_MAG_OFFSET_X 0.0
 param set-default SIM_MAG_OFFSET_Y 0.0
 param set-default SIM_MAG_OFFSET_Z 0.0
 
-# Set magnetometer calibration ID (required for sim)
+# Simulated magnetometer calibration ID (required)
 param set-default CAL_MAG0_ID 197120
+param set-default CAL_MAG0_ROT 0          # Rotation: NONE
 
-# Allow arming without GPS initially (will be overridden when GPS works)
-param set-default COM_ARM_WO_GPS 1
+# Start PX4's magnetometer simulator module
+sensor_mag_sim start
 
-# Control allocation
+# ----------------------------------------------------------------------------
+# CONTROL ALLOCATION
+# ----------------------------------------------------------------------------
 param set-default CA_AIRFRAME 0
 param set-default CA_ROTOR_COUNT 4
 
-# Rotor configuration
-param set-default CA_ROTOR0_PX 0.13
-param set-default CA_ROTOR0_PY 0.22
+# Rotor positions and moment constants
+param set-default CA_ROTOR0_PX  0.13
+param set-default CA_ROTOR0_PY  0.22
 param set-default CA_ROTOR0_KM  0.05
 
 param set-default CA_ROTOR1_PX -0.13
 param set-default CA_ROTOR1_PY -0.20
 param set-default CA_ROTOR1_KM  0.05
 
-param set-default CA_ROTOR2_PX 0.13
+param set-default CA_ROTOR2_PX  0.13
 param set-default CA_ROTOR2_PY -0.22
 param set-default CA_ROTOR2_KM -0.05
 
 param set-default CA_ROTOR3_PX -0.13
-param set-default CA_ROTOR3_PY 0.20
+param set-default CA_ROTOR3_PY  0.20
 param set-default CA_ROTOR3_KM -0.05
 
-# Simulation motor configuration
+# ----------------------------------------------------------------------------
+# SIMULATED ESC CONFIGURATION (actuator outputs)
+# ----------------------------------------------------------------------------
 param set-default SIM_GZ_EC_FUNC1 101
 param set-default SIM_GZ_EC_FUNC2 102
 param set-default SIM_GZ_EC_FUNC3 103
@@ -77,54 +91,33 @@ param set-default SIM_GZ_EC_MAX2 1000
 param set-default SIM_GZ_EC_MAX3 1000
 param set-default SIM_GZ_EC_MAX4 1000
 
-# Thrust hover setting
+# ----------------------------------------------------------------------------
+# HOVER THRUST SETTING
+# ----------------------------------------------------------------------------
 param set-default MPC_THR_HOVER 0.60
 
-# ============================================================================
-# ESSENTIAL SAFETY BYPASSES (Non-conflicting with magnetometer)
-# ============================================================================
-# Disable non-essential safety checks only
-param set-default CBRK_AIRSPD_CHK 162128
+# ----------------------------------------------------------------------------
+# SAFETY BYPASSES (Simulation Only - Use with Caution!)
+# ----------------------------------------------------------------------------
+param set-default COM_ARM_WO_GPS 1        # Allow arming without GPS
+param set-default CBRK_AIRSPD_CHK  162128
 param set-default CBRK_SUPPLY_CHK 894281
-param set-default CBRK_USB_CHK 197848
-param set-default CBRK_BUZZER 782097
+param set-default CBRK_USB_CHK    197848
+param set-default CBRK_BUZZER     782097
 
-# Set relaxed EKF requirements for simulation
-param set-default EKF2_GPS_CHECK 0
-param set-default EKF2_REQ_GPS_H 0.5
-
-# ============================================================================
-# CRITICAL FIX: START MAGNETOMETER SIMULATOR MODULE
-# ============================================================================
-# Start the magnetometer simulation module
-sensor_mag_sim start
-
-# ============================================================================
-# CRITICAL FIX: ADD MAVLINK CONFIGURATION
-# ============================================================================
-# MAVLink configuration for instance 1
-mavlink start -x -u 14556 -r 4000000
-mavlink start -x -u 14557 -r 4000000 -f
+# ----------------------------------------------------------------------------
+# MAVLINK CONFIGURATION (for QGC, MAVROS, onboard)
+# ----------------------------------------------------------------------------
+mavlink start -x -u 14556 -r 4000000               # QGC
+mavlink start -x -u 14557 -r 4000000 -f            # MAVROS
 mavlink start -x -u 14558 -r 4000000 -m onboard -o 14540
 
-# ============================================================================
-# CRITICAL FIX: ADD UXRCE-DDS CLIENT STARTUP
-# ============================================================================
-# Start UXRCE-DDS client to connect to ROS2
-uxrce_dds_client start -t udp -h 127.0.0.1 -p 8888
-
-# ============================================================================
-# SIMULATION SETUP
-# ============================================================================
-# Set simulation parameters
-param set-default SIM_GZ_EN 1
-
-# MAVLink stream rates for simulation
 param set-default SER_TEL1_BAUD 57600
 param set-default SER_TEL2_BAUD 57600
 
-# Boot complete
 mavlink boot_complete
 
-# Start simulation
+# ----------------------------------------------------------------------------
+# START GZ SIM
+# ----------------------------------------------------------------------------
 gz sim start
