@@ -252,6 +252,31 @@
           </position_sensing>
         </navsat>
       </sensor>
+      <!-- Magnetometer sensor for PX4 -->
+      <sensor name="magnetometer" type="magnetometer">
+        <always_on>1</always_on>
+        <update_rate>50</update_rate>
+        <magnetometer>
+          <x>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1e-4</stddev>
+            </noise>
+          </x>
+          <y>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1e-4</stddev>
+            </noise>
+          </y>
+          <z>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1e-4</stddev>
+            </noise>
+          </z>
+        </magnetometer>
+      </sensor>
     </link>
     <link name="rotor_0">
       <gravity>true</gravity>

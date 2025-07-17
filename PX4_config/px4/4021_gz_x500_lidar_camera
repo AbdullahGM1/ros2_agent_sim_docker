@@ -1,123 +1,54 @@
 #!/bin/sh
 #
-# @name Gazebo x500_lidar_camera (FIXED - FINAL VERSION)
+# @name Gazebo X500 with Lidar and Camera
 #
 # @type Quadrotor
+# @class Copter
 #
 
 . ${R}etc/init.d/rc.mc_defaults
 
-# ----------------------------------------------------------------------------
-# SIMULATOR & WORLD SETUP
-# ----------------------------------------------------------------------------
+# Simulator configuration
 PX4_SIMULATOR=${PX4_SIMULATOR:=gz}
 PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
 PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
+
+# Enable Gazebo simulation
 param set-default SIM_GZ_EN 1
 
-# ----------------------------------------------------------------------------
-# XRCE-DDS CONFIGURATION (for ROS 2 bridge)
-# ----------------------------------------------------------------------------
-param set-default UXRCE_DDS_DOM_ID 0
-uxrce_dds_client start -t udp -h 127.0.0.1 -p 8888
+# CRITICAL: Enable simulated sensors including magnetometer
+param set-default SENS_EN_GPSSIM 1
+param set-default SENS_EN_BAROSIM 0
+param set-default SENS_EN_MAGSIM 1
+param set-default SENS_EN_ARSPDSIM 0
 
-# ----------------------------------------------------------------------------
-# EKF2 & HEIGHT SOURCE CONFIG
-# ----------------------------------------------------------------------------
-param set-default EKF2_HGT_REF 0          # Use barometer as height reference
-param set-default EKF2_GPS_CHECK 0
-param set-default EKF2_REQ_GPS_H 0.5
+# EKF2 magnetometer configuration
+param set-default EKF2_MAG_TYPE 0       # Automatic magnetometer selection
+param set-default EKF2_GPS_DELAY 0      # No GPS delay for simulation
 
-# ----------------------------------------------------------------------------
-# ENABLE SENSOR SIMULATORS
-# ----------------------------------------------------------------------------
-param set-default SENS_EN_GPSSIM 1        # Simulated GPS
-param set-default SENS_EN_BAROSIM 1       # Simulated Barometer
-param set-default SENS_EN_MAGSIM 1        # Simulated Magnetometer
-
-param set-default SENS_EN_GPS 0           # Disable real GPS (HIL)
-param set-default SENS_EN_MAG 0           # Disable real compass
-
-# Magnetometer offsets (adjust if needed)
-param set-default SIM_MAG_OFFSET_X 0.0
-param set-default SIM_MAG_OFFSET_Y 0.0
-param set-default SIM_MAG_OFFSET_Z 0.0
-
-# Simulated magnetometer calibration ID (required)
-param set-default CAL_MAG0_ID 197120
-param set-default CAL_MAG0_ROT 0          # Rotation: NONE
-
-# Start PX4's magnetometer simulator module
-sensor_mag_sim start
-
-# ----------------------------------------------------------------------------
-# CONTROL ALLOCATION
-# ----------------------------------------------------------------------------
+# Vehicle configuration
 param set-default CA_AIRFRAME 0
 param set-default CA_ROTOR_COUNT 4
 
-# Rotor positions and moment constants
-param set-default CA_ROTOR0_PX  0.13
-param set-default CA_ROTOR0_PY  0.22
-param set-default CA_ROTOR0_KM  0.05
+# Rotor configuration (X500 geometry)
+param set-default CA_ROTOR0_PX 0.13
+param set-default CA_ROTOR0_PY 0.22
+param set-default CA_ROTOR0_KM 0.05
 
 param set-default CA_ROTOR1_PX -0.13
 param set-default CA_ROTOR1_PY -0.20
-param set-default CA_ROTOR1_KM  0.05
+param set-default CA_ROTOR1_KM 0.05
 
-param set-default CA_ROTOR2_PX  0.13
+param set-default CA_ROTOR2_PX 0.13
 param set-default CA_ROTOR2_PY -0.22
 param set-default CA_ROTOR2_KM -0.05
 
 param set-default CA_ROTOR3_PX -0.13
-param set-default CA_ROTOR3_PY  0.20
+param set-default CA_ROTOR3_PY 0.20
 param set-default CA_ROTOR3_KM -0.05
 
-# ----------------------------------------------------------------------------
-# SIMULATED ESC CONFIGURATION (actuator outputs)
-# ----------------------------------------------------------------------------
+# Gazebo motor control functions
 param set-default SIM_GZ_EC_FUNC1 101
 param set-default SIM_GZ_EC_FUNC2 102
 param set-default SIM_GZ_EC_FUNC3 103
 param set-default SIM_GZ_EC_FUNC4 104
-
-param set-default SIM_GZ_EC_MIN1 150
-param set-default SIM_GZ_EC_MIN2 150
-param set-default SIM_GZ_EC_MIN3 150
-param set-default SIM_GZ_EC_MIN4 150
-
-param set-default SIM_GZ_EC_MAX1 1000
-param set-default SIM_GZ_EC_MAX2 1000
-param set-default SIM_GZ_EC_MAX3 1000
-param set-default SIM_GZ_EC_MAX4 1000
-
-# ----------------------------------------------------------------------------
-# HOVER THRUST SETTING
-# ----------------------------------------------------------------------------
-param set-default MPC_THR_HOVER 0.60
-
-# ----------------------------------------------------------------------------
-# SAFETY BYPASSES (Simulation Only - Use with Caution!)
-# ----------------------------------------------------------------------------
-param set-default COM_ARM_WO_GPS 1        # Allow arming without GPS
-param set-default CBRK_AIRSPD_CHK  162128
-param set-default CBRK_SUPPLY_CHK 894281
-param set-default CBRK_USB_CHK    197848
-param set-default CBRK_BUZZER     782097
-
-# ----------------------------------------------------------------------------
-# MAVLINK CONFIGURATION (for QGC, MAVROS, onboard)
-# ----------------------------------------------------------------------------
-mavlink start -x -u 14556 -r 4000000               # QGC
-mavlink start -x -u 14557 -r 4000000 -f            # MAVROS
-mavlink start -x -u 14558 -r 4000000 -m onboard -o 14540
-
-param set-default SER_TEL1_BAUD 57600
-param set-default SER_TEL2_BAUD 57600
-
-mavlink boot_complete
-
-# ----------------------------------------------------------------------------
-# START GZ SIM
-# ----------------------------------------------------------------------------
-gz sim start
