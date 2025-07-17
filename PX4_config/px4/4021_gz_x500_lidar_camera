@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo x500_lidar_camera (MINIMAL FIX)
+# @name Gazebo x500_lidar_camera (FIXED - WITH MAVLINK)
 #
 # @type Quadrotor
 #
@@ -13,23 +13,28 @@ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
 
 param set-default SIM_GZ_EN 1
 
-# KEEP ORIGINAL: Don't change XRCE-DDS settings yet
+# XRCE-DDS configuration
 param set-default UXRCE_DDS_DOM_ID 0
 
+# EKF2 configuration
 param set-default EKF2_HGT_REF 0
+
+# Sensor simulation
 param set-default SENS_EN_GPSSIM 1
 param set-default SENS_EN_BAROSIM 1
 param set-default SENS_EN_MAGSIM 1
 
-# MINIMAL FIX: Add only essential magnetometer setting
+# Magnetometer calibration
 param set-default CAL_MAG0_ID 197120
 
-# MINIMAL FIX: Allow arming without GPS for simulation
+# Allow arming without GPS for simulation
 param set-default COM_ARM_WO_GPS 1
 
+# Control allocation
 param set-default CA_AIRFRAME 0
 param set-default CA_ROTOR_COUNT 4
 
+# Rotor configuration
 param set-default CA_ROTOR0_PX 0.13
 param set-default CA_ROTOR0_PY 0.22
 param set-default CA_ROTOR0_KM  0.05
@@ -46,6 +51,7 @@ param set-default CA_ROTOR3_PX -0.13
 param set-default CA_ROTOR3_PY 0.20
 param set-default CA_ROTOR3_KM -0.05
 
+# Simulation motor configuration
 param set-default SIM_GZ_EC_FUNC1 101
 param set-default SIM_GZ_EC_FUNC2 102
 param set-default SIM_GZ_EC_FUNC3 103
@@ -61,8 +67,42 @@ param set-default SIM_GZ_EC_MAX2 1000
 param set-default SIM_GZ_EC_MAX3 1000
 param set-default SIM_GZ_EC_MAX4 1000
 
-# MINIMAL FIX: Allow arming without GPS and set magnetometer ID
-param set-default COM_ARM_WO_GPS 1
-param set-default CAL_MAG0_ID 197120
-
+# Thrust hover setting
 param set-default MPC_THR_HOVER 0.60
+
+# ============================================================================
+# CRITICAL FIX: ADD MAVLINK CONFIGURATION (This was missing!)
+# ============================================================================
+
+# MAVLink configuration for instance 1
+# Port 14556: XRCE-DDS connection
+# Port 14557: QGroundControl connection
+# Port 14558: API connection (optional)
+
+mavlink start -x -u 14556 -r 4000000
+mavlink start -x -u 14557 -r 4000000 -f
+mavlink start -x -u 14558 -r 4000000 -m onboard -o 14540
+
+# ============================================================================
+# CRITICAL FIX: ADD UXRCE-DDS CLIENT STARTUP (This was missing!)
+# ============================================================================
+
+# Start UXRCE-DDS client to connect to ROS2
+uxrce_dds_client start -t udp -h 127.0.0.1 -p 8888
+
+# ============================================================================
+# SIMULATION SETUP
+# ============================================================================
+
+# Set simulation parameters
+param set-default SIM_GZ_EN 1
+
+# MAVLink stream rates for simulation
+param set-default SER_TEL1_BAUD 57600
+param set-default SER_TEL2_BAUD 57600
+
+# Boot complete
+mavlink boot_complete
+
+# Start simulation
+gz sim start
