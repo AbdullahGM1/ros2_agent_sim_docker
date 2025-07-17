@@ -28,6 +28,20 @@ A complete Docker-based development environment for autonomous robotics featurin
 - [Contact](#-contact)
 - [Additional Resources](#-additional-resources)
 
+## 🖼️ Demo
+<div align="center">
+  <img src="/images/drone_rosa.gif" alt="ROS2 Agent Simulation Demo" width="800"/>
+  <p><i>Demo of drone simulation with ROS2 Agent and Ollama integration</i></p>
+</div>
+
+## 🔮 Future Vision
+<div align="center">
+  <img src="/images/multi_robot_flowchart.png" alt="Multi-Robot ROS2 Agent System Architecture" width="900"/>
+  <p><i>Multi-Robot ROS2 Agent System Architecture - End Goal</i></p>
+</div>
+
+This represents our ultimate vision for a comprehensive multi-robot coordination system. The current implementation focuses on drone control, while this architecture showcases the planned expansion to include wheeled robots, legged robots (Unitree Go2), and advanced mission coordination capabilities.
+
 ### **System Flow Architecture:**
 
 **🔄 Information Flow:**
