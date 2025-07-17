@@ -417,12 +417,9 @@ handle_dependencies() {
     
     cd "$ROS2_WS"
     
-    # Install missing Python dependencies (Ubuntu 24.04 compatible)
     print_info "Installing missing Python dependencies for Ubuntu 24.04..."
     pip3 install --break-system-packages --no-cache-dir \
-
-        "lark>=1.1.0" \
-        "lark-parser>=0.12.0" \
+        "lark>=1.1.0" "lark-parser>=0.12.0" \
         2>/dev/null || {
         print_warning "Some Python packages failed to install (may not be critical)"
     }
