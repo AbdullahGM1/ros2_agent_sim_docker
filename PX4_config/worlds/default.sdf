@@ -18,17 +18,13 @@
     
     <!-- NavSat plugin  -->
     <plugin name='gz::sim::systems::NavSat' filename='gz-sim-navsat-system'/>
-
-    <!-- Magnetometer plugin  -->
-    <plugin filename="gz-sim-magnetometer-system" name="gz::sim::systems::Magnetometer">
-    </plugin>
         
     <!-- Sensors plugin (AFTER NavSat) -->
     <plugin name='gz::sim::systems::Sensors' filename='gz-sim-sensors-system'>
       <render_engine>ogre2</render_engine>
     </plugin>
     
-    <!-- ✅ CRITICAL: GPS reference coordinates -->
+    <!-- GPS reference coordinates -->
     <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
       <latitude_deg>37.4223</latitude_deg>
@@ -39,10 +35,11 @@
     
     <!-- World physics and environment -->
     <gravity>0 0 -9.8</gravity>
+    <!-- ✅ KEEP: Magnetic field still needed for PX4's built-in simulator -->
     <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
     <atmosphere type='adiabatic'/>
     
-    <!-- ✅ FIX: Enhanced scene configuration for proper lighting -->
+    <!-- Enhanced scene configuration for proper lighting -->
     <scene>
       <grid>true</grid>
       <ambient>0.6 0.6 0.6 1</ambient>
@@ -51,7 +48,7 @@
       <sky>true</sky>
     </scene>
     
-    <!-- ✅ FIX: Add proper sun lighting -->
+    <!-- Add proper sun lighting -->
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
       <pose>0 0 10 0 0 0</pose>
@@ -66,7 +63,7 @@
       <direction>-0.5 0.1 -0.9</direction>
     </light>
     
-    <!-- ✅ FIX: GUI configuration with proper camera positioning -->
+    <!-- GUI configuration with proper camera positioning -->
     <gui fullscreen='0'>
       <camera name='user_camera'>
         <pose>5 -5 4 0 0.4 2.4</pose>
@@ -75,7 +72,7 @@
       </camera>
     </gui>
     
-    <!-- ✅ FIX: Enhanced ground plane with proper materials -->
+    <!-- Enhanced ground plane with proper materials -->
     <model name='ground_plane'>
       <static>true</static>
       <link name='link'>
