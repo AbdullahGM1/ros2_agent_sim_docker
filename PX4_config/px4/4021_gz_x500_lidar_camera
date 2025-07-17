@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo x500_mono
+# @name Gazebo x500_lidar_camera (MINIMAL FIX)
 #
 # @type Quadrotor
 #
@@ -13,12 +13,19 @@ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
 
 param set-default SIM_GZ_EN 1
 
+# KEEP ORIGINAL: Don't change XRCE-DDS settings yet
 param set-default UXRCE_DDS_DOM_ID 0
 
 param set-default EKF2_HGT_REF 0
 param set-default SENS_EN_GPSSIM 1
 param set-default SENS_EN_BAROSIM 1
 param set-default SENS_EN_MAGSIM 1
+
+# MINIMAL FIX: Add only essential magnetometer setting
+param set-default CAL_MAG0_ID 197120
+
+# MINIMAL FIX: Allow arming without GPS for simulation
+param set-default COM_ARM_WO_GPS 1
 
 param set-default CA_AIRFRAME 0
 param set-default CA_ROTOR_COUNT 4
@@ -53,5 +60,9 @@ param set-default SIM_GZ_EC_MAX1 1000
 param set-default SIM_GZ_EC_MAX2 1000
 param set-default SIM_GZ_EC_MAX3 1000
 param set-default SIM_GZ_EC_MAX4 1000
+
+# MINIMAL FIX: Allow arming without GPS and set magnetometer ID
+param set-default COM_ARM_WO_GPS 1
+param set-default CAL_MAG0_ID 197120
 
 param set-default MPC_THR_HOVER 0.60
