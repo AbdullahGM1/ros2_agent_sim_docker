@@ -419,7 +419,8 @@ handle_dependencies() {
     
     # Install missing Python dependencies (Ubuntu 24.04 compatible)
     print_info "Installing missing Python dependencies for Ubuntu 24.04..."
-    pip install --no-cache-dir \
+    pip3 install --break-system-packages --no-cache-dir \
+
         "lark>=1.1.0" \
         "lark-parser>=0.12.0" \
         2>/dev/null || {
@@ -648,13 +649,11 @@ main() {
     print_success "Total setup time: ${total_time}s"
     print_info "Log file saved: ${LOG_FILE}"
     
-    echo -e "\n${GREEN}🎉 Next steps (FIXED VERSION - Ubuntu 24.04):${NC}"
-    echo -e "${CYAN}1. Test graphics:${NC}         ./test_graphics.sh"
-    echo -e "${CYAN}2. Check packages:${NC}        ./check_ubuntu_packages.sh"
+    echo -e "\n${GREEN}🎉 Next steps:${NC}"
+    echo -e "${CYAN}3. Build workspace:${NC}      colcon build"
     echo -e "${CYAN}3. Source workspace:${NC}      source $ROS2_WS/install/setup.bash"
     echo -e "${CYAN}4. Launch simulation:${NC}     ros2 launch drone_sim drone.launch.py"
     echo -e "${CYAN}5. Run ROS2 agent:${NC}        ros2 run ros2_agent ros2_agent_node"
-    echo -e "${CYAN}6. Start Gazebo manually:${NC}  gz sim (or gazebo_start alias)"
     
     print_success "🎯 Installation completed with comprehensive Ubuntu 24.04 support!"
     

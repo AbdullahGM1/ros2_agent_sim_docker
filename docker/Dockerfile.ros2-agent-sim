@@ -215,15 +215,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-vcstool \
     python3-rosinstall-generator \
     python3-osrf-pycommon \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
-
-# Create Python virtual environment to solve PEP 668 issues
-RUN python3 -m venv /opt/python-env
-ENV PATH="/opt/python-env/bin:$PATH"
-ENV VIRTUAL_ENV="/opt/python-env"
-
-# Install pip and core Python packages 
-RUN pip install --upgrade pip setuptools wheel cython
 
 # ============================================================================
 # PHASE 4: Add External Repositories
@@ -437,7 +430,7 @@ RUN if id -u 1000 >/dev/null 2>&1; then \
 # ============================================================================
 
 # All Python packages in one consolidated installation
-RUN pip install --no-cache-dir \
+RUN pip3 install --break-system-packages --ignore-installed --no-cache-dir \
     "numpy>=1.21.0,<2.0.0" \
     "PyYAML==6.0.1" \
     future \
@@ -469,7 +462,6 @@ RUN pip install --no-cache-dir \
     "six>=1.12.0" \
     "toml>=0.9" \
     "sympy>=1.10.1" \
-    "typing-extensions>=4.7.0" \
     "symforce>=0.10.0,<0.11.0" \
     langchain \
     langchain-ollama \
@@ -544,7 +536,7 @@ RUN echo "=== Preparing PX4 for runtime build ===" && \
     done && \
     \
     # Ensure EmPy version is correct
-    pip install --force-reinstall "empy>=3.3,<4.0" && \
+    pip3 install --break-system-packages --force-reinstall "empy>=3.3,<4.0" && \
     echo "✅ PX4 source prepared for runtime build"
 
 # Clone other repositories
@@ -585,9 +577,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # PHASE 19: Final User Environment Setup
 # ============================================================================
 
-# Set ownership for user directories and Python environment
+# Set ownership for user directories 
 RUN mkdir -p /home/user/shared_volume && \
-    chown -R user:user /home/user /opt/python-env && \
+    chown -R user:user /home/user && \
     chmod 755 /home/user/shared_volume
 
 # Switch to user and setup environment
@@ -597,8 +589,7 @@ WORKDIR /home/user
 # CRITICAL FIX: Setup user bashrc with proper Qt6 and graphics environment
 RUN echo "# ROS2 Jazzy + Gazebo Harmonic + Qt6 Environment (FIXED)" >> ~/.bashrc && \
     echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc && \
-    echo "export PATH=/opt/python-env/bin:\$PATH" >> ~/.bashrc && \
-    echo "export VIRTUAL_ENV=/opt/python-env" >> ~/.bashrc && \
+    echo "export PATH=\$HOME/.local/bin:\$PATH" >> ~/.bashrc && \
     echo "export GZ_VERSION=harmonic" >> ~/.bashrc && \
     echo "export ROS_DOMAIN_ID=0" >> ~/.bashrc && \
     echo "export DEV_DIR=/home/user/shared_volume" >> ~/.bashrc && \
