@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo x500_lidar_camera (FIXED - WITH MAVLINK)
+# @name Gazebo x500_lidar_camera (FIXED - FINAL VERSION)
 #
 # @type Quadrotor
 #
@@ -19,15 +19,25 @@ param set-default UXRCE_DDS_DOM_ID 0
 # EKF2 configuration
 param set-default EKF2_HGT_REF 0
 
-# Sensor simulation
+# ============================================================================
+# CORRECTED SENSOR SIMULATION - Enable PX4's Built-in Simulators
+# ============================================================================
+# Enable GPS simulation (required for magnetometer simulation)
 param set-default SENS_EN_GPSSIM 1
 param set-default SENS_EN_BAROSIM 1
+
+# CRITICAL: Enable PX4's built-in magnetometer simulator
 param set-default SENS_EN_MAGSIM 1
 
-# Magnetometer calibration
+# Configure magnetometer simulation parameters
+param set-default SIM_MAG_OFFSET_X 0.0
+param set-default SIM_MAG_OFFSET_Y 0.0
+param set-default SIM_MAG_OFFSET_Z 0.0
+
+# Set magnetometer calibration ID (required for sim)
 param set-default CAL_MAG0_ID 197120
 
-# Allow arming without GPS for simulation
+# Allow arming without GPS initially (will be overridden when GPS works)
 param set-default COM_ARM_WO_GPS 1
 
 # Control allocation
@@ -71,29 +81,41 @@ param set-default SIM_GZ_EC_MAX4 1000
 param set-default MPC_THR_HOVER 0.60
 
 # ============================================================================
-# CRITICAL FIX: ADD MAVLINK CONFIGURATION (This was missing!)
+# ESSENTIAL SAFETY BYPASSES (Non-conflicting with magnetometer)
 # ============================================================================
+# Disable non-essential safety checks only
+param set-default CBRK_AIRSPD_CHK 162128
+param set-default CBRK_SUPPLY_CHK 894281
+param set-default CBRK_USB_CHK 197848
+param set-default CBRK_BUZZER 782097
 
+# Set relaxed EKF requirements for simulation
+param set-default EKF2_GPS_CHECK 0
+param set-default EKF2_REQ_GPS_H 0.5
+
+# ============================================================================
+# CRITICAL FIX: START MAGNETOMETER SIMULATOR MODULE
+# ============================================================================
+# Start the magnetometer simulation module
+sensor_mag_sim start
+
+# ============================================================================
+# CRITICAL FIX: ADD MAVLINK CONFIGURATION
+# ============================================================================
 # MAVLink configuration for instance 1
-# Port 14556: XRCE-DDS connection
-# Port 14557: QGroundControl connection
-# Port 14558: API connection (optional)
-
 mavlink start -x -u 14556 -r 4000000
 mavlink start -x -u 14557 -r 4000000 -f
 mavlink start -x -u 14558 -r 4000000 -m onboard -o 14540
 
 # ============================================================================
-# CRITICAL FIX: ADD UXRCE-DDS CLIENT STARTUP (This was missing!)
+# CRITICAL FIX: ADD UXRCE-DDS CLIENT STARTUP
 # ============================================================================
-
 # Start UXRCE-DDS client to connect to ROS2
 uxrce_dds_client start -t udp -h 127.0.0.1 -p 8888
 
 # ============================================================================
 # SIMULATION SETUP
 # ============================================================================
-
 # Set simulation parameters
 param set-default SIM_GZ_EN 1
 
