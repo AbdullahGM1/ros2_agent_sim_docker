@@ -647,7 +647,7 @@ main() {
     print_info "Log file saved: ${LOG_FILE}"
     
     echo -e "\n${GREEN}🎉 Next steps:${NC}"
-    echo -e "${CYAN}3. Build workspace:${NC}      colcon build"
+    echo -e "${CYAN}3. Build workspace:${NC}       cd /home/user/shared_volume/ros2_ws && colcon build"
     echo -e "${CYAN}3. Source workspace:${NC}      source $ROS2_WS/install/setup.bash"
     echo -e "${CYAN}4. Launch simulation:${NC}     ros2 launch drone_sim drone.launch.py"
     echo -e "${CYAN}5. Run ROS2 agent:${NC}        ros2 run ros2_agent ros2_agent_node"
