@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo X500 with Lidar and Camera
+# @name Gazebo X500 with Lidar and Camera (Built-in Sensor Simulators)
 #
 # @type Quadrotor
 # @class Copter
@@ -16,15 +16,17 @@ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
 # Enable Gazebo simulation
 param set-default SIM_GZ_EN 1
 
-# CRITICAL: Enable simulated sensors including magnetometer
-param set-default SENS_EN_GPSSIM 1
-param set-default SENS_EN_BAROSIM 0
-param set-default SENS_EN_MAGSIM 1
-param set-default SENS_EN_ARSPDSIM 0
+# ✅ CRITICAL FIX: Enable PX4's Built-in Sensor Simulators
+# This bypasses the need for Gazebo sensor data and fixes the magnetometer issue!
+param set-default SENS_EN_GPSSIM 1     # GPS built-in simulator
+param set-default SENS_EN_BAROSIM 0    # Barometer (keep disabled like official x500)
+param set-default SENS_EN_MAGSIM 1     # 🎯 MAGNETOMETER built-in simulator - THE FIX!
+param set-default SENS_EN_ARSPDSIM 0   # Airspeed (not needed for multirotor)
 
-# EKF2 magnetometer configuration
+# EKF2 configuration optimized for simulation
 param set-default EKF2_MAG_TYPE 0       # Automatic magnetometer selection
-param set-default EKF2_GPS_DELAY 0      # No GPS delay for simulation
+param set-default EKF2_GPS_DELAY 0      # No GPS delay for simulation  
+param set-default EKF2_HGT_REF 1        # Use barometric height reference
 
 # Vehicle configuration
 param set-default CA_AIRFRAME 0
@@ -52,3 +54,17 @@ param set-default SIM_GZ_EC_FUNC1 101
 param set-default SIM_GZ_EC_FUNC2 102
 param set-default SIM_GZ_EC_FUNC3 103
 param set-default SIM_GZ_EC_FUNC4 104
+
+# Motor control limits
+param set-default SIM_GZ_EC_MIN1 150
+param set-default SIM_GZ_EC_MIN2 150
+param set-default SIM_GZ_EC_MIN3 150
+param set-default SIM_GZ_EC_MIN4 150
+
+param set-default SIM_GZ_EC_MAX1 1000
+param set-default SIM_GZ_EC_MAX2 1000
+param set-default SIM_GZ_EC_MAX3 1000
+param set-default SIM_GZ_EC_MAX4 1000
+
+# Hover throttle
+param set-default MPC_THR_HOVER 0.60
