@@ -253,30 +253,36 @@
         </navsat>
       </sensor>
       <!-- Magnetometer sensor for PX4 -->
-      <sensor name="magnetometer" type="magnetometer">
+      <sensor name="magnetometer_sensor" type="magnetometer">
         <always_on>1</always_on>
-        <update_rate>50</update_rate>
+        <update_rate>100</update_rate>
         <magnetometer>
-          <x>
-            <noise type="gaussian">
-              <mean>0.0</mean>
-              <stddev>1e-4</stddev>
-            </noise>
-          </x>
-          <y>
-            <noise type="gaussian">
-              <mean>0.0</mean>
-              <stddev>1e-4</stddev>
-            </noise>
-          </y>
-          <z>
-            <noise type="gaussian">
-              <mean>0.0</mean>
-              <stddev>1e-4</stddev>
-            </noise>
-          </z>
+            <x>
+                <noise type="gaussian">
+                    <mean>0</mean>
+                    <stddev>0.000000080</stddev>
+                    <bias_mean>0.000000400</bias_mean>
+                    <bias_stddev>0.000000300</bias_stddev>
+                </noise>
+            </x>
+            <y>
+                <noise type="gaussian">
+                    <mean>0</mean>
+                    <stddev>0.000000080</stddev>
+                    <bias_mean>0.000000400</bias_mean>
+                    <bias_stddev>0.000000300</bias_stddev>
+                </noise>
+            </y>
+            <z>
+                <noise type="gaussian">
+                    <mean>0</mean>
+                    <stddev>0.000000080</stddev>
+                    <bias_mean>0.000000400</bias_mean>
+                    <bias_stddev>0.000000300</bias_stddev>
+                </noise>
+            </z>
         </magnetometer>
-      </sensor>
+    </sensor>
     </link>
     <link name="rotor_0">
       <gravity>true</gravity>

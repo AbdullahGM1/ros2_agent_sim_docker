@@ -18,7 +18,11 @@
     
     <!-- NavSat plugin  -->
     <plugin name='gz::sim::systems::NavSat' filename='gz-sim-navsat-system'/>
-    
+
+    <!-- Magnetometer plugin  -->
+    <plugin filename="gz-sim-magnetometer-system" name="gz::sim::systems::Magnetometer">
+    </plugin>
+        
     <!-- Sensors plugin (AFTER NavSat) -->
     <plugin name='gz::sim::systems::Sensors' filename='gz-sim-sensors-system'>
       <render_engine>ogre2</render_engine>
