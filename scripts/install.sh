@@ -507,60 +507,6 @@ build_workspace() {
     export QT_QPA_PLATFORM=xcb
     export LIBGL_ALWAYS_INDIRECT=0
     
-    # Build with progress indication and enhanced error handling
-    print_info "Building workspace with Ubuntu 24.04 graphics support (this may take several minutes)..."
-    
-    # Try sequential build first (more reliable)
-    if colcon build --executor sequential --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo; then
-        print_success "Workspace built successfully with sequential executor"
-    else
-        print_warning "Sequential build failed, trying parallel build..."
-        
-        # Clean and try parallel build
-        rm -rf build/ install/ log/ 2>/dev/null || true
-        
-        if colcon build --executor parallel --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo; then
-            print_success "Workspace built successfully with parallel executor"
-        else
-            print_error "Both sequential and parallel builds failed"
-            print_info "Common issues for Ubuntu 24.04:"
-            print_info "  1. Check for Qt6/Qt5 conflicts"
-            print_info "  2. Verify graphics environment"
-            print_info "  3. Check available memory"
-            print_info "  4. Run 'check_packages' to verify Ubuntu 24.04 packages"
-            return 1
-        fi
-    fi
-    
-    # Verify build artifacts
-    if [ -f "install/setup.bash" ]; then
-        print_success "Build artifacts verified"
-        
-        # Test sourcing the workspace
-        if source install/setup.bash 2>/dev/null; then
-            print_success "Workspace sourcing test passed"
-        else
-            print_warning "Workspace built but sourcing test failed"
-        fi
-    else
-        print_error "Build completed but install/setup.bash not found"
-        return 1
-    fi
-    
-    track_time
-}
-
-# Build workspace (Ubuntu 24.04 compatible)
-build_workspace() {
-    print_step "Building ROS2 Workspace (Ubuntu 24.04)"
-    
-    cd "$ROS2_WS"
-    
-    # CRITICAL FIX: Set comprehensive build environment for Ubuntu 24.04
-    export GZ_VERSION=harmonic
-    export QT_QPA_PLATFORM=xcb
-    export LIBGL_ALWAYS_INDIRECT=0
-    
     # Verify source directory has packages
     if [ ! -d "src" ] || [ -z "$(ls -A src 2>/dev/null)" ]; then
         print_error "Source directory is empty or doesn't exist"
@@ -646,6 +592,22 @@ build_workspace() {
         print_info "Build directory contents:"
         ls -la install/ 2>/dev/null | head -10 | sed 's/^/  /' || echo "  install/ directory not found"
         return 1
+    fi
+    
+    # Copy PX4-Autopilot 
+    if [ ! -d "$PX4_DIR" ]; then
+        print_info "Copying PX4-Autopilot from container..."
+        if [ -d "/opt/px4-source" ]; then
+            cp -r /opt/px4-source "$PX4_DIR"
+            print_success "PX4-Autopilot copied from /opt/px4-source"
+        else
+            print_error "PX4 source not found at /opt/px4-source"
+            print_info "Available directories:"
+            ls -la /opt/ | grep px4 || echo "No px4 directories found in /opt/"
+            exit 1
+        fi
+    else
+        print_info "PX4-Autopilot already exists in shared volume"
     fi
     
     track_time
