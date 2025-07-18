@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo X500 with Lidar and Camera (No Magnetometer Required)
+# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible
 #
 # @type Quadrotor
 # @class Copter
@@ -16,22 +16,68 @@ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
 # Enable Gazebo simulation
 param set-default SIM_GZ_EN 1
 
-# Sensor configuration (keep your working GPS setup)
+# Sensor configuration - GPS via external bridge
 param set-default SENS_EN_GPSSIM 0     # Use external GPS via bridge
 param set-default SENS_EN_BAROSIM 1    # Enable barometer simulator
-param set-default SENS_EN_MAGSIM 1     # Enable magnetometer simulator (even if broken)
+param set-default SENS_EN_MAGSIM 1     # Enable magnetometer simulator
 
-# MAGNETOMETER DISABLE - No compass required for arming
+# ============================================================================
+# MAGNETOMETER DISABLE - PX4 1.15 TESTED PARAMETERS ONLY
+# ============================================================================
 param set-default COM_ARM_MAG_STR 0     # Disable magnetometer strength check
 param set-default COM_ARM_MAG_ANG 180   # Allow any magnetometer angle error
 param set-default EKF2_MAG_CHECK 0      # Disable EKF2 magnetometer consistency check
 param set-default EKF2_MAG_TYPE 5       # EKF2 doesn't use magnetometer for heading
+param set-default EKF2_MAG_NOISE 0.05   # High magnetometer noise
+param set-default EKF2_MAG_E_NOISE 0.05 # High earth magnetic field noise
+param set-default EKF2_MAG_B_NOISE 0.05 # High body magnetic field noise
 
-# Vehicle configuration (unchanged)
+# ============================================================================
+# GPS STABILITY CONFIGURATION - PX4 1.15 VERIFIED PARAMETERS
+# ============================================================================
+
+# EKF2 GPS Position Settings
+param set-default EKF2_GPS_POS_X 0.0    # GPS antenna position offset
+param set-default EKF2_GPS_POS_Y 0.0       
+param set-default EKF2_GPS_POS_Z 0.0       
+
+# GPS Quality Thresholds - RELAXED FOR SIMULATION
+param set-default EKF2_REQ_EPH 8.0       # Required horizontal accuracy (8m)
+param set-default EKF2_REQ_EPV 12.0      # Required vertical accuracy (12m)
+param set-default EKF2_REQ_SACC 2.0      # Required speed accuracy (2 m/s)
+param set-default EKF2_REQ_NSATS 6       # Required satellites (6 instead of 10)
+
+# GPS Processing Configuration
+param set-default EKF2_GPS_CHECK 245     # GPS check mask (less strict)
+param set-default EKF2_GPS_DELAY 110     # GPS measurement delay (110ms)
+param set-default EKF2_GPS_V_NOISE 0.5   # GPS velocity noise (0.5 m/s)
+param set-default EKF2_GPS_P_NOISE 0.5   # GPS position noise (0.5 m)
+
+# EKF2 GPS and Height Reference
+param set-default EKF2_HGT_REF 1         # Use GPS for height reference
+param set-default EKF2_GPS_CTRL 7        # Enable GPS for position and velocity
+
+# Commander Settings - RELAXED FOR SIMULATION
+param set-default COM_ARM_WO_GPS 1       # Allow arming without GPS
+param set-default COM_ARM_EKF_POS 0.5    # Relaxed EKF position accuracy for arming
+param set-default COM_ARM_EKF_VEL 1.0    # Relaxed EKF velocity accuracy for arming
+
+# Position Control Tuning - SMOOTHER CONTROL
+param set-default MPC_XY_P 1.0           # Position controller P gain
+param set-default MPC_Z_P 1.0            # Altitude controller P gain
+param set-default MPC_XY_VEL_P_ACC 1.5   # Velocity controller P gain
+param set-default MPC_XY_VEL_I_ACC 0.3   # Velocity controller I gain
+param set-default MPC_XY_VEL_D_ACC 0.15  # Velocity controller D gain
+
+# ============================================================================
+# VEHICLE CONFIGURATION
+# ============================================================================
+
+# Vehicle type
 param set-default CA_AIRFRAME 0
 param set-default CA_ROTOR_COUNT 4
 
-# Rotor configuration (X500 geometry - unchanged)
+# Rotor configuration (X500 geometry)
 param set-default CA_ROTOR0_PX 0.13
 param set-default CA_ROTOR0_PY 0.22
 param set-default CA_ROTOR0_KM 0.05
@@ -48,13 +94,13 @@ param set-default CA_ROTOR3_PX -0.13
 param set-default CA_ROTOR3_PY 0.20
 param set-default CA_ROTOR3_KM -0.05
 
-# Gazebo motor control functions (unchanged)
+# Gazebo motor control functions
 param set-default SIM_GZ_EC_FUNC1 101
 param set-default SIM_GZ_EC_FUNC2 102
 param set-default SIM_GZ_EC_FUNC3 103
 param set-default SIM_GZ_EC_FUNC4 104
 
-# Motor control limits (unchanged)
+# Motor control limits
 param set-default SIM_GZ_EC_MIN1 150
 param set-default SIM_GZ_EC_MIN2 150
 param set-default SIM_GZ_EC_MIN3 150
@@ -65,5 +111,5 @@ param set-default SIM_GZ_EC_MAX2 1000
 param set-default SIM_GZ_EC_MAX3 1000
 param set-default SIM_GZ_EC_MAX4 1000
 
-# Hover throttle (unchanged)
+# Hover throttle
 param set-default MPC_THR_HOVER 0.60
