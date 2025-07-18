@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible
+# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible - COMPASS FIXED
 #
 # @type Quadrotor
 # @class Copter
@@ -16,30 +16,37 @@ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
 # Enable Gazebo simulation
 param set-default SIM_GZ_EN 1
 
-# Sensor configuration - GPS via external bridge
+# ============================================================================
+# SENSOR CONFIGURATION - PX4 v1.15 COMPATIBLE
+# ============================================================================
 param set-default SENS_EN_GPSSIM 0     # Use external GPS via bridge
 param set-default SENS_EN_BAROSIM 1    # Enable barometer simulator
-param set-default SENS_EN_MAGSIM 1     # Enable magnetometer simulator
+param set-default SENS_EN_MAGSIM 0     # DISABLE broken magnetometer simulator
 
 # ============================================================================
-# MAGNETOMETER DISABLE - PX4 1.15 TESTED PARAMETERS ONLY
+# COMPASS/MAGNETOMETER COMPLETE FIX - PX4 v1.15
 # ============================================================================
+# CRITICAL: Tell PX4 system has no magnetometer
+param set-default SYS_HAS_MAG 0         # System does NOT have magnetometer - FIXES HEALTH CHECK
+
+# Arming checks - disable magnetometer requirements
 param set-default COM_ARM_MAG_STR 0     # Disable magnetometer strength check
 param set-default COM_ARM_MAG_ANG 180   # Allow any magnetometer angle error
+
+# EKF2 magnetometer configuration - COMPLETE BYPASS
 param set-default EKF2_MAG_CHECK 0      # Disable EKF2 magnetometer consistency check
-param set-default EKF2_MAG_TYPE 5       # EKF2 doesn't use magnetometer for heading
-param set-default EKF2_MAG_NOISE 0.05   # High magnetometer noise
-param set-default EKF2_MAG_E_NOISE 0.05 # High earth magnetic field noise
-param set-default EKF2_MAG_B_NOISE 0.05 # High body magnetic field noise
+param set-default EKF2_MAG_TYPE 5       # "None" - completely disable magnetometer use
+param set-default EKF2_MAG_DECL 0       # Magnetic declination 
+param set-default EKF2_MAG_NOISE 0.05   # Magnetometer noise
+param set-default EKF2_MAG_E_NOISE 0.05 # Earth magnetic field noise
+param set-default EKF2_MAG_B_NOISE 0.05 # Body magnetic field noise
 
 # ============================================================================
-# GPS STABILITY CONFIGURATION - PX4 1.15 VERIFIED PARAMETERS
+# GPS CONFIGURATION - PX4 v1.15 COMPATIBLE
 # ============================================================================
-
-# EKF2 GPS Position Settings
-param set-default EKF2_GPS_POS_X 0.0    # GPS antenna position offset
-param set-default EKF2_GPS_POS_Y 0.0       
-param set-default EKF2_GPS_POS_Z 0.0       
+# CRITICAL: Use GPS for position AND heading via EKF2_GPS_CTRL
+param set-default EKF2_GPS_CTRL 15      # GPS pos(1) + vel(2) + hgt(4) + yaw(8) = 15
+param set-default EKF2_HGT_REF 1         # Use GPS for height reference
 
 # GPS Quality Thresholds - RELAXED FOR SIMULATION
 param set-default EKF2_REQ_EPH 8.0       # Required horizontal accuracy (8m)
@@ -53,9 +60,10 @@ param set-default EKF2_GPS_DELAY 110     # GPS measurement delay (110ms)
 param set-default EKF2_GPS_V_NOISE 0.5   # GPS velocity noise (0.5 m/s)
 param set-default EKF2_GPS_P_NOISE 0.5   # GPS position noise (0.5 m)
 
-# EKF2 GPS and Height Reference
-param set-default EKF2_HGT_REF 1         # Use GPS for height reference
-param set-default EKF2_GPS_CTRL 7        # Enable GPS for position and velocity
+# EKF2 GPS Position Settings
+param set-default EKF2_GPS_POS_X 0.0    # GPS antenna position offset
+param set-default EKF2_GPS_POS_Y 0.0       
+param set-default EKF2_GPS_POS_Z 0.0       
 
 # Commander Settings - RELAXED FOR SIMULATION
 param set-default COM_ARM_WO_GPS 1       # Allow arming without GPS
