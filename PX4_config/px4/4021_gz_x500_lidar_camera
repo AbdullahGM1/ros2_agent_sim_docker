@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo X500 with Lidar and Camera (Built-in Sensor Simulators)
+# @name Gazebo X500 with Lidar and Camera (Conservative Fix)
 #
 # @type Quadrotor
 # @class Copter
@@ -16,40 +16,10 @@ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
 # Enable Gazebo simulation
 param set-default SIM_GZ_EN 1
 
-# ✅ CRITICAL FIX: Sensor Configuration for PX4 v1.15+
-param set-default SENS_EN_GPSSIM 0     # 🔧 DISABLE GPS built-in simulator (using Gazebo navsat)
-param set-default SENS_EN_BAROSIM 1    # Enable barometer simulator  
-param set-default SENS_EN_MAGSIM 1     # 🎯 MAGNETOMETER built-in simulator - THE FIX!
-param set-default SENS_EN_ARSPDSIM 0   # Airspeed (not needed for multirotor)
-
-# ✅ CRITICAL FIX: Magnetometer Configuration for PX4 v1.15+
-param set-default CAL_MAG0_ID 197120      # Built-in mag sensor ID
-param set-default CAL_MAG0_PRIO 50        # Magnetometer priority
-param set-default CAL_MAG0_ROT 0          # No rotation
-param set-default SENS_MAG_MODE 0         # Automatic magnetometer mode
-param set-default SENS_MAG_RATE 50        # 50 Hz magnetometer rate
-
-# ✅ CRITICAL FIX: EKF2 Magnetometer Configuration
-param set-default EKF2_MAG_TYPE 0         # Automatic magnetometer selection  
-param set-default EKF2_MAG_ACCLIM 0.5     # Magnetometer acceleration limit
-param set-default EKF2_MAG_YAWLIM 0.25    # Magnetometer yaw limit
-param set-default EKF2_MAG_CHECK 1        # Enable magnetometer consistency check
-param set-default EKF2_MAG_DECL 0         # Magnetic declination (auto)
-param set-default EKF2_MAG_NOISE 0.05     # Magnetometer noise
-param set-default EKF2_MAG_GATE 3.0       # Magnetometer innovation gate
-
-# ✅ CRITICAL FIX: GPS Configuration for Gazebo navsat plugin
-param set-default EKF2_GPS_DELAY 10       # GPS delay (10ms for simulation)
-param set-default EKF2_HGT_REF 0          # 🔧 FIXED: Use GPS height reference (not baro)
-param set-default EKF2_GPS_CHECK 21       # GPS quality checks (reduced for sim)
-param set-default EKF2_REQ_GPS_H 3.0      # Required GPS horizontal accuracy
-param set-default EKF2_GPS_V_NOISE 0.3    # GPS vertical noise
-param set-default EKF2_GPS_P_NOISE 0.3    # GPS position noise
-
-# ✅ CRITICAL FIX: Sensor Timeout and Failure Handling
-param set-default COM_ARM_MAG_STR 1       # Magnetometer strength check (relaxed)
-param set-default COM_ARM_MAG_ANG 45      # Max magnetometer angle error (degrees)
-param set-default SENS_MAG_AUTOROT 1      # Enable automatic magnetometer rotation detection
+# ✅ CONSERVATIVE: Keep your working GPS setup
+param set-default SENS_EN_GPSSIM 0     # Keep GPS simulator OFF (use your Gazebo GPS)
+param set-default SENS_EN_BAROSIM 1    # Keep barometer simulator ON  
+param set-default SENS_EN_MAGSIM 1     # Enable magnetometer simulator
 
 # Vehicle configuration (unchanged)
 param set-default CA_AIRFRAME 0
