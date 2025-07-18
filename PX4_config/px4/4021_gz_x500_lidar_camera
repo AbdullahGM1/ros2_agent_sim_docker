@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo X500 with Lidar and Camera (Conservative Fix)
+# @name Gazebo X500 with Lidar and Camera (No Magnetometer Required)
 #
 # @type Quadrotor
 # @class Copter
@@ -16,10 +16,16 @@ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
 # Enable Gazebo simulation
 param set-default SIM_GZ_EN 1
 
-# ✅ CONSERVATIVE: Keep your working GPS setup
-param set-default SENS_EN_GPSSIM 0     # Keep GPS simulator OFF (use your Gazebo GPS)
-param set-default SENS_EN_BAROSIM 1    # Keep barometer simulator ON  
-param set-default SENS_EN_MAGSIM 1     # Enable magnetometer simulator
+# Sensor configuration (keep your working GPS setup)
+param set-default SENS_EN_GPSSIM 0     # Use external GPS via bridge
+param set-default SENS_EN_BAROSIM 1    # Enable barometer simulator
+param set-default SENS_EN_MAGSIM 1     # Enable magnetometer simulator (even if broken)
+
+# MAGNETOMETER DISABLE - No compass required for arming
+param set-default COM_ARM_MAG_STR 0     # Disable magnetometer strength check
+param set-default COM_ARM_MAG_ANG 180   # Allow any magnetometer angle error
+param set-default EKF2_MAG_CHECK 0      # Disable EKF2 magnetometer consistency check
+param set-default EKF2_MAG_TYPE 5       # EKF2 doesn't use magnetometer for heading
 
 # Vehicle configuration (unchanged)
 param set-default CA_AIRFRAME 0
