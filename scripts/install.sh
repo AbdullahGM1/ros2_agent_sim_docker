@@ -315,6 +315,19 @@ setup_repositories() {
     else
         print_info "PX4-Autopilot already exists in shared volume"
     fi
+
+    # Copy px4_msgs if not exists (ADDED)
+    if [ ! -d "$ROS2_SRC/px4_msgs" ]; then
+        print_info "Copying px4_msgs from container..."
+        if [ -d "/home/user/ros2_ws/src/px4_msgs" ]; then
+            cp -r /home/user/ros2_ws/src/px4_msgs "$ROS2_SRC/"
+            print_success "px4_msgs copied"
+        else
+            print_warning "px4_msgs not found in container"
+        fi
+    else
+        print_info "px4_msgs already exists in shared volume"
+    fi
     
     track_time
 }
@@ -364,6 +377,24 @@ setup_px4_autopilot() {
             mkdir -p "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
             cp -r "$PX4_config/px4/"* "${PX4_DIR}/ROMFS/px4fmu_common/init.d-posix/airframes/"
             print_success "Airframes configuration applied"
+        fi
+        
+        # ADDED: Handle dds_topics.yaml file
+        if [ -f "$PX4_config/dds_topics.yaml" ]; then
+            UXRCE_DDS_DIR="${PX4_DIR}/src/modules/uxrce_dds_client"
+            if [ -d "$UXRCE_DDS_DIR" ]; then
+                print_info "Copying dds_topics.yaml to uxrce_dds_client module..."
+                cp "$PX4_config/dds_topics.yaml" "$UXRCE_DDS_DIR/"
+                print_success "dds_topics.yaml copied to $UXRCE_DDS_DIR/"
+            else
+                print_warning "uxrce_dds_client directory not found at $UXRCE_DDS_DIR"
+                print_info "Creating directory and copying dds_topics.yaml..."
+                mkdir -p "$UXRCE_DDS_DIR"
+                cp "$PX4_config/dds_topics.yaml" "$UXRCE_DDS_DIR/"
+                print_success "Created directory and copied dds_topics.yaml to $UXRCE_DDS_DIR/"
+            fi
+        else
+            print_warning "dds_topics.yaml not found in $PX4_config/"
         fi
     fi
     
@@ -519,13 +550,150 @@ build_workspace() {
     track_time
 }
 
-# Finalize installation with enhanced graphics support (Ubuntu 24.04)
+# Build workspace (Ubuntu 24.04 compatible)
+build_workspace() {
+    print_step "Building ROS2 Workspace (Ubuntu 24.04)"
+    
+    cd "$ROS2_WS"
+    
+    # CRITICAL FIX: Set comprehensive build environment for Ubuntu 24.04
+    export GZ_VERSION=harmonic
+    export QT_QPA_PLATFORM=xcb
+    export LIBGL_ALWAYS_INDIRECT=0
+    
+    # Verify source directory has packages
+    if [ ! -d "src" ] || [ -z "$(ls -A src 2>/dev/null)" ]; then
+        print_error "Source directory is empty or doesn't exist"
+        print_info "Available directories: $(ls -la)"
+        return 1
+    fi
+    
+    PACKAGE_COUNT=$(find src -name "package.xml" | wc -l)
+    print_info "Found $PACKAGE_COUNT ROS2 packages to build"
+    
+    if [ "$PACKAGE_COUNT" -eq 0 ]; then
+        print_error "No ROS2 packages found in src directory"
+        return 1
+    fi
+    
+    # Clean previous build if it exists and failed
+    if [ -d "build" ] && [ -d "install" ] && [ ! -f "install/setup.bash" ]; then
+        print_warning "Previous build appears incomplete, cleaning..."
+        rm -rf build/ install/ log/
+    fi
+    
+    # Build with progress indication and enhanced error handling
+    print_info "Building workspace with Ubuntu 24.04 graphics support (this may take several minutes)..."
+    
+    # Try sequential build first (more reliable)
+    print_info "Attempting sequential build for reliability..."
+    if colcon build --executor sequential --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo -Wno-dev; then
+        print_success "Workspace built successfully with sequential executor"
+    else
+        print_warning "Sequential build failed, trying parallel build..."
+        
+        # Clean and try parallel build
+        print_info "Cleaning build artifacts and retrying with parallel executor..."
+        rm -rf build/ install/ log/ 2>/dev/null || true
+        
+        if colcon build --executor parallel --event-handlers console_direct+ --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo -Wno-dev; then
+            print_success "Workspace built successfully with parallel executor"
+        else
+            print_error "Both sequential and parallel builds failed"
+            print_info "Common issues for Ubuntu 24.04:"
+            print_info "  1. Check for Qt6/Qt5 conflicts"
+            print_info "  2. Verify graphics environment"
+            print_info "  3. Check available memory"
+            print_info "  4. Run 'check_packages' to verify Ubuntu 24.04 packages"
+            
+            # Show build logs for debugging
+            if [ -d "log" ]; then
+                print_info "Latest build logs:"
+                find log -name "*.log" -newer log -exec basename {} \; 2>/dev/null | head -5 | sed 's/^/  /'
+            fi
+            return 1
+        fi
+    fi
+    
+    # Verify build artifacts
+    if [ -f "install/setup.bash" ]; then
+        print_success "Build artifacts verified - install/setup.bash exists"
+        
+        # Verify install directory structure
+        INSTALLED_PACKAGES=$(find install -name "package.xml" | wc -l)
+        print_info "Successfully installed $INSTALLED_PACKAGES packages"
+        
+        # Test sourcing the workspace immediately after build
+        print_info "Testing workspace sourcing immediately after build..."
+        if bash -c "source install/setup.bash && echo 'Sourcing test passed'" >/dev/null 2>&1; then
+            print_success "✅ Workspace sourcing test passed immediately after build"
+        else
+            print_warning "⚠️ Workspace built but immediate sourcing test failed"
+            print_info "This may still work when sourced in a new shell"
+        fi
+        
+        # Test ROS2 package availability
+        print_info "Testing ROS2 package availability..."
+        if bash -c "source install/setup.bash && ros2 pkg list" >/dev/null 2>&1; then
+            AVAILABLE_PACKAGES=$(bash -c "source install/setup.bash && ros2 pkg list | wc -l")
+            print_success "✅ $AVAILABLE_PACKAGES ROS2 packages available after sourcing"
+        else
+            print_warning "⚠️ ROS2 packages not immediately available (may need shell restart)"
+        fi
+        
+    else
+        print_error "❌ Build completed but install/setup.bash not found"
+        print_info "Build directory contents:"
+        ls -la install/ 2>/dev/null | head -10 | sed 's/^/  /' || echo "  install/ directory not found"
+        return 1
+    fi
+    
+    track_time
+}
+
+# Finalize installation with enhanced graphics support and workspace sourcing (Ubuntu 24.04)
 finalize_installation() {
-    print_step "Finalizing Installation (Ubuntu 24.04)"
+    print_step "Finalizing Installation with Workspace Sourcing (Ubuntu 24.04)"
+    
+    # Verify workspace is built before finalizing
+    if [ ! -f "$ROS2_WS/install/setup.bash" ]; then
+        print_error "Workspace not properly built - install/setup.bash missing"
+        print_info "Please run build_workspace step first"
+        return 1
+    fi
     
     # Source the workspace
     cd "$ROS2_WS"
-    source install/setup.bash
+    print_info "Sourcing the built workspace..."
+    
+    # Test workspace sourcing with comprehensive verification
+    if source install/setup.bash; then
+        print_success "✅ Workspace sourced successfully"
+        
+        # Verify AMENT_PREFIX_PATH is set
+        if [ -n "$AMENT_PREFIX_PATH" ]; then
+            print_success "✅ AMENT_PREFIX_PATH is properly set"
+            print_info "AMENT_PREFIX_PATH: $AMENT_PREFIX_PATH"
+        else
+            print_warning "⚠️ AMENT_PREFIX_PATH not set after sourcing"
+        fi
+        
+        # Test ROS2 functionality
+        if command -v ros2 >/dev/null 2>&1; then
+            if ros2 pkg list >/dev/null 2>&1; then
+                TOTAL_PACKAGES=$(ros2 pkg list | wc -l)
+                CUSTOM_PACKAGES=$(ros2 pkg list | grep -E "(ros2_agent|drone_sim|mavros)" | wc -l)
+                print_success "✅ ROS2 functionality verified ($TOTAL_PACKAGES total packages, $CUSTOM_PACKAGES custom packages)"
+            else
+                print_warning "⚠️ ROS2 command available but pkg list failed"
+            fi
+        else
+            print_warning "⚠️ ROS2 command not available after sourcing"
+        fi
+    else
+        print_error "❌ Failed to source workspace"
+        return 1
+    fi
     
     # Check if .bashrc exists
     if [ ! -f ~/.bashrc ]; then
@@ -537,7 +705,7 @@ finalize_installation() {
     cp ~/.bashrc ~/.bashrc.backup.$(date +%s)
     print_info "Backed up existing .bashrc"
     
-    # Add workspace sourcing
+    # Add workspace sourcing to .bashrc
     local workspace_source_line="# Auto-added by install script (FIXED VERSION - Ubuntu 24.04)"
     local workspace_command="if [ -f \"$ROS2_WS/install/setup.bash\" ]; then source \"$ROS2_WS/install/setup.bash\"; fi"
     
@@ -545,9 +713,9 @@ finalize_installation() {
         echo "" >> ~/.bashrc
         echo "$workspace_source_line" >> ~/.bashrc
         echo "$workspace_command" >> ~/.bashrc
-        print_success "Added workspace sourcing to .bashrc"
+        print_success "✅ Added workspace sourcing to .bashrc"
     else
-        print_info "Workspace sourcing already configured"
+        print_info "Workspace sourcing already configured in .bashrc"
     fi
     
     # CRITICAL FIX: Add comprehensive environment variables for Ubuntu 24.04
@@ -586,20 +754,33 @@ alias graphics_test='echo "X11: \$(timeout 3 xset q >/dev/null 2>&1 && echo OK |
 alias check_packages_ubuntu='echo "Ubuntu 24.04 packages:"; dpkg -l | grep -E "(libgl1|libglx-mesa0|libglut3.12|qt6-base)" | awk "{print \$2,\$3}"'
 alias check_deprecated='echo "Deprecated packages (should not be present):"; dpkg -l | grep -E "(libgl1-mesa-glx|freeglut3)" | awk "{print \$2,\$3}" || echo "None found (good)"'
 
+# Workspace verification commands
+alias check_workspace='echo "Workspace Status:"; echo "  Built: \$([ -f \$ROS2_WS/install/setup.bash ] && echo YES || echo NO)"; echo "  Sourced: \$([ -n \"\$AMENT_PREFIX_PATH\" ] && echo YES || echo NO)"; echo "  Packages: \$(ros2 pkg list 2>/dev/null | wc -l || echo 0)"'
+
 EOF
-        print_success "Added comprehensive environment variables and aliases to .bashrc for Ubuntu 24.04"
+        print_success "✅ Added comprehensive environment variables and aliases to .bashrc for Ubuntu 24.04"
     else
-        print_info "Environment variables already configured"
+        print_info "Environment variables already configured in .bashrc"
     fi
     
-    # Validate .bashrc
+    # Validate .bashrc syntax
     print_info "Validating .bashrc syntax..."
     if bash -n ~/.bashrc; then
-        print_success ".bashrc syntax is valid"
+        print_success "✅ .bashrc syntax is valid"
     else
-        print_error ".bashrc has syntax errors! Restoring backup..."
+        print_error "❌ .bashrc has syntax errors! Restoring backup..."
         cp ~/.bashrc.backup.$(date +%s) ~/.bashrc
         return 1
+    fi
+    
+    # CRITICAL: Test .bashrc in a new shell to ensure workspace sourcing works
+    print_info "Testing .bashrc workspace sourcing in new shell..."
+    if bash -l -c "source ~/.bashrc && [ -n \"\$AMENT_PREFIX_PATH\" ] && ros2 pkg list >/dev/null 2>&1"; then
+        NEW_SHELL_PACKAGES=$(bash -l -c "source ~/.bashrc && ros2 pkg list | wc -l" 2>/dev/null || echo "0")
+        print_success "✅ Workspace sourcing works in new shell ($NEW_SHELL_PACKAGES packages available)"
+    else
+        print_warning "⚠️ Workspace sourcing test in new shell failed"
+        print_info "Manual sourcing may be required: source $ROS2_WS/install/setup.bash"
     fi
     
     # CRITICAL FIX: Test graphics environment after installation (Ubuntu 24.04)
@@ -607,17 +788,26 @@ EOF
     
     # Test X11
     if timeout 3 xset q >/dev/null 2>&1; then
-        print_success "X11 test passed"
+        print_success "✅ X11 test passed"
     else
-        print_warning "X11 test failed - GUI apps will use software fallbacks"
+        print_warning "⚠️ X11 test failed - GUI apps will use software fallbacks"
     fi
     
-    # Test ROS2 workspace
+    # Final workspace verification
+    print_info "Final workspace verification..."
+    cd "$ROS2_WS"
+    source install/setup.bash
+    
     if ros2 pkg list >/dev/null 2>&1; then
         PKG_COUNT=$(ros2 pkg list | wc -l)
-        print_success "ROS2 workspace functional ($PKG_COUNT packages available)"
+        CUSTOM_PKG_COUNT=$(ros2 pkg list | grep -E "(ros2_agent|drone_sim|mavros|px4_msgs)" | wc -l)
+        print_success "✅ ROS2 workspace fully functional ($PKG_COUNT total packages, $CUSTOM_PKG_COUNT custom packages)"
+        
+        # List key packages
+        print_info "Key packages detected:"
+        ros2 pkg list | grep -E "(ros2_agent|drone_sim|mavros|px4_msgs)" | sed 's/^/  ✓ /' || echo "  ⚠️ Some expected packages may not be available"
     else
-        print_warning "ROS2 workspace test failed"
+        print_warning "⚠️ ROS2 workspace test failed"
     fi
     
     track_time
