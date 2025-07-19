@@ -42,8 +42,12 @@ param set-default EKF2_MAG_E_NOISE 0.05 # Earth magnetic field noise
 param set-default EKF2_MAG_B_NOISE 0.05 # Body magnetic field noise
 
 # ============================================================================
-# GPS CONFIGURATION - PX4 v1.15 COMPATIBLE
+# GPS CONFIGURATION - PX4 v1.15 COMPATIBLE + EXTERNAL GPS FIX
 # ============================================================================
+# CRITICAL: Enable external GPS system
+param set-default SYS_HAS_GPS 1         # Enable GPS system - REQUIRED for external GPS
+param set-default GPS_1_CONFIG 0        # Disable internal GPS driver - use external only
+
 # CRITICAL: Use GPS for position AND heading via EKF2_GPS_CTRL
 param set-default EKF2_GPS_CTRL 15      # GPS pos(1) + vel(2) + hgt(4) + yaw(8) = 15
 param set-default EKF2_HGT_REF 1         # Use GPS for height reference

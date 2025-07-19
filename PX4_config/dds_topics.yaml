@@ -78,9 +78,6 @@ subscriptions:
   - topic: /fmu/in/unregister_ext_component
     type: px4_msgs::msg::UnregisterExtComponent
 
-  - topic: /fmu/in/sensor_gps
-    type: px4_msgs::msg::SensorGps
-
   - topic: /fmu/in/config_overrides_request
     type: px4_msgs::msg::ConfigOverrides
 
@@ -164,3 +161,6 @@ subscriptions:
 
 # Create uORB::PublicationMulti
 subscriptions_multi:
+
+- topic: /fmu/in/sensor_gps
+  type: px4_msgs::msg::SensorGps
