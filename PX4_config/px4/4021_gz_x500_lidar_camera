@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible - ALL FIXES APPLIED
+# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible - ALL FIXES APPLIED + ACCEL BIAS FIX
 #
 # @type Quadrotor
 # @class Copter
@@ -70,6 +70,15 @@ param set-default EKF2_GPS_POS_Y 0.0
 param set-default EKF2_GPS_POS_Z 0.0       
 
 # ============================================================================
+# ACCELEROMETER BIAS FIX - ADDRESSES HIGH ACCEL BIAS ERROR IN FLIGHT
+# ============================================================================
+# CRITICAL: Fix for accelerometer bias issues during flight in Gazebo simulation
+param set-default EKF2_ABL_LIM 0.8       # Accelerometer bias limit (m/s²) - INCREASED from 0.4 to 0.8
+param set-default EKF2_ABL_TAU 1.0       # Accelerometer bias time constant (s) - INCREASED from 0.5 to 1.0
+param set-default EKF2_ABL_ACCLIM 25.0   # Max acceleration for bias learning (m/s²) - RELAXED for simulation
+param set-default EKF2_ABL_GYRLIM 3.0    # Max angular rate for bias learning (rad/s) - RELAXED for simulation
+
+# ============================================================================
 # COMMANDER SETTINGS - RELAXED FOR SIMULATION
 # ============================================================================
 param set-default COM_ARM_WO_GPS 1       # Allow arming without GPS
@@ -78,15 +87,38 @@ param set-default COM_ARM_EKF_VEL 2.0    # FIXED: Relaxed EKF velocity accuracy 
 param set-default COM_ARM_IMU_ACC 1.0    # FIXED: Relaxed accelerometer bias for simulation
 
 # ============================================================================
-# SIMULATION-SPECIFIC CALIBRATION FIXES
+# VERTICAL VELOCITY STABILITY FIX
 # ============================================================================
-# Accelerometer calibration for simulation
+# Additional EKF2 tuning for stable vertical velocity estimation
+param set-default EKF2_BARO_NOISE 2.0    # Barometer noise (increased for stability)
+param set-default EKF2_BARO_DELAY 0      # Barometer measurement delay
+param set-default EKF2_ACC_NOISE 0.35    # Accelerometer noise
+param set-default EKF2_GYR_NOISE 0.015   # Gyroscope noise
+
+# ============================================================================
+# SIMULATION-SPECIFIC CALIBRATION FIXES - FORCE CALIBRATED STATE
+# ============================================================================
+# CRITICAL: Force accelerometer calibration parameters for simulation
+param set-default CAL_ACC0_ID 1310988   # Set accelerometer device ID (simulation device)
 param set-default CAL_ACC0_XOFF 0.0     # Zero accelerometer X offset
 param set-default CAL_ACC0_YOFF 0.0     # Zero accelerometer Y offset
 param set-default CAL_ACC0_ZOFF 0.0     # Zero accelerometer Z offset
 param set-default CAL_ACC0_XSCALE 1.0   # Unity accelerometer X scale
 param set-default CAL_ACC0_YSCALE 1.0   # Unity accelerometer Y scale
 param set-default CAL_ACC0_ZSCALE 1.0   # Unity accelerometer Z scale
+param set-default CAL_ACC_PRIME 1310988 # Set primary accelerometer ID
+
+# CRITICAL: Force gyroscope calibration parameters for simulation
+param set-default CAL_GYRO0_ID 1310988  # Set gyroscope device ID (simulation device)
+param set-default CAL_GYRO0_XOFF 0.0    # Zero gyroscope X offset
+param set-default CAL_GYRO0_YOFF 0.0    # Zero gyroscope Y offset
+param set-default CAL_GYRO0_ZOFF 0.0    # Zero gyroscope Z offset
+
+# CRITICAL: Force GPS calibration parameters for simulation (external GPS via bridge)
+param set-default GPS_1_PROTOCOL 0      # Disable internal GPS driver (using external bridge)
+param set-default GPS_1_GNSS 31         # Enable all GNSS systems (GPS+GLONASS+Galileo+Beidou)
+param set-default GPS_YAW_OFFSET 0.0    # GPS heading offset
+param set-default GPS_PITCH_OFFSET 0.0  # GPS pitch offset
 
 # Position Control Tuning - SMOOTHER CONTROL
 param set-default MPC_XY_P 1.0           # Position controller P gain
