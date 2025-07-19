@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible - COMPASS FIXED
+# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible - ALL FIXES APPLIED
 #
 # @type Quadrotor
 # @class Copter
@@ -53,26 +53,40 @@ param set-default EKF2_GPS_CTRL 15      # GPS pos(1) + vel(2) + hgt(4) + yaw(8) 
 param set-default EKF2_HGT_REF 1         # Use GPS for height reference
 
 # GPS Quality Thresholds - RELAXED FOR SIMULATION
-param set-default EKF2_REQ_EPH 8.0       # Required horizontal accuracy (8m)
-param set-default EKF2_REQ_EPV 12.0      # Required vertical accuracy (12m)
+param set-default EKF2_REQ_EPH 10.0      # Required horizontal accuracy (10m) - RELAXED
+param set-default EKF2_REQ_EPV 15.0      # Required vertical accuracy (15m) - RELAXED
 param set-default EKF2_REQ_SACC 2.0      # Required speed accuracy (2 m/s)
-param set-default EKF2_REQ_NSATS 6       # Required satellites (6 instead of 10)
+param set-default EKF2_REQ_NSATS 4       # Required satellites (4 instead of 10) - RELAXED
 
 # GPS Processing Configuration
-param set-default EKF2_GPS_CHECK 245     # GPS check mask (less strict)
+param set-default EKF2_GPS_CHECK 0       # GPS check mask (disabled for simulation) - RELAXED
 param set-default EKF2_GPS_DELAY 110     # GPS measurement delay (110ms)
-param set-default EKF2_GPS_V_NOISE 0.5   # GPS velocity noise (0.5 m/s)
-param set-default EKF2_GPS_P_NOISE 0.5   # GPS position noise (0.5 m)
+param set-default EKF2_GPS_V_NOISE 1.0   # GPS velocity noise (1.0 m/s) - RELAXED
+param set-default EKF2_GPS_P_NOISE 1.0   # GPS position noise (1.0 m) - RELAXED
 
 # EKF2 GPS Position Settings
 param set-default EKF2_GPS_POS_X 0.0    # GPS antenna position offset
 param set-default EKF2_GPS_POS_Y 0.0       
 param set-default EKF2_GPS_POS_Z 0.0       
 
-# Commander Settings - RELAXED FOR SIMULATION
+# ============================================================================
+# COMMANDER SETTINGS - RELAXED FOR SIMULATION
+# ============================================================================
 param set-default COM_ARM_WO_GPS 1       # Allow arming without GPS
-param set-default COM_ARM_EKF_POS 0.5    # Relaxed EKF position accuracy for arming
-param set-default COM_ARM_EKF_VEL 1.0    # Relaxed EKF velocity accuracy for arming
+param set-default COM_ARM_EKF_POS 200.0  # FIXED: Relaxed EKF position accuracy for simulation
+param set-default COM_ARM_EKF_VEL 2.0    # FIXED: Relaxed EKF velocity accuracy for simulation
+param set-default COM_ARM_IMU_ACC 1.0    # FIXED: Relaxed accelerometer bias for simulation
+
+# ============================================================================
+# SIMULATION-SPECIFIC CALIBRATION FIXES
+# ============================================================================
+# Accelerometer calibration for simulation
+param set-default CAL_ACC0_XOFF 0.0     # Zero accelerometer X offset
+param set-default CAL_ACC0_YOFF 0.0     # Zero accelerometer Y offset
+param set-default CAL_ACC0_ZOFF 0.0     # Zero accelerometer Z offset
+param set-default CAL_ACC0_XSCALE 1.0   # Unity accelerometer X scale
+param set-default CAL_ACC0_YSCALE 1.0   # Unity accelerometer Y scale
+param set-default CAL_ACC0_ZSCALE 1.0   # Unity accelerometer Z scale
 
 # Position Control Tuning - SMOOTHER CONTROL
 param set-default MPC_XY_P 1.0           # Position controller P gain
