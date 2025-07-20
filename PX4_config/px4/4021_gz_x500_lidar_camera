@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible - ALL FIXES APPLIED + ACCEL BIAS FIX + MANUAL CONTROL FIX
+# @name Gazebo X500 with Lidar and Camera - PX4 1.15 Compatible - CORRECTED GPS BRIDGE VERSION
 #
 # @type Quadrotor
 # @class Copter
@@ -19,208 +19,214 @@ param set-default SIM_GZ_EN 1
 # ============================================================================
 # SENSOR CONFIGURATION - PX4 v1.15 COMPATIBLE
 # ============================================================================
-param set-default SENS_EN_GPSSIM 0     # Use external GPS via bridge
+param set-default SENS_EN_GPSSIM 0     # CRITICAL: Disable internal GPS simulator - using external bridge
 param set-default SENS_EN_BAROSIM 1    # Enable barometer simulator
-param set-default SENS_EN_MAGSIM 0     # DISABLE broken magnetometer simulator
+param set-default SENS_EN_MAGSIM 1     # CRITICAL: Enable magnetometer simulator for heading
 
 # ============================================================================
-# COMPASS/MAGNETOMETER COMPLETE FIX - PX4 v1.15
+# MAGNETOMETER CONFIGURATION - ENABLE FOR HEADING
 # ============================================================================
-# CRITICAL: Tell PX4 system has no magnetometer
-param set-default SYS_HAS_MAG 0         # System does NOT have magnetometer - FIXES HEALTH CHECK
+# CRITICAL: Enable magnetometer system for heading (user requested)
+param set-default SYS_HAS_MAG 1         # System HAS magnetometer - REQUIRED for mag heading
+param set-default CAL_MAG0_ID 1310988   # Set magnetometer device ID to match GPS bridge device ID
+param set-default CAL_MAG_PRIME 1310988 # Set primary magnetometer ID
 
-# Arming checks - disable magnetometer requirements
-param set-default COM_ARM_MAG_STR 0     # Disable magnetometer strength check
-param set-default COM_ARM_MAG_ANG 180   # Allow any magnetometer angle error
-
-# EKF2 magnetometer configuration - COMPLETE BYPASS
-param set-default EKF2_MAG_CHECK 0      # Disable EKF2 magnetometer consistency check
-param set-default EKF2_MAG_TYPE 5       # "None" - completely disable magnetometer use
-param set-default EKF2_MAG_DECL 0       # Magnetic declination 
+# EKF2 magnetometer configuration - ENABLE for heading
+param set-default EKF2_MAG_TYPE 0       # CRITICAL: Use magnetometer for heading (not "none")
+param set-default EKF2_MAG_CHECK 1      # Enable EKF2 magnetometer consistency check
+param set-default EKF2_MAG_DECL 12.5    # Magnetic declination for San Francisco Bay Area (37.4°N, -122.1°W)
 param set-default EKF2_MAG_NOISE 0.05   # Magnetometer noise
-param set-default EKF2_MAG_E_NOISE 0.05 # Earth magnetic field noise
-param set-default EKF2_MAG_B_NOISE 0.05 # Body magnetic field noise
+param set-default EKF2_MAG_E_NOISE 0.003 # Earth magnetic field noise
+param set-default EKF2_MAG_B_NOISE 0.0001 # Body magnetic field noise
 
-# Force EKF2 to use proper sensor fusion for stability
-param set-default EKF2_IMU_CTRL 7        # Use only gyro+accel, ignore mag
+# Arming checks - enable magnetometer requirements
+param set-default COM_ARM_MAG_STR 2     # MODERATE magnetometer strength check
+param set-default COM_ARM_MAG_ANG 45    # Allow 45-degree magnetometer angle error (reasonable for sim)
+
+# Force EKF2 to use magnetometer + GPS positioning
+param set-default EKF2_IMU_CTRL 7       # Use gyro+accel+mag for attitude
 
 # ============================================================================
-# GPS CONFIGURATION - PX4 v1.15 COMPATIBLE + EXTERNAL GPS FIX
+# GPS CONFIGURATION - EXTERNAL GPS BRIDGE - PX4 v1.15 COMPATIBLE
 # ============================================================================
-# CRITICAL: Enable external GPS system
+# CRITICAL: Enable external GPS system via bridge
 param set-default SYS_HAS_GPS 1         # Enable GPS system - REQUIRED for external GPS
-param set-default GPS_1_CONFIG 0        # Disable internal GPS driver - use external only
+param set-default GPS_1_CONFIG 0        # Disable internal GPS driver - use external bridge only
 
-# CRITICAL: Use GPS for position AND heading via EKF2_GPS_CTRL
-param set-default EKF2_GPS_CTRL 15      # GPS pos(1) + vel(2) + hgt(4) + yaw(8) = 15
+# CRITICAL: Use GPS for position/velocity ONLY (not heading - mag provides heading)
+param set-default EKF2_GPS_CTRL 7       # GPS pos(1) + vel(2) + hgt(4) = 7 (NO heading bit)
 param set-default EKF2_HGT_REF 1        # Use GPS for height reference
 
-# GPS Quality Thresholds - RELAXED FOR SIMULATION
-param set-default EKF2_REQ_EPH 10.0      # Required horizontal accuracy (10m) - RELAXED
-param set-default EKF2_REQ_EPV 15.0      # Required vertical accuracy (15m) - RELAXED
-param set-default EKF2_REQ_SACC 2.0      # Required speed accuracy (2 m/s)
-param set-default EKF2_REQ_NSATS 4       # Required satellites (4 instead of 10) - RELAXED
+# GPS Quality Thresholds - TUNED FOR SIMULATION
+param set-default EKF2_REQ_EPH 5.0      # Required horizontal accuracy (5m) - reasonable for sim
+param set-default EKF2_REQ_EPV 10.0     # Required vertical accuracy (10m) - reasonable for sim
+param set-default EKF2_REQ_SACC 1.5     # Required speed accuracy (1.5 m/s)
+param set-default EKF2_REQ_NSATS 6      # Required satellites (6) - reasonable for simulation
 
-# GPS Processing Configuration
-param set-default EKF2_GPS_CHECK 0       # GPS check mask (disabled for simulation) - RELAXED
-param set-default EKF2_GPS_DELAY 110     # GPS measurement delay (110ms)
-param set-default EKF2_GPS_V_NOISE 1.0   # GPS velocity noise (1.0 m/s) - RELAXED
-param set-default EKF2_GPS_P_NOISE 1.0   # GPS position noise (1.0 m) - RELAXED
+# GPS Processing Configuration - OPTIMIZED FOR EXTERNAL BRIDGE
+param set-default EKF2_GPS_CHECK 21     # Enable basic GPS checks (eph, epv, sacc, nsats)
+param set-default EKF2_GPS_DELAY 120    # GPS measurement delay (120ms) - account for bridge processing
+param set-default EKF2_GPS_V_NOISE 0.5  # GPS velocity noise (0.5 m/s) - reasonable for simulation
+param set-default EKF2_GPS_P_NOISE 0.5  # GPS position noise (0.5 m) - reasonable for simulation
 
-# EKF2 GPS Position Settings
-param set-default EKF2_GPS_POS_X 0.0    # GPS antenna position offset
+# EKF2 GPS Position Settings - MATCH BRIDGE DEVICE ID
+param set-default EKF2_GPS_POS_X 0.0    # GPS antenna position offset (center)
 param set-default EKF2_GPS_POS_Y 0.0       
 param set-default EKF2_GPS_POS_Z 0.0       
 
-# GPS Calibration
+# GPS Calibration - MATCH BRIDGE CONFIGURATION
 param set-default GPS_1_PROTOCOL 0      # Disable internal GPS driver (using external bridge)
-param set-default GPS_1_GNSS 31         # Enable all GNSS systems (GPS+GLONASS+Galileo+Beidou)
-param set-default GPS_YAW_OFFSET 0.0    # GPS heading offset
-param set-default GPS_PITCH_OFFSET 0.0  # GPS pitch offset
+param set-default GPS_1_GNSS 31         # Enable all GNSS systems
+param set-default GPS_YAW_OFFSET 0.0    # No GPS heading offset (using mag for heading)
+param set-default GPS_PITCH_OFFSET 0.0  # No GPS pitch offset
 
 # ============================================================================
-# ACCELEROMETER BIAS FIX - ADDRESSES HIGH ACCEL BIAS ERROR IN FLIGHT
+# ACCELEROMETER BIAS FIX - MODERATE SETTINGS FOR SIMULATION
 # ============================================================================
-# CRITICAL: Fix for accelerometer bias issues during flight in Gazebo simulation
-param set-default EKF2_ABL_LIM 2.0       # Accelerometer bias limit (m/s²) - MODERATE increase
-param set-default EKF2_ABL_TAU 1.5       # Accelerometer bias time constant (s) - MODERATE
-param set-default EKF2_ABL_ACCLIM 30.0   # Max acceleration for bias learning (m/s²) - RELAXED
-param set-default EKF2_ABL_GYRLIM 5.0    # Max angular rate for bias learning (rad/s) - RELAXED
+# CRITICAL: Moderate accelerometer bias settings for simulation stability
+param set-default EKF2_ABL_LIM 1.0      # Accelerometer bias limit (1.0 m/s²) - REDUCED for stability
+param set-default EKF2_ABL_TAU 1.0      # Accelerometer bias time constant (1.0s) - FASTER response
+param set-default EKF2_ABL_ACCLIM 25.0  # Max acceleration for bias learning (25 m/s²) - reasonable
+param set-default EKF2_ABL_GYRLIM 3.0   # Max angular rate for bias learning (3 rad/s) - reasonable
 
-# CRITICAL: Disable accelerometer bias learning completely during flight
-param set-default EKF2_ABIAS_INIT 0.0    # Initial accelerometer bias
+# Accelerometer bias initialization
+param set-default EKF2_ABIAS_INIT 0.0   # Initial accelerometer bias
+param set-default EKF2_GBIAS_INIT 0.0   # Initial gyroscope bias
 
-# Additional accelerometer bias fixes for in-flight stability - MODERATE SETTINGS
-param set-default EKF2_ACC_B_NOISE 0.03  # Accelerometer bias noise (moderate)
-param set-default EKF2_GBIAS_INIT 0.0    # Initial gyroscope bias
-param set-default EKF2_GYR_B_NOISE 0.001 # Gyroscope bias noise (moderate)
+# Bias noise parameters - MODERATE for simulation
+param set-default EKF2_ACC_B_NOISE 0.01 # Accelerometer bias noise (reduced)
+param set-default EKF2_GYR_B_NOISE 0.0008 # Gyroscope bias noise (reduced)
 
-# Force accelerometer to be considered calibrated
-param set-default SYS_CAL_ACCEL 1        # Mark accelerometer as calibrated
-param set-default SYS_CAL_GYRO 1         # Mark gyroscope as calibrated
+# Force sensors to be considered calibrated for simulation
+param set-default SYS_CAL_ACCEL 1       # Mark accelerometer as calibrated
+param set-default SYS_CAL_GYRO 1        # Mark gyroscope as calibrated
+param set-default SYS_CAL_MAG 1         # Mark magnetometer as calibrated
 
-# Allow higher accelerometer bias for arming
-param set-default COM_ARM_IMU_ACC 3.0    # Allow higher accelerometer bias for arming (moderate increase)
-param set-default COM_ARM_IMU_GYR 1.0    # Allow higher gyroscope bias for arming
-
-# ============================================================================
-# MANUAL CONTROL INPUT FIX - ADDRESSES "No manual control input" ERROR
-# ============================================================================
-# CRITICAL: Updated manual control configuration for PX4 v1.15
-param set-default COM_RC_IN_MODE 1         # Joystick/No RC Checks mode
-param set-default NAV_RCL_ACT 0             # Disable RC loss actions
-param set-default COM_RC_LOSS_T 0.5         # RC loss timeout
-
-# Additional PX4 v1.15 manual control parameters
-param set-default COM_RCL_EXCEPT 4          # RC loss exception bitmask - allow all flight modes
-param set-default COM_POSCTL_NAVL 0         # Disable position control navigation loss action
-param set-default COM_RC_OVERRIDE 0         # Disable RC override in auto modes
-
-# More aggressive RC bypasses for simulation
-param set-default COM_RC_ARM_HYST 100       # REDUCED from 1000 - shorter RC arming hysteresis
-param set-default MAN_ARM_GESTURE 0         # Disable arm gesture requirement
-
-# Critical simulation manual control bypasses
-param set-default COM_ARM_AUTH_REQ 0        # Disable arming authorization requirement
-param set-default COM_ARM_AUTH_TO 1         # Set arming authorization timeout to 1 second
-param set-default COM_ARM_AUTO_DISARM 10    # Auto disarm after 10 seconds if no input
-
-# Force manual control to be considered available in simulation
-param set-default COM_RC_STICK_OV 12.0      # RC stick override threshold (simulation value)
+# Allow reasonable sensor bias for arming
+param set-default COM_ARM_IMU_ACC 1.5   # Allow moderate accelerometer bias for arming
+param set-default COM_ARM_IMU_GYR 0.5   # Allow moderate gyroscope bias for arming
 
 # ============================================================================
-# SIMULATION EKF2 TOLERANCE - VERY RELAXED
+# MANUAL CONTROL INPUT FIX - PX4 v1.15 COMPATIBLE
 # ============================================================================
-param set-default EKF2_REQ_HDRIFT 0.5    # Relaxed horizontal drift check
-param set-default EKF2_REQ_VDRIFT 1.0    # Relaxed vertical drift check
-param set-default EKF2_CHECK_SCALE 0.5   # Scale down all innovation checks
+# CRITICAL: Manual control configuration for PX4 v1.15
+param set-default COM_RC_IN_MODE 1      # Joystick/No RC Checks mode
+param set-default NAV_RCL_ACT 0         # Disable RC loss actions
+param set-default COM_RC_LOSS_T 0.5     # RC loss timeout
 
-# Additional estimator relaxations
-param set-default EKF2_NOAID_TOUT 5000000 # No-aid timeout (very long)
+# PX4 v1.15 specific manual control parameters
+param set-default COM_RCL_EXCEPT 4      # RC loss exception bitmask
+param set-default COM_POSCTL_NAVL 0     # Disable position control navigation loss action
+param set-default COM_RC_OVERRIDE 0     # Disable RC override in auto modes
+
+# Simulation control bypasses
+param set-default COM_RC_ARM_HYST 100   # RC arming hysteresis (100ms)
+param set-default MAN_ARM_GESTURE 0     # Disable arm gesture requirement
+param set-default COM_ARM_AUTH_REQ 0    # Disable arming authorization requirement
+param set-default COM_ARM_AUTH_TO 1     # Arming authorization timeout
+param set-default COM_ARM_AUTO_DISARM 10 # Auto disarm after 10 seconds
+
+# Manual control thresholds
+param set-default COM_RC_STICK_OV 12.0  # RC stick override threshold
+
+# ============================================================================
+# EKF2 ESTIMATION TUNING - OPTIMIZED FOR GPS BRIDGE + MAGNETOMETER
+# ============================================================================
+# CRITICAL: Sensor noise parameters tuned for simulation
+param set-default EKF2_BARO_NOISE 2.0  # Barometer noise
+param set-default EKF2_BARO_DELAY 0    # Barometer measurement delay
+param set-default EKF2_ACC_NOISE 0.35  # Accelerometer noise
+param set-default EKF2_GYR_NOISE 0.015 # Gyroscope noise
+
+# Vertical velocity estimation - TUNED FOR STABILITY
+param set-default EKF2_VDIST_SENSOR 0  # Use barometer for vertical distance
+param set-default EKF2_BARO_GATE 5.0   # Barometer innovation gate
+
+# Innovation sequence and drift checks - MODERATE
+param set-default EKF2_REQ_HDRIFT 0.3  # Horizontal drift check (0.3 m/s)
+param set-default EKF2_REQ_VDRIFT 0.5  # Vertical drift check (0.5 m/s)
+param set-default EKF2_CHECK_SCALE 0.6 # Innovation check scaling
+
+# Additional estimator settings
+param set-default EKF2_NOAID_TOUT 1000000 # No-aid timeout (1 second in simulation)
 param set-default EKF2_TERR_MASK 0        # Disable terrain estimation
 param set-default EKF2_RNG_AID 0          # Disable range finder aid
 
 # ============================================================================
-# VERTICAL VELOCITY STABILITY FIX + ALTITUDE CONTROL FIX
+# ALTITUDE AND POSITION CONTROL - IMPROVED STABILITY
 # ============================================================================
-# CRITICAL: Fix for "Vertical velocity unstable" error - PROPER TUNING
-param set-default EKF2_BARO_NOISE 1.5    # Barometer noise - REDUCED from 5.0 to fix instability
-param set-default EKF2_BARO_DELAY 0      # Barometer measurement delay
-param set-default EKF2_ACC_NOISE 0.25    # Accelerometer noise - REDUCED from 0.8 to fix instability  
-param set-default EKF2_GYR_NOISE 0.01    # Gyroscope noise - REDUCED from 0.05 to fix instability
+# CRITICAL: Altitude control gains - REDUCED for stable flight
+param set-default MPC_Z_VEL_MAX_DN 2.0  # Maximum descent velocity (2 m/s) - SAFER
+param set-default MPC_Z_VEL_MAX_UP 2.5  # Maximum ascent velocity (2.5 m/s) - CONTROLLED
+param set-default MPC_THR_MAX 0.7       # Maximum throttle (70%) - REDUCED
+param set-default MPC_THR_MIN 0.12      # Minimum throttle
+param set-default MPC_MANTHR_MIN 0.08   # Manual throttle minimum
+param set-default MPC_THR_HOVER 0.55    # Hover throttle (55%) - REASONABLE
 
-# CRITICAL: Vertical velocity estimation fixes
-param set-default EKF2_VDIST_SENSOR 0    # Use barometer for vertical distance
-param set-default EKF2_BARO_GATE 5.0     # Barometer innovation gate
-param set-default EKF2_EV_NOISE_MD 0     # External vision noise mode
+# Altitude controller gains - STABLE TUNING
+param set-default MPC_Z_P 1.0           # Altitude controller P gain
+param set-default MPC_Z_VEL_P_ACC 4.0   # Altitude velocity P gain - REDUCED
+param set-default MPC_Z_VEL_I_ACC 2.0   # Altitude velocity I gain - REDUCED
+param set-default MPC_Z_VEL_D_ACC 0.0   # Altitude velocity D gain - DISABLED
 
-# CRITICAL: Altitude control fixes for uncontrolled climbing
-param set-default MPC_Z_VEL_MAX_DN 3.0   # Maximum descent velocity (m/s)
-param set-default MPC_Z_VEL_MAX_UP 3.0   # Maximum ascent velocity (m/s) - LIMIT CLIMB RATE
-param set-default MPC_THR_MAX 0.8        # Maximum throttle (reduce from 1.0)
-param set-default MPC_THR_MIN 0.1        # Minimum throttle
-param set-default MPC_MANTHR_MIN 0.08    # Manual throttle minimum
-param set-default MPC_THR_HOVER 0.60     # Hover throttle
-
-# Altitude controller gains - REDUCE AGGRESSIVENESS
-param set-default MPC_Z_P 0.8            # Altitude controller P gain (reduced)
-param set-default MPC_Z_VEL_P_ACC 8.0    # Altitude velocity P gain (reduced)
-param set-default MPC_Z_VEL_I_ACC 3.0    # Altitude velocity I gain (reduced)
-param set-default MPC_Z_VEL_D_ACC 0.0    # Altitude velocity D gain (disabled)
-
-# Position Control Tuning - SMOOTHER CONTROL
-param set-default MPC_XY_P 1.0           # Position controller P gain
-param set-default MPC_XY_VEL_P_ACC 1.5   # Velocity controller P gain
-param set-default MPC_XY_VEL_I_ACC 0.3   # Velocity controller I gain
-param set-default MPC_XY_VEL_D_ACC 0.15  # Velocity controller D gain
+# Position Control Tuning - SMOOTH CONTROL
+param set-default MPC_XY_P 0.95         # Position controller P gain
+param set-default MPC_XY_VEL_P_ACC 1.8  # Velocity controller P gain
+param set-default MPC_XY_VEL_I_ACC 0.4  # Velocity controller I gain
+param set-default MPC_XY_VEL_D_ACC 0.2  # Velocity controller D gain
 
 # ============================================================================
-# EMERGENCY ACCELEROMETER BYPASS - USE ONLY IN SIMULATION
+# COMMANDER SETTINGS - BALANCED FOR SIMULATION
 # ============================================================================
-# CRITICAL: Emergency bypass if accelerometer still causes issues
-param set-default CBRK_ACCEL_CHK 894281  # Circuit breaker to disable accelerometer checks
-param set-default CBRK_GYRO_CHK 894281   # Circuit breaker to disable gyroscope checks
+# Arming requirements - REASONABLE for simulation
+param set-default COM_ARM_WO_GPS 0      # REQUIRE GPS for arming (we have GPS bridge)
+param set-default COM_ARM_EKF_POS 50.0  # EKF position accuracy requirement (50m) - reasonable
+param set-default COM_ARM_EKF_VEL 1.5   # EKF velocity accuracy requirement (1.5 m/s)
+param set-default COM_ARM_EKF_HGT 100.0 # Height accuracy requirement (100m) - reasonable
+param set-default COM_ARM_EKF_YAW 60.0  # Yaw accuracy requirement (60 degrees) - reasonable
 
-# CRITICAL: Additional flight-time accelerometer bypass
-param set-default CBRK_AIRSPD_CHK 162128 # Disable airspeed checks (simulation)
-param set-default CBRK_FLIGHTTERM 121212 # Disable flight termination system
+# Flight behavior
+param set-default COM_DISARM_LAND 2.0   # Disarm timeout on landing (2 seconds)
+param set-default COM_OF_LOSS_T 1.0     # Optical flow loss timeout
+param set-default COM_LOW_BAT_ACT 0     # Disable low battery action (simulation)
+
+# ============================================================================
+# SIMULATION-SPECIFIC CALIBRATION - CONSISTENT DEVICE IDS
+# ============================================================================
+# CRITICAL: Set all sensor device IDs consistently for simulation
+param set-default CAL_ACC0_ID 1310988   # Accelerometer device ID
+param set-default CAL_ACC0_XOFF 0.0     # Zero accelerometer offsets
+param set-default CAL_ACC0_YOFF 0.0
+param set-default CAL_ACC0_ZOFF 0.0
+param set-default CAL_ACC0_XSCALE 1.0   # Unity scales
+param set-default CAL_ACC0_YSCALE 1.0
+param set-default CAL_ACC0_ZSCALE 1.0
+param set-default CAL_ACC_PRIME 1310988 # Primary accelerometer ID
+
+# Gyroscope calibration
+param set-default CAL_GYRO0_ID 1310988  # Gyroscope device ID - CONSISTENT
+param set-default CAL_GYRO0_XOFF 0.0    # Zero gyroscope offsets
+param set-default CAL_GYRO0_YOFF 0.0
+param set-default CAL_GYRO0_ZOFF 0.0
+
+# Magnetometer calibration for San Francisco Bay Area
+param set-default CAL_MAG0_XOFF 0.0     # Zero magnetometer offsets for simulation
+param set-default CAL_MAG0_YOFF 0.0
+param set-default CAL_MAG0_ZOFF 0.0
+param set-default CAL_MAG0_XSCALE 1.0   # Unity scales
+param set-default CAL_MAG0_YSCALE 1.0
+param set-default CAL_MAG0_ZSCALE 1.0
+
+# ============================================================================
+# EMERGENCY CIRCUIT BREAKERS - DISABLE FOR SIMULATION ONLY
+# ============================================================================
+# CRITICAL: Only use these in simulation - NEVER on real hardware
+param set-default CBRK_AIRSPD_CHK 162128 # Disable airspeed checks (simulation only)
+param set-default CBRK_FLIGHTTERM 121212 # Disable flight termination (simulation only)
 param set-default COM_ARM_SWISBTN 0      # Disable safety switch requirement
 
 # ============================================================================
-# COMMANDER SETTINGS - RELAXED FOR SIMULATION
-# ============================================================================
-param set-default COM_ARM_WO_GPS 1       # Allow arming without GPS
-param set-default COM_ARM_EKF_POS 200.0  # Relaxed EKF position accuracy for simulation
-param set-default COM_ARM_EKF_VEL 2.0    # Relaxed EKF velocity accuracy for simulation
-
-# Additional commander relaxations
-param set-default COM_ARM_EKF_HGT 1000.0 # Relaxed height accuracy requirement
-param set-default COM_ARM_EKF_YAW 1000.0 # Relaxed yaw accuracy requirement
-param set-default COM_DISARM_LAND 0.5    # Shorter disarm timeout on landing
-param set-default COM_OF_LOSS_T 1.0      # Optical flow loss timeout
-param set-default COM_LOW_BAT_ACT 0      # Disable low battery action
-
-# ============================================================================
-# SIMULATION-SPECIFIC CALIBRATION FIXES - FORCE CALIBRATED STATE
-# ============================================================================
-# CRITICAL: Force accelerometer calibration parameters for simulation
-param set-default CAL_ACC0_ID 1310988   # Set accelerometer device ID (simulation device)
-param set-default CAL_ACC0_XOFF 0.0     # Zero accelerometer X offset
-param set-default CAL_ACC0_YOFF 0.0     # Zero accelerometer Y offset
-param set-default CAL_ACC0_ZOFF 0.0     # Zero accelerometer Z offset
-param set-default CAL_ACC0_XSCALE 1.0   # Unity accelerometer X scale
-param set-default CAL_ACC0_YSCALE 1.0   # Unity accelerometer Y scale
-param set-default CAL_ACC0_ZSCALE 1.0   # Unity accelerometer Z scale
-param set-default CAL_ACC_PRIME 1310988 # Set primary accelerometer ID
-
-# CRITICAL: Force gyroscope calibration parameters for simulation
-param set-default CAL_GYRO0_ID 1310988  # Set gyroscope device ID (simulation device)
-param set-default CAL_GYRO0_XOFF 0.0    # Zero gyroscope X offset
-param set-default CAL_GYRO0_YOFF 0.0    # Zero gyroscope Y offset
-param set-default CAL_GYRO0_ZOFF 0.0    # Zero gyroscope Z offset
-
-# ============================================================================
-# VEHICLE CONFIGURATION
+# VEHICLE CONFIGURATION - X500 GEOMETRY
 # ============================================================================
 # Vehicle type
 param set-default CA_AIRFRAME 0
