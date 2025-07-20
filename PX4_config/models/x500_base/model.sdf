@@ -235,21 +235,36 @@
         <always_on>1</always_on>
         <update_rate>30</update_rate>
         <topic>navsat</topic>
+        <pose>0 0 0.05 0 0 0</pose>  <!-- Position 5cm above link center -->
         <navsat>
           <position_sensing>
             <horizontal>
               <noise type="gaussian">
                 <mean>0.0</mean>
-                <stddev>1e-2</stddev>
+                <stddev>1e-8</stddev>  <!-- FIXED: ~1cm accuracy instead of 1km! -->
               </noise>
             </horizontal>
             <vertical>
               <noise type="gaussian">
                 <mean>0.0</mean>
-                <stddev>1e-2</stddev>
+                <stddev>0.01</stddev>  <!-- FIXED: 1cm vertical accuracy -->
               </noise>
             </vertical>
           </position_sensing>
+          <velocity_sensing>
+            <horizontal>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <stddev>0.01</stddev>  <!-- Added: 1cm/s velocity noise -->
+              </noise>
+            </horizontal>
+            <vertical>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <stddev>0.01</stddev>  <!-- Added: 1cm/s velocity noise -->
+              </noise>
+            </vertical>
+          </velocity_sensing>
         </navsat>
       </sensor>
     </link>
