@@ -21,13 +21,6 @@
     <joint name="LidarJoint" type="fixed">
       <parent>base_link</parent>
       <child>lidar_link</child>
-    </joint>
-    
-    <!-- GPS NavSat System Plugin - REQUIRED for GPS functionality -->
-    <plugin filename="libgz-sim-navsat-system.so" name="gz::sim::systems::NavSat">
-      <world_frame>world</world_frame>
-      <frame_id>x500_lidar_camera_1/base_link/navsat_sensor</frame_id>
-    </plugin>
-    
+    </joint>    
   </model>
 </sdf>

@@ -82,6 +82,7 @@ px4_add_romfs_files(
 	4008_gz_advanced_plane
 	4009_gz_r1_rover
 	4010_gz_x500_mono_cam
+	4011_gz_lawnmower
 	4020_gz_x500_d435
 	4021_gz_x500_lidar_camera
 	4022_gz_x3_uav

@@ -545,54 +545,16 @@ RUN cd /home/user/ros2_ws/src && \
     done && \
     echo "✅ Submodule initialization completed"
 
-# Clone and build PX4-Autopilot 
-RUN echo "=== Setting up PX4-Autopilot with conditional logic ===" && \
-    # Define helper functions for consistent output
-    print_info() { echo "ℹ️ [INFO] $1"; } && \
-    print_status() { echo "✅ [STATUS] $1"; } && \
-    print_error() { echo "❌ [ERROR] $1"; } && \
-    \
-    # Define build-time PX4 directory (not shared volume)
-    BUILD_PX4_DIR="/home/user/PX4-Autopilot" && \
-    \
-    # Check if PX4_DIR exists and handle accordingly
-    if [ ! -d "$BUILD_PX4_DIR" ]; then \
-        print_info "BUILD_PX4_DIR=$BUILD_PX4_DIR does not exist, cloning PX4-Autopilot..."; \
-        cd /home/user && \
-        if git clone https://github.com/riotu-lab/PX4-Autopilot.git --recursive; then \
-            print_status "PX4-Autopilot cloned successfully"; \
-        else \
-            print_error "Failed to clone PX4-Autopilot"; \
-            exit 1; \
-        fi && \
-        cd $BUILD_PX4_DIR && \
-        print_info "Cleaning PX4 build environment..." && \
-        (make submodulesclean || echo "submodulesclean completed with warnings") && \
-        (make distclean || echo "distclean completed with warnings") && \
-        (make clean || echo "clean completed with warnings") && \
-        print_info "Checking out navsat_callback branch..." && \
-        if git checkout navsat_callback; then \
-            print_status "PX4-Autopilot cloned and configured"; \
-        else \
-            print_error "Failed to checkout navsat_callback branch"; \
-            exit 1; \
-        fi; \
-    else \
-        print_info "BUILD_PX4_DIR=$BUILD_PX4_DIR already exists"; \
-        cd $BUILD_PX4_DIR && \
-        print_info "Cleaning existing PX4 build environment..." && \
-        (make submodulesclean || echo "submodulesclean completed with warnings") && \
-        (make distclean || echo "distclean completed with warnings") && \
-        (make clean || echo "clean completed with warnings") && \
-        print_info "Checking out navsat_callback branch..." && \
-        if git checkout navsat_callback; then \
-            print_status "PX4-Autopilot cleaned and configured"; \
-        else \
-            print_error "Failed to checkout navsat_callback branch"; \
-            exit 1; \
-        fi; \
-    fi && \
-    \
+# Clone, configure, and build the PX4-Autopilot firmware
+RUN set -e && \
+    cd /home/user && \
+    git clone https://github.com/PX4/PX4-Autopilot.git --recursive && \
+    cd PX4-Autopilot && \
+    git checkout v1.15.0 && \
+    git submodule update --init --recursive && \
+    make distclean && \
+    make clean && \
+    make px4_sitl\
     # Ensure EmPy version is correct (from original logic)
     print_info "Installing correct EmPy version..." && \
     pip3 install --break-system-packages --force-reinstall "empy>=3.3,<4.0" && \
