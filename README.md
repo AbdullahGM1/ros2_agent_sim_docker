@@ -295,11 +295,9 @@ This project builds upon the excellent work of:
 
 - [ROSA (NASA JPL)](https://github.com/nasa-jpl/rosa) - ROS Agent task planning framework
 - [smart_track Docker Environment](https://github.com/mzahana/smart_track/tree/main/docker) by [Mohammed Abdelkader](https://github.com/mzahana)
-- [uav_gz_sim_docker](https://github.com/asmbatati/uav_gz_sim_docker/tree/main) by [asmbatati](https://github.com/asmbatati)
 
 Special thanks to [Mohammed Abdelkader](https://github.com/mzahana) for providing the foundational Docker configurations and ROS2-PX4 integration scripts that made this project possible.
 
-**FIXED VERSION Enhancements**: This version includes significant improvements for Ubuntu 24.04 compatibility, Qt6 support, enhanced graphics environment, and comprehensive error handling that were not present in the original implementations.
 
 ## 📝 License
 
