@@ -554,11 +554,10 @@ RUN set -e && \
     git submodule update --init --recursive && \
     make distclean && \
     make clean && \
-    make px4_sitl\
-    # Ensure EmPy version is correct (from original logic)
-    print_info "Installing correct EmPy version..." && \
+    make px4_sitl && \
+    echo "=== Installing correct EmPy version ===" && \
     pip3 install --break-system-packages --force-reinstall "empy>=3.3,<4.0" && \
-    print_status "PX4-Autopilot setup completed successfully"
+    echo "✅ PX4-Autopilot setup completed successfully"
 
 # Clone other repositories
 RUN cd /home/user/ros2_ws/src && \
