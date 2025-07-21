@@ -125,6 +125,11 @@ fi
 # Gazebo environment
 export GZ_VERSION="harmonic"
 
+# PX4 uXRCE-DDS Client Configuration
+# Tells PX4 SITL how to connect to the agent
+export PX4_UXRCE_DDS_CLIENT_MODE=UDP
+export PX4_UXRCE_DDS_CLIENT_PORT=8888
+
 # Gazebo simulation paths for PX4
 export GZ_SIM_RESOURCE_PATH=/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/models:/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/worlds:$GZ_SIM_RESOURCE_PATH
 export GZ_SIM_SYSTEM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins:$GZ_SIM_SYSTEM_PLUGIN_PATH
