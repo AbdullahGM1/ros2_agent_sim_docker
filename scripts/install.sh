@@ -303,12 +303,14 @@ setup_repositories() {
     # Copy PX4-Autopilot 
     if [ ! -d "$PX4_DIR" ]; then
         print_info "Copying PX4-Autopilot from container..."
-        if [ -d "/opt/px4-source" ]; then
-            cp -r /opt/px4-source "$PX4_DIR"
-            print_success "PX4-Autopilot copied from /opt/px4-source"
+        if [ -d "/home/user/PX4-Autopilot" ]; then
+            cp -r /home/user/PX4-Autopilot "$PX4_DIR"
+            print_success "PX4-Autopilot copied from /home/user/PX4-Autopilot"
         else
-            print_error "PX4 source not found at /opt/px4-source"
-            print_info "Available directories:"
+            print_error "PX4 source not found at /home/user/PX4-Autopilot"
+            print_info "Available directories in /home/user/:"
+            ls -la /home/user/ | grep -i px4 || echo "No PX4 directories found in /home/user/"
+            print_info "Checking /opt/ for legacy PX4 installation:"
             ls -la /opt/ | grep px4 || echo "No px4 directories found in /opt/"
             exit 1
         fi
