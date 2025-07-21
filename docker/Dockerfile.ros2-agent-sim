@@ -623,7 +623,7 @@ RUN if [ -d "/home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2" ]; then \
     fi
 
 # Set proper ownership
-RUN chown -R user:user /home/user/ros2_ws /opt/px4-source
+RUN chown -R user:user /home/user/ros2_ws /home/user/PX4-Autopilot
 
 # ============================================================================
 # PHASE 18: Application Files and Scripts
