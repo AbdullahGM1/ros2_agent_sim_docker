@@ -478,6 +478,23 @@ RUN pip3 install --break-system-packages --ignore-installed --no-cache-dir \
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # ============================================================================
+# PHASE 14.5: LLM Models
+# ============================================================================
+
+#
+# Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
+#
+RUN ollama serve & \
+    sleep 15 && \
+    echo "Checking if qwen3:8b is available..." && \
+    if ollama pull qwen3:8b; then \
+        echo "Successfully pulled qwen3:8b"; \
+    else \
+        echo "Model qwen3:8b not available or failed to pull, continuing..."; \
+    fi && \
+    pkill ollama
+
+# ============================================================================
 # PHASE 15: CRITICAL FIX: Graphics Environment Verification
 # ============================================================================
 

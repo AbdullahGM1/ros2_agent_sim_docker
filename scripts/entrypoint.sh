@@ -1,5 +1,5 @@
 #!/bin/bash
-# FIXED: Enhanced entrypoint.sh with Ubuntu 24.04 compatibility and comprehensive Qt6/graphics support
+
 set -e
 
 # Colors for output
@@ -485,18 +485,68 @@ else
 fi
 
 # ========================================================================
-# Service Setup
+# ENHANCED: Service Setup with Better Ollama Management
 # ========================================================================
 
-# Start Ollama if port is free
-if ! netstat -tuln 2>/dev/null | grep -q ":11434 "; then
-    print_info "Starting Ollama service..."
-    sudo -u user ollama serve &
-    sleep 3
-    print_success "Ollama service started"
+print_info "Setting up services with enhanced Ollama management..."
+
+# Enhanced Ollama startup with model management
+if command -v ollama >/dev/null 2>&1; then
+    # Check if port is free
+    if ! netstat -tuln 2>/dev/null | grep -q ":11434 "; then
+        print_info "🤖 Starting Ollama service..."
+        sudo -u user ollama serve > /dev/null 2>&1 &
+        OLLAMA_PID=$!
+        
+        # Wait for Ollama to be ready with improved timing
+        print_info "⏳ Waiting for Ollama service to be ready..."
+        OLLAMA_READY=false
+        for i in {1..20}; do
+            if sudo -u user ollama list >/dev/null 2>&1; then
+                print_success "✅ Ollama service is ready"
+                OLLAMA_READY=true
+                break
+            fi
+            print_debug "Waiting for Ollama... attempt $i/20"
+            sleep 2
+        done
+        
+        if [ "$OLLAMA_READY" = "true" ]; then
+            # Show available models
+            print_info "📋 Available Ollama models:"
+            MODELS=$(sudo -u user ollama list 2>/dev/null || echo "No models found")
+            if echo "$MODELS" | grep -q "qwen3:8b"; then
+                print_success "✅ qwen3:8b model is available"
+            else
+                print_info "🔍 qwen3:8b model not found, checking availability..."
+                # Try to pull the model if it doesn't exist
+                if sudo -u user ollama pull qwen3:8b >/dev/null 2>&1; then
+                    print_success "✅ Successfully downloaded qwen3:8b model"
+                else
+                    print_warning "⚠️ Could not download qwen3:8b model (may not exist or network issue)"
+                    print_info "Available models:"
+                fi
+            fi
+            echo "$MODELS"
+        else
+            print_warning "⚠️ Ollama service failed to become ready within timeout"
+        fi
+    else
+        print_info "🔄 Port 11434 in use, attempting to connect to existing Ollama service..."
+        # Test if existing service works
+        if sudo -u user ollama list >/dev/null 2>&1; then
+            print_success "✅ Connected to existing Ollama service"
+            print_info "📋 Available models:"
+            sudo -u user ollama list 2>/dev/null || echo "Could not list models"
+        else
+            print_warning "⚠️ Cannot connect to existing Ollama service on port 11434"
+        fi
+    fi
 else
-    print_info "Port 11434 in use, skipping Ollama startup"
+    print_warning "⚠️ Ollama command not found, skipping service setup"
 fi
+
+print_success "Service setup completed"
 
 # ========================================================================
 # CRITICAL FIX: Final Environment Verification (Ubuntu 24.04)
@@ -535,6 +585,18 @@ else
     print_warning "⚠️ Ubuntu version may not be 24.04 - package compatibility uncertain"
 fi
 
+# Verify Ollama service status
+if command -v ollama >/dev/null 2>&1; then
+    if sudo -u user ollama list >/dev/null 2>&1; then
+        MODEL_COUNT=$(sudo -u user ollama list 2>/dev/null | grep -c ":" || echo "0")
+        print_success "✅ Ollama service verified - $MODEL_COUNT models available"
+    else
+        print_warning "⚠️ Ollama service not responding properly"
+    fi
+else
+    print_info "ℹ️ Ollama not installed"
+fi
+
 # ========================================================================
 # Switch to User Context and Execute Command
 # ========================================================================
@@ -556,6 +618,7 @@ if [ "$1" = "tail" ] && [ "$2" = "-f" ] && [ "$3" = "/dev/null" ]; then
     print_info "OpenGL: Mesa $MESA_GL_VERSION_OVERRIDE (Gallium: $GALLIUM_DRIVER)"
     print_info "X11 Status: $(timeout 3 xset q >/dev/null 2>&1 && echo '✅ Working' || echo '⚠️ Fallback Mode')"
     print_info "Shared Volume: $([ -d '/home/user/shared_volume' ] && echo '✅ Ready' || echo '❌ Not Found')"
+    print_info "Ollama: $(command -v ollama >/dev/null && sudo -u user ollama list >/dev/null 2>&1 && echo '✅ Ready' || echo '⚠️ Limited')"
     print_info "Graphics: Qt6 + OpenGL + Software Rendering Fallbacks (Ubuntu 24.04)"
     print_info "Packages: libgl1 + libglx-mesa0 + libglut3.12 (Ubuntu 24.04 compatible)"
     print_info "================================================="
@@ -576,6 +639,16 @@ exec sudo -u user -H bash -c "
         echo '   OpenGL: Mesa \$MESA_GL_VERSION_OVERRIDE'
         echo '   Renderer: \$GALLIUM_DRIVER'
         echo '   Ubuntu: 24.04 compatible packages'
+        
+        # Show Ollama status if available
+        if command -v ollama >/dev/null 2>&1; then
+            if ollama list >/dev/null 2>&1; then
+                OLLAMA_MODELS=\$(ollama list 2>/dev/null | wc -l || echo '0')
+                echo '   🤖 Ollama: Ready (\$OLLAMA_MODELS models)'
+            else
+                echo '   🤖 Ollama: Service starting...'
+            fi
+        fi
     else
         echo '❌ .bashrc not found!'
         # Create emergency environment
@@ -610,6 +683,7 @@ exec sudo -u user -H bash -c "
     echo \"X11 Test: \$(timeout 5 xset q >/dev/null 2>&1 && echo '✅ Working' || echo '⚠️ Fallback Mode')\"
     echo \"OpenGL: \$(command -v glxinfo >/dev/null && echo '✅ Available' || echo '⚠️ Limited')\"
     echo \"Qt6: \$(echo \$QT_QPA_PLATFORM | grep -q xcb && echo '✅ Ready' || echo '⚠️ Basic')\"
+    echo \"Ollama: \$(command -v ollama >/dev/null && ollama list >/dev/null 2>&1 && echo '✅ Ready' || echo '⚠️ Limited')\"
     echo \"AMENT_PREFIX_PATH: \${AMENT_PREFIX_PATH:-'Not set'}\"
     echo \"Ubuntu 24.04 packages: \$(dpkg -l 2>/dev/null | grep -c 'libgl1\\|libglx-mesa0\\|libglut3.12' || echo '0') installed\"
     
@@ -626,6 +700,10 @@ exec sudo -u user -H bash -c "
     echo '   • start_gazebo (enhanced with Ubuntu 24.04 fallbacks)'
     echo '   • diagnose_graphics (if issues occur)'
     echo '   • check_packages (verify Ubuntu 24.04 packages)'
+    if command -v ollama >/dev/null 2>&1; then
+        echo '   • ollama list (show available AI models)'
+        echo '   • ollama run qwen3:8b \"Hello\" (test AI model if available)'
+    fi
     echo ''
     
     # Execute the command
