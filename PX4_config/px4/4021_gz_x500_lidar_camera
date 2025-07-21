@@ -1,112 +1,47 @@
 #!/bin/sh
-#
-# @name Gazebo X500 with External GPS Bridge - PX4 v1.15+
+# @name Gazebo X500 with External GPS - Final Corrected
 # @type Quadrotor
 # @class Copter
-#
 
 . ${R}etc/init.d/rc.mc_defaults
-
-# Simulator configuration
 PX4_SIMULATOR=${PX4_SIMULATOR:=gz}
 PX4_GZ_WORLD=${PX4_GZ_WORLD:=default}
 PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
-
-# Enable Gazebo simulation
 param set-default SIM_GZ_EN 1
 
-# ------------------------------------------------------------------------------
 # SENSOR CONFIGURATION
-# ------------------------------------------------------------------------------
+param set-default SENS_EN_GPSSIM 0
+param set-default SENS_EN_BAROSIM 1
+param set-default SENS_EN_MAGSIM 0
+param set-default SYS_HAS_GPS 1
+param set-default SYS_HAS_MAG 0
+param set-default SYS_HAS_BARO 1
+param set-default GPS_1_CONFIG 0
 
-# GPS & Barometer
-param set-default SENS_EN_GPSSIM 0      # Disable internal PX4 simulated GPS (we are using an external one)
-param set-default SENS_EN_BAROSIM 1     # Enable simulated barometer
-param set-default SYS_HAS_GPS 1         # System has a GPS
-param set-default GPS_1_CONFIG 0        # Disable internal GPS driver (receives from uORB topic instead)
+# EKF2 - SENSOR FUSION
+param set-default EKF2_HGT_REF 0
+param set-default EKF2_MAG_TYPE 5
+param set-default EKF2_GPS_CTRL 7
+param set-default EKF2_GPS_P_NOISE 0.5
+param set-default EKF2_GPS_V_NOISE 0.5
 
-# Magnetometer is disabled to rely on GPS/IMU fusion
-param set-default SENS_EN_MAGSIM 1
-param set-default SYS_HAS_MAG 1
-param set-default EKF2_MAG_TYPE 0      
-param set-default COM_ARM_MAG_STR 0
-param set-default COM_ARM_MAG_ANG 180
-
-# ------------------------------------------------------------------------------
-# EKF2 - SENSOR FUSION & GPS BEHAVIOR
-# ------------------------------------------------------------------------------
-
-# --- Major Fixes Applied Here ---
-# 1. EKF2_GPS_CTRL set to 7 to prevent fusing non-existent yaw data.
-# 2. GPS noise parameters set to sensible defaults to ensure the EKF trusts the GPS data.
-# 3. Redundant EKF2_REQ_* parameters removed for clarity.
-
-# GPS Fusion Settings
-param set-default EKF2_GPS_CTRL 7       # CORRECT: Fuse pos+vel+hgt. (Was 15, which incorrectly tried to fuse yaw)
-param set-default EKF2_HGT_REF 1        # Use GPS for height reference
-param set-default EKF2_VDIST_SENSOR 1   # Vertical distance source = GPS
-
-# EKF2 Noise Parameters
-param set-default EKF2_GPS_P_NOISE 0.5  # CORRECT: Sensible position noise. (Was 100.0)
-param set-default EKF2_GPS_V_NOISE 0.5  # CORRECT: Sensible velocity noise. (Was 100.0)
-param set-default EKF2_BARO_NOISE 2.0
-param set-default EKF2_ACC_NOISE 0.35
-param set-default EKF2_GYR_NOISE 0.015
-param set-default EKF2_BARO_GATE 5.0
-
-# Disable GPS Quality Checks (can be useful for simulation to get a faster lock)
-param set-default EKF2_GPS_CHECK 0
-
-# EKF2 General Settings
-param set-default EKF2_IMU_CTRL 7       # Use accel + gyro only
-param set-default EKF2_GPS_DELAY 0
-param set-default EKF2_GPS1_POS_X 0.0
-param set-default EKF2_GPS1_POS_Y 0.0
-param set-default EKF2_GPS1_POS_Z 0.0
-
-# ------------------------------------------------------------------------------
-# ACCEL / GYRO CALIBRATION BYPASS (Sim Only)
-# ------------------------------------------------------------------------------
+# CALIBRATION BYPASS (SIMULATION ONLY)
 param set-default CAL_ACC0_ID 1310988
-param set-default CAL_ACC0_XOFF 0.0
-param set-default CAL_ACC0_YOFF 0.0
-param set-default CAL_ACC0_ZOFF 0.0
-param set-default CAL_ACC0_XSCALE 1.0
-param set-default CAL_ACC0_YSCALE 1.0
-param set-default CAL_ACC0_ZSCALE 1.0
 param set-default CAL_ACC_PRIME 1310988
-
 param set-default CAL_GYRO0_ID 1310988
-param set-default CAL_GYRO0_XOFF 0.0
-param set-default CAL_GYRO0_YOFF 0.0
-param set-default CAL_GYRO0_ZOFF 0.0
 param set-default CAL_GYRO_PRIME 1310988
 
-# Bypass Magnetometer Calibration
-param set-default CAL_MAG0_ID 2621452
-param set-default CAL_MAG0_ROT 0
-param set-default CAL_MAG_PRIME 2621452
-
-# ------------------------------------------------------------------------------
-# MANUAL CONTROL / RC SIMULATION
-# ------------------------------------------------------------------------------
-param set-default COM_RC_IN_MODE 1      # Joystick (no RC)
-param set-default NAV_RCL_ACT 0
-param set-default COM_RC_LOSS_T 0.5
-
-# ------------------------------------------------------------------------------
-# ARMING CONFIGURATION - RELAXED FOR SIM
-# ------------------------------------------------------------------------------
-param set-default COM_ARM_WO_GPS 0      # Require GPS to arm
+# MANUAL CONTROL & ARMING
+param set-default COM_RC_IN_MODE 1
+param set-default COM_ARM_WO_GPS 0
+param set-default COM_ARM_SWISBTN 0
+param set-default COM_ARM_MAG_STR 0
 param set-default COM_ARM_EKF_POS 10.0
 param set-default COM_ARM_EKF_VEL 5.0
 param set-default COM_ARM_EKF_HGT 100.0
 param set-default COM_ARM_EKF_YAW 100.0
-param set-default COM_ARM_SWISBTN 0
 
-# ------------------------------------------------------------------------------
 # VEHICLE GEOMETRY & MOTORS - X500
-# ------------------------------------------------------------------------------
 param set-default CA_AIRFRAME 0
 param set-default CA_ROTOR_COUNT 4
 param set-default CA_ROTOR0_PX 0.13
@@ -121,5 +56,4 @@ param set-default CA_ROTOR2_KM -0.05
 param set-default CA_ROTOR3_PX -0.13
 param set-default CA_ROTOR3_PY 0.20
 param set-default CA_ROTOR3_KM -0.05
-
 param set-default MPC_THR_HOVER 0.60
