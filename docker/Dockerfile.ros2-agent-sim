@@ -528,31 +528,82 @@ RUN cd /home/user/ros2_ws/src && \
     done && \
     echo "✅ Submodule initialization completed"
 
-# Clone and prepare PX4-Autopilot 
-RUN echo "=== Preparing PX4 for runtime build ===" && \
-    git clone https://github.com/AbdullahGM1/PX4-Autopilot.git /opt/px4-source && \
-    cd /opt/px4-source && \
-    git checkout navsat_callback && \
+# # Clone and prepare PX4-Autopilot 
+# RUN echo "=== Preparing PX4 for runtime build ===" && \
+#     git clone https://github.com/AbdullahGM1/PX4-Autopilot.git /opt/px4-source && \
+#     cd /opt/px4-source && \
+#     git checkout navsat_callback && \
+#     \
+#     # Initialize submodules with retry logic
+#     for i in 1 2 3; do \
+#         echo "Attempt $i: Initializing submodules..." && \
+#         if git submodule update --init --recursive --jobs 4; then \
+#             echo "✅ Submodules initialized successfully"; \
+#             break; \
+#         else \
+#             echo "❌ Submodule init failed, attempt $i"; \
+#             if [ $i -eq 3 ]; then \
+#                 echo "❌ All submodule initialization attempts failed"; \
+#                 exit 1; \
+#             fi; \
+#             sleep 10; \
+#         fi; \
+#     done && \
+#     \
+#     # Ensure EmPy version is correct
+#     pip3 install --break-system-packages --force-reinstall "empy>=3.3,<4.0" && \
+#     echo "✅ PX4 source prepared for runtime build"
+
+# Clone and build PX4-Autopilot 
+RUN echo "=== Setting up PX4-Autopilot with conditional logic ===" && \
+    # Define helper functions for consistent output
+    print_info() { echo "ℹ️ [INFO] $1"; } && \
+    print_status() { echo "✅ [STATUS] $1"; } && \
+    print_error() { echo "❌ [ERROR] $1"; } && \
+    export -f print_info print_status print_error && \
     \
-    # Initialize submodules with retry logic
-    for i in 1 2 3; do \
-        echo "Attempt $i: Initializing submodules..." && \
-        if git submodule update --init --recursive --jobs 4; then \
-            echo "✅ Submodules initialized successfully"; \
-            break; \
+    # Check if PX4_DIR exists and handle accordingly
+    if [ ! -d "$PX4_DIR" ]; then \
+        print_info "PX4_DIR=$PX4_DIR does not exist, cloning PX4-Autopilot..."; \
+        cd $DEV_DIR && \
+        if git clone https://github.com/riotu-lab/PX4-Autopilot.git --recursive; then \
+            print_status "PX4-Autopilot cloned successfully"; \
         else \
-            echo "❌ Submodule init failed, attempt $i"; \
-            if [ $i -eq 3 ]; then \
-                echo "❌ All submodule initialization attempts failed"; \
-                exit 1; \
-            fi; \
-            sleep 10; \
+            print_error "Failed to clone PX4-Autopilot"; \
+            exit 1; \
+        fi && \
+        cd $PX4_DIR && \
+        print_info "Cleaning PX4 build environment..." && \
+        (make submodulesclean || echo "submodulesclean completed with warnings") && \
+        (make distclean || echo "distclean completed with warnings") && \
+        (make clean || echo "clean completed with warnings") && \
+        print_info "Checking out navsat_callback branch..." && \
+        if git checkout navsat_callback; then \
+            print_status "PX4-Autopilot cloned and configured"; \
+        else \
+            print_error "Failed to checkout navsat_callback branch"; \
+            exit 1; \
         fi; \
-    done && \
+    else \
+        print_info "PX4_DIR=$PX4_DIR already exists"; \
+        cd $PX4_DIR && \
+        print_info "Cleaning existing PX4 build environment..." && \
+        (make submodulesclean || echo "submodulesclean completed with warnings") && \
+        (make distclean || echo "distclean completed with warnings") && \
+        (make clean || echo "clean completed with warnings") && \
+        print_info "Checking out navsat_callback branch..." && \
+        if git checkout navsat_callback; then \
+            print_status "PX4-Autopilot cleaned and configured"; \
+        else \
+            print_error "Failed to checkout navsat_callback branch"; \
+            exit 1; \
+        fi; \
+    fi && \
     \
-    # Ensure EmPy version is correct
+    # Ensure EmPy version is correct (from original logic)
+    print_info "Installing correct EmPy version..." && \
     pip3 install --break-system-packages --force-reinstall "empy>=3.3,<4.0" && \
-    echo "✅ PX4 source prepared for runtime build"
+    print_status "PX4-Autopilot setup completed successfully"
 
 # Clone other repositories
 RUN cd /home/user/ros2_ws/src && \
