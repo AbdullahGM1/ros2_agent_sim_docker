@@ -316,7 +316,7 @@ setup_repositories() {
         print_info "PX4-Autopilot already exists in shared volume"
     fi
 
-    # Copy px4_msgs if not exists (ADDED)
+    # Copy px4_msgs 
     if [ ! -d "$ROS2_SRC/px4_msgs" ]; then
         print_info "Copying px4_msgs from container..."
         if [ -d "/home/user/ros2_ws/src/px4_msgs" ]; then
