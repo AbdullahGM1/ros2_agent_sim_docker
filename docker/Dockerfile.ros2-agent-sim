@@ -270,6 +270,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-jazzy-joint-state-publisher-gui \
     ros-jazzy-rosidl-generator-py \
     ros-jazzy-rosidl-runtime-py \
+    ros-jazzy-rqt-tf-tree \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
@@ -559,16 +560,25 @@ RUN set -e && \
     pip3 install --break-system-packages --force-reinstall "empy>=3.3,<4.0" && \
     echo "✅ PX4-Autopilot setup completed successfully"
 
-# Clone other repositories
+# Clone MAVLINK repository
 RUN cd /home/user/ros2_ws/src && \
     git clone https://github.com/AbdullahGM1/mavlink-gbp-release.git mavlink && \
     cd mavlink && \
-    git checkout release/jazzy/mavlink
+    git checkout release/jazzy/mavlink \ 
+    echo "✅ MAVLINK Package Cloned"
 
+ # Clone MAVROS repository
 RUN cd /home/user/ros2_ws/src && \
     git clone https://github.com/AbdullahGM1/mavros.git && \
     cd mavros && \
-    git checkout ros2
+    git checkout ros2 \
+    echo "✅ MAVROS Package Cloned"
+
+# Clone Unitree repository
+RUN cd /home/user/ros2_ws/src && \
+git clone https://github.com/AbdullahGM1/unitree_go2_ros2.git && \
+cd unitree_go2_ros2 && \
+echo "✅ Unitree Package Cloned"
 
 # Clone px4_msgs repository 
 RUN cd /home/user/ros2_ws/src && \

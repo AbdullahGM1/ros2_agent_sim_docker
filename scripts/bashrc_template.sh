@@ -1,5 +1,4 @@
 #!/bin/bash
-# FIXED: ~/.bashrc for ROS2 Jazzy + Gazebo Harmonic with Qt6 and Graphics Support (Ubuntu 24.04)
 
 # If not running interactively, don't do anything
 case $- in
@@ -134,6 +133,15 @@ export PX4_UXRCE_DDS_CLIENT_PORT=8888
 export GZ_SIM_RESOURCE_PATH=/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/models:/home/user/shared_volume/PX4-Autopilot/Tools/simulation/gz/worlds:$GZ_SIM_RESOURCE_PATH
 export GZ_SIM_SYSTEM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins:$GZ_SIM_SYSTEM_PLUGIN_PATH
 export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+
+# =============================================================================
+# SETUPTOOLS-SCM FIX: Prevent git versioning errors during colcon build
+# =============================================================================
+
+# Fix for "listing git files failed" errors during colcon build
+# This prevents setuptools-scm from trying to read git info from build directories
+export SETUPTOOLS_SCM_PRETEND_VERSION=1.0.0
+export SETUPTOOLS_SCM_DEBUG=false
 
 # =============================================================================
 # CRITICAL FIX: Qt6 and Graphics Environment Setup (Ubuntu 24.04)
@@ -487,6 +495,13 @@ if dpkg -l | grep -q "libgl1.*24\|libglx-mesa0.*24"; then
     echo "   ✅ Ubuntu 24.04 Mesa packages detected"
 else
     echo "   ⚠️  Ubuntu 24.04 Mesa packages may not be properly installed"
+fi
+
+# Show setuptools-scm fix status
+if [ -n "$SETUPTOOLS_SCM_PRETEND_VERSION" ]; then
+    echo "   ✅ setuptools-scm git errors fixed"
+else
+    echo "   ⚠️  setuptools-scm fix not applied"
 fi
 
 # Show helpful commands

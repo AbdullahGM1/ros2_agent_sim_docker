@@ -330,6 +330,19 @@ setup_repositories() {
     else
         print_info "px4_msgs already exists in shared volume"
     fi
+
+    # Copy Unitree Package
+    if [ ! -d "$ROS2_SRC/unitree_go2_ros2" ]; then
+        print_info "Copying unitree_go2_ros2 from container..."
+        if [ -d "/home/user/ros2_ws/src/unitree_go2_ros2" ]; then
+            cp -r /home/user/ros2_ws/src/unitree_go2_ros2 "$ROS2_SRC/"
+            print_success "unitree_go2_ros2_msgs copied"
+        else
+            print_warning "unitree_go2_ros2 not found in container"
+        fi
+    else
+        print_info "unitree_go2_ros2 already exists in shared volume"
+    fi
     
     track_time
 }
