@@ -548,7 +548,7 @@ RUN set -e && \
     cd /home/user && \
     git clone https://github.com/PX4/PX4-Autopilot.git --recursive && \
     cd PX4-Autopilot && \
-    git checkout v1.15.0 && \
+    git checkout v1.15.4 && \
     git submodule update --init --recursive && \
     make distclean && \
     make clean && \
