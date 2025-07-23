@@ -525,9 +525,6 @@ COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
 # Create workspace structure in container  
 RUN mkdir -p /home/user/ros2_ws/src
 
-# Create workspace structure in container  
-RUN mkdir -p /home/user/ros2_ws/src
-
 # Clone ros2_agent_sim with robust submodule handling
 RUN cd /home/user/ros2_ws/src && \
     git clone https://github.com/AbdullahGM1/ros2_agent_sim.git && \
@@ -564,21 +561,21 @@ RUN set -e && \
 RUN cd /home/user/ros2_ws/src && \
     git clone https://github.com/AbdullahGM1/mavlink-gbp-release.git mavlink && \
     cd mavlink && \
-    git checkout release/jazzy/mavlink \ 
+    git checkout release/jazzy/mavlink && \
     echo "✅ MAVLINK Package Cloned"
 
- # Clone MAVROS repository
+# Clone MAVROS repository
 RUN cd /home/user/ros2_ws/src && \
     git clone https://github.com/AbdullahGM1/mavros.git && \
     cd mavros && \
-    git checkout ros2 \
+    git checkout ros2 && \
     echo "✅ MAVROS Package Cloned"
 
 # Clone Unitree repository
 RUN cd /home/user/ros2_ws/src && \
-git clone https://github.com/AbdullahGM1/unitree_go2_ros2.git && \
-cd unitree_go2_ros2 && \
-echo "✅ Unitree Package Cloned"
+    git clone https://github.com/AbdullahGM1/unitree_go2_ros2.git && \
+    cd unitree_go2_ros2 && \
+    echo "✅ Unitree Package Cloned"
 
 # Clone px4_msgs repository 
 RUN cd /home/user/ros2_ws/src && \
