@@ -11,7 +11,11 @@ PX4_SIM_MODEL=${PX4_SIM_MODEL:=x500_lidar_camera}
 
 param set-default SIM_GZ_EN 1
 
+# --- CONFIG for XRCE-DDS Client ---
+# Set the DDS Domain ID
 param set-default UXRCE_DDS_DOM_ID 0
+# Enable UXRCE-DDS client in UDP mode
+param set-default UXRCE_DDS_CFG UDP
 
 param set-default SENS_EN_GPSSIM 1
 param set-default SENS_EN_BAROSIM 0
