@@ -1,8 +1,7 @@
 #!/bin/bash -e
 
 # ============================================================================
-# ROS2 Agent Sim - FIXED Runtime Installation Script (Ubuntu 24.04)
-# Enhanced with comprehensive build debugging and error recovery
+# ROS2 Agent Sim 
 # ============================================================================
 
 # Colors and formatting
@@ -63,7 +62,7 @@ track_time() {
     start_time=$(date +%s)
 }
 
-# CRITICAL FIX: Enhanced Ubuntu 24.04 package verification
+# Enhanced Ubuntu 24.04 package verification
 verify_ubuntu_packages() {
     print_step "Enhanced Ubuntu 24.04 Package Verification"
     
@@ -139,13 +138,13 @@ verify_ubuntu_packages() {
     track_time
 }
 
-# CRITICAL FIX: Enhanced graphics environment validation
+# Enhanced graphics environment validation
 validate_graphics_environment() {
-    print_step "Enhanced Graphics Environment Validation (Ubuntu 24.04)"
+    print_step "Graphics Environment Validation (Ubuntu 24.04)"
     
     print_info "Testing comprehensive graphics stack for Ubuntu 24.04..."
     
-    # Enhanced X11 testing
+    # X11 testing
     if timeout 5 xset q >/dev/null 2>&1; then
         X11_DISPLAY=$(echo $DISPLAY)
         print_success "X11 working on $X11_DISPLAY"
@@ -175,7 +174,7 @@ validate_graphics_environment() {
         fi
     fi
     
-    # Enhanced OpenGL testing
+    # OpenGL testing
     if command -v glxinfo >/dev/null 2>&1; then
         print_info "Testing OpenGL capabilities (Ubuntu 24.04)..."
         
@@ -210,7 +209,7 @@ validate_graphics_environment() {
         sudo apt-get install -y mesa-utils 2>/dev/null || true
     fi
     
-    # Enhanced Qt6 testing
+    # Qt6 testing
     print_info "Enhanced Qt6 environment testing (Ubuntu 24.04)..."
     
     # Check Qt6 installation
@@ -261,7 +260,7 @@ validate_graphics_environment() {
     track_time
 }
 
-# Environment validation (enhanced)
+# Environment validation 
 validate_environment() {
     print_step "Enhanced Runtime Environment Validation"
     
@@ -382,7 +381,7 @@ setup_repositories() {
     track_time
 }
 
-# Enhanced PX4 setup (unchanged but with better error handling)
+# PX4 setup
 setup_px4_autopilot() {
     print_step "Enhanced PX4 Autopilot Setup (Ubuntu 24.04)"
     
@@ -477,13 +476,12 @@ setup_px4_autopilot() {
     track_time
 }
 
-# COMPLETELY REWRITTEN: Enhanced dependency handling
 handle_dependencies() {
     print_step "Enhanced ROS2 Dependencies Resolution (Ubuntu 24.04)"
     
     cd "$ROS2_WS"
     
-    # Enhanced Python dependencies installation
+    # Python dependencies installation
     print_info "Installing enhanced Python dependencies for Ubuntu 24.04..."
     
     # Install critical Python packages

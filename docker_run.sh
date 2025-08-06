@@ -1,6 +1,5 @@
 #!/bin/bash
-# FIXED: ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA
-# Enhanced with comprehensive graphics and Qt6 support fixes for Ubuntu 24.04
+# ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA
 
 set -e
 
@@ -81,7 +80,7 @@ build_image() {
     fi
 }
 
-# CRITICAL FIX: Enhanced GPU detection and support setup
+# Enhanced GPU detection and support setup
 setup_gpu_support() {
     print_info "🎮 Setting up comprehensive GPU support..."
     
@@ -128,7 +127,7 @@ setup_gpu_support() {
     export DOCKER_OPTS
 }
 
-# CRITICAL FIX: Enhanced X11 authentication and graphics setup
+# Enhanced X11 authentication and graphics setup
 setup_x11_auth() {
     print_info "🖥️  Setting up comprehensive X11 authentication..."
     
@@ -171,7 +170,7 @@ setup_x11_auth() {
     
     print_info "Selected DISPLAY: $DISPLAY"
     
-    # CRITICAL FIX: Enhanced XAUTH setup
+    # Enhanced XAUTH setup
     XAUTH_DIR="/tmp/.docker-xauth"
     mkdir -p "$XAUTH_DIR"
     XAUTH="$XAUTH_DIR/xauth-$(whoami)"
@@ -259,7 +258,7 @@ setup_workspace() {
     HOST_GID=$(id -g)
     
     if [ -d "$WORKSPACE_DIR" ]; then
-        # Fix ownership to current user
+        # ownership to current user
         chown -R "$HOST_UID:$HOST_GID" "$WORKSPACE_DIR" 2>/dev/null || {
             print_warning "Could not change ownership of workspace directory"
             print_info "This may cause permission issues inside the container"
@@ -277,7 +276,7 @@ setup_workspace() {
     fi
 }
 
-# CRITICAL FIX: Enhanced container startup with comprehensive graphics support
+# Enhanced container startup with comprehensive graphics support
 start_persistent_container() {
     print_info "🚀 Starting container with enhanced graphics support: $CONTAINER_NAME"
     
@@ -286,19 +285,19 @@ start_persistent_container() {
     HOST_GID=$(id -g)
     HOST_USER=$(whoami)
     
-    # CRITICAL FIX: Comprehensive graphics environment variables
+    # Comprehensive graphics environment variables
     GRAPHICS_ENV=""
     GRAPHICS_ENV="$GRAPHICS_ENV --env=DISPLAY=${DISPLAY}"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=XAUTHORITY=${XAUTH}"
     
-    # Qt6 and GUI environment (CRITICAL FIXES for Ubuntu 24.04)
+    # Qt6 and GUI environment 
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_QPA_PLATFORM=xcb"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_X11_NO_MITSHM=1"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_AUTO_SCREEN_SCALE_FACTOR=0"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_SCALE_FACTOR=1"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms"
     
-    # OpenGL and Mesa environment (CRITICAL FIXES for Ubuntu 24.04)
+    # OpenGL and Mesa environment 
     GRAPHICS_ENV="$GRAPHICS_ENV --env=LIBGL_ALWAYS_INDIRECT=0"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=LIBGL_ALWAYS_SOFTWARE=0"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=MESA_GL_VERSION_OVERRIDE=4.5"
@@ -316,7 +315,7 @@ start_persistent_container() {
     GRAPHICS_ENV="$GRAPHICS_ENV --env=FORCE_COLOR=1"
     GRAPHICS_ENV="$GRAPHICS_ENV --env=CLICOLOR_FORCE=1"
     
-    # CRITICAL FIX: Comprehensive volume mounts for graphics
+    # Comprehensive volume mounts for graphics
     GRAPHICS_VOLUMES=""
     GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=/tmp/.X11-unix:/tmp/.X11-unix:rw"
     GRAPHICS_VOLUMES="$GRAPHICS_VOLUMES --volume=${XAUTH}:${XAUTH}:rw"
@@ -363,7 +362,7 @@ start_persistent_container() {
         -e FASTRTPS_DEFAULT_PROFILES_FILE=/usr/local/share/middleware_profiles/rtps_udp_profile.xml \
         $GRAPHICS_VOLUMES \
         --volume="/etc/localtime:/etc/localtime:ro" \
-        --volume="$WORKSPACE_DIR:/home/user/shared_volume:rw" \
+        --volume="$WORKSPACE_DIR:/home/user/shared_volume:rw,exec" \
         --volume="/dev:/dev:rw" \
         --workdir /home/user/shared_volume \
         --security-opt seccomp=unconfined \
@@ -372,6 +371,7 @@ start_persistent_container() {
         --cap-add=SYS_ADMIN \
         --ipc=host \
         --shm-size=1g \
+        --tmpfs /tmp:exec \
         $DOCKER_OPTS \
         ${IMAGE_NAME} \
         tail -f /dev/null
@@ -383,7 +383,7 @@ start_persistent_container() {
     if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
         print_success "Container started successfully in persistent mode"
         
-        # CRITICAL FIX: Test graphics environment inside container
+        # Test graphics environment inside container
         print_info "Testing graphics environment inside container..."
         
         # Test X11 connection
@@ -551,7 +551,7 @@ show_container_status() {
 show_help() {
     echo "Usage: $0 [COMMAND]"
     echo
-    echo "🚀 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA (FIXED VERSION)"
+    echo "🚀 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA"
     echo
     echo "Commands:"
     echo "  run       Start/connect to persistent container (default)"
@@ -565,9 +565,9 @@ show_help() {
     echo "  status    Show container and graphics status"
     echo "  help      Show this help"
     echo
-    echo "CRITICAL FIXES INCLUDED:"
+    echo "INCLUDED:"
     echo "  ✅ Ubuntu 24.04 package compatibility"
-    echo "  ✅ Qt6 platform plugin fixes"
+    echo "  ✅ Qt6 platform plugin"
     echo "  ✅ Mesa/OpenGL package corrections"
     echo "  ✅ Enhanced X11 authentication"
     echo "  ✅ Gazebo Harmonic compatibility"
@@ -577,7 +577,6 @@ show_help() {
     echo
     echo "Examples:"
     echo "  $0                # Start/connect to container"
-    echo "  $0 build          # Build image with fixes"
     echo "  $0 status         # Check container and graphics status"
     echo "  $0 shell          # Open another terminal in container"
 }
@@ -585,9 +584,8 @@ show_help() {
 # Main execution
 main() {
     echo
-    print_info "🚀 ROS2 Agent Sim Docker Environment (FIXED VERSION)"
+    print_info "🚀 ROS2 Agent Sim Docker Environment"
     print_info "🎯 ROS2 Jazzy + Gazebo Harmonic + Ollama + PX4 + MAVROS + ROSA"
-    print_info "🔧 With Ubuntu 24.04 package fixes and enhanced graphics support"
     print_info "Container: $CONTAINER_NAME"
     print_info "Workspace: $WORKSPACE_DIR"
     echo
@@ -599,7 +597,6 @@ main() {
         print_success "✅ Docker image exists: ${IMAGE_NAME}"
     else
         print_warning "⚠️  Docker image not found: ${IMAGE_NAME}"
-        print_info "Building image with Ubuntu 24.04 fixes..."
         build_image
     fi
     

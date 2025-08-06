@@ -135,17 +135,17 @@ export GZ_SIM_SYSTEM_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/gz-sim-8/plugins:$GZ_
 export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
 # =============================================================================
-# CRITICAL FIX: Qt6 and Graphics Environment Setup (Ubuntu 24.04)
+# Qt6 and Graphics Environment Setup (Ubuntu 24.04)
 # =============================================================================
 
-# CRITICAL FIX: Qt6 Environment Variables (resolves Qt5/Qt6 conflicts)
+# Qt6 Environment Variables (resolves Qt5/Qt6 conflicts)
 export QT_QPA_PLATFORM=xcb
 export QT_X11_NO_MITSHM=1
 export QT_AUTO_SCREEN_SCALE_FACTOR=0
 export QT_SCALE_FACTOR=1
 export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/qt6/plugins/platforms:/usr/lib/x86_64-linux-gnu/qt6/plugins"
 
-# CRITICAL FIX: OpenGL and Mesa Environment (enables software rendering for Ubuntu 24.04)
+# OpenGL and Mesa Environment (enables software rendering for Ubuntu 24.04)
 export LIBGL_ALWAYS_INDIRECT=0
 export LIBGL_ALWAYS_SOFTWARE=0
 export MESA_GL_VERSION_OVERRIDE="4.5"
@@ -158,7 +158,7 @@ export XDG_SESSION_TYPE="x11"
 export WAYLAND_DISPLAY=""
 
 # =============================================================================
-# CRITICAL FIX: X11 GUI Environment Setup with Auto-Detection
+# X11 GUI Environment Setup with Auto-Detection
 # =============================================================================
 
 # Function to auto-detect working X11 display
@@ -194,7 +194,7 @@ if ! timeout 3 xset q >/dev/null 2>&1; then
 fi
 
 # =============================================================================
-# CRITICAL FIX: Enhanced Graphics Functions with Fallbacks (Ubuntu 24.04)
+# Graphics Functions with Fallbacks (Ubuntu 24.04)
 # =============================================================================
 
 # Function to start applications with graphics fallbacks
@@ -383,7 +383,7 @@ test_graphics_stack() {
 }
 
 # =============================================================================
-# Enhanced Aliases and Functions (Ubuntu 24.04)
+# Aliases and Functions (Ubuntu 24.04)
 # =============================================================================
 
 # Add useful aliases for ROS2 development
@@ -501,7 +501,7 @@ echo "   gazebo_software  - Force software rendering for Gazebo"
 echo "   qt6_debug        - Enable Qt6 debug output"
 echo "   check_packages   - Check Ubuntu 24.04 packages"
 
-# CRITICAL FIX: Auto-run graphics test on startup (optional)
+# Auto-run graphics test on startup (optional)
 if [ "${AUTO_TEST_GRAPHICS:-false}" = "true" ]; then
     echo ""
     echo "🔍 Auto-testing graphics environment..."

@@ -19,7 +19,7 @@ print_debug() { echo -e "${PURPLE}[DEBUG]${NC} $1"; }
 print_info "Starting container initialization with Ubuntu 24.04 compatibility and comprehensive graphics support..."
 
 # ========================================================================
-# CRITICAL: Force UID/GID Mapping
+# Force UID/GID Mapping
 # ========================================================================
 
 print_info "Setting up UID/GID mapping..."
@@ -66,7 +66,7 @@ else
 fi
 
 # ========================================================================
-# CRITICAL FIX: Comprehensive X11 Display Auto-Detection
+# Comprehensive X11 Display Auto-Detection
 # ========================================================================
 
 print_info "Auto-detecting X11 display environment..."
@@ -146,7 +146,7 @@ export EGL_PLATFORM="x11"
 print_success "Qt6 and graphics environment configured for Ubuntu 24.04"
 
 # ========================================================================
-# CRITICAL FIX: X11 Authentication Setup  
+# X11 Authentication Setup  
 # ========================================================================
 
 print_info "Setting up X11 authentication..."
@@ -197,7 +197,7 @@ else
 fi
 
 # ========================================================================
-# CRITICAL FIX: Graphics Runtime Directory Setup
+# Graphics Runtime Directory Setup
 # ========================================================================
 
 print_info "Setting up graphics runtime environment..."
@@ -221,7 +221,7 @@ chown -R $HOST_UID:$HOST_GID /home/user/.cache 2>/dev/null || true
 print_success "Graphics runtime environment setup completed"
 
 # ========================================================================
-# CRITICAL FIX: OpenGL Environment Testing and Configuration (Ubuntu 24.04)
+# OpenGL Environment Testing and Configuration (Ubuntu 24.04)
 # ========================================================================
 
 print_info "Testing and configuring OpenGL environment for Ubuntu 24.04..."
@@ -265,7 +265,7 @@ else
 fi
 
 # ========================================================================
-# CRITICAL FIX: Ubuntu 24.04 Package Verification
+# Ubuntu 24.04 Package Verification
 # ========================================================================
 
 print_info "Verifying Ubuntu 24.04 package compatibility..."
@@ -301,7 +301,7 @@ else
 fi
 
 # ========================================================================
-# CRITICAL FIX: Gazebo-Specific Environment Setup (Ubuntu 24.04)
+# Gazebo-Specific Environment Setup (Ubuntu 24.04)
 # ========================================================================
 
 print_info "Configuring Gazebo Harmonic environment for Ubuntu 24.04..."
@@ -314,14 +314,14 @@ export IGN_GAZEBO_RESOURCE_PATH="/home/user/shared_volume/PX4-Autopilot/Tools/si
 # Gazebo GUI optimizations for containers
 export GZ_GUI_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/gz-gui-8/plugins:$GZ_GUI_PLUGIN_PATH"
 
-# CRITICAL FIX: Ogre2 rendering configuration for Gazebo (Ubuntu 24.04)
+# Ogre2 rendering configuration for Gazebo (Ubuntu 24.04)
 export OGRE_RTT_MODE="Copy"  # Helps with rendering in containers
 export OGRE_CONFIG_PATH="/home/user/.ogre"
 
 print_success "Gazebo environment configured for Ubuntu 24.04"
 
 # ========================================================================
-# CRITICAL FIX: Enhanced Bashrc Setup (Ubuntu 24.04)
+# Bashrc Setup (Ubuntu 24.04)
 # ========================================================================
 
 print_info "Setting up enhanced user environment for Ubuntu 24.04..."
@@ -431,7 +431,7 @@ export ROS_DISTRO="jazzy"
 source "/opt/ros/jazzy/setup.bash" || print_warning "Could not source ROS2 setup"
 
 # ========================================================================
-# CRITICAL FIX: Shared Volume Setup with Correct Ownership
+# Shared Volume Setup with Correct Ownership
 # ========================================================================
 
 print_info "Setting up shared volume with comprehensive ownership management..."
@@ -484,8 +484,11 @@ else
     print_warning "Shared volume directory not found!"
 fi
 
+# Fix PX4 permissions on container startup
+[ -f "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" ] && chmod +x "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" 2>/dev/null || true
+
 # ========================================================================
-# ENHANCED: Service Setup with Better Ollama Management
+# Service Setup with Better Ollama Management
 # ========================================================================
 
 print_info "Setting up services with enhanced Ollama management..."
@@ -549,7 +552,7 @@ fi
 print_success "Service setup completed"
 
 # ========================================================================
-# CRITICAL FIX: Final Environment Verification (Ubuntu 24.04)
+# Final Environment Verification (Ubuntu 24.04)
 # ========================================================================
 
 print_info "Performing final environment verification for Ubuntu 24.04..."

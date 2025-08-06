@@ -1,11 +1,11 @@
 # ============================================================================
-# ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA + AI/ML (FIXED VERSION)
+# ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA 
 # ============================================================================
 
 FROM osrf/ros:jazzy-desktop
 
 LABEL maintainer="AbdullahGM1 <agm.musalami@gmail.com>"
-LABEL description="ROS2 Jazzy + Gazebo Harmonic + PX4 + MAVROS + ROSA + AI/ML Stack (FIXED)"
+LABEL description="ROS2 Jazzy + Gazebo Harmonic + PX4 v1.15.4 + MAVROS + ROSA)"
 
 # ============================================================================
 # PHASE 1: Environment Setup 
@@ -18,7 +18,7 @@ ENV GZ_VERSION=harmonic
 ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
 # ============================================================================
-# CRITICAL FIX: Qt6 and Graphics Environment Variables
+# Qt6 and Graphics Environment Variables
 # ============================================================================
 ENV QT_QPA_PLATFORM=xcb
 ENV QT_X11_NO_MITSHM=1
@@ -103,7 +103,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# FIXED: Graphics, OpenGL, and Qt6 Support (Ubuntu 24.04 Compatible)
+# Graphics, OpenGL, and Qt6 Support (Ubuntu 24.04 Compatible)
 # ============================================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # X11 and Display Infrastructure
@@ -112,7 +112,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
     x11vnc \
     \
-    # FIXED: Core OpenGL and Mesa Libraries (Ubuntu 24.04 compatible)
+    # Core OpenGL and Mesa Libraries (Ubuntu 24.04 compatible)
     libgl1-mesa-dri \
     libgl1 \
     libglx-mesa0 \
@@ -131,7 +131,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     mesa-vdpau-drivers \
     mesa-vulkan-drivers \
     \
-    # FIXED: OpenGL Libraries (Ubuntu 24.04 compatible)
+    # OpenGL Libraries (Ubuntu 24.04 compatible)
     libglew-dev \
     libglfw3-dev \
     libglut3.12 \
@@ -139,7 +139,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgbm1 \
     libgbm-dev \
     \
-    # FIXED: Qt6 Installation (Ubuntu 24.04 Compatible)
+    # Qt6 Installation (Ubuntu 24.04 Compatible)
     qt6-base-dev \
     qt6-base-dev-tools \
     libqt6core6 \
@@ -170,7 +170,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxv1 \
     libxxf86vm1 \
     \
-    # FIXED: System Libraries (Ubuntu 24.04 compatible)
+    # System Libraries (Ubuntu 24.04 compatible)
     libnss3 \
     libasound2t64 \
     \
@@ -184,7 +184,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
-# CRITICAL FIX: Graphics Environment for Container
+# Graphics Environment for Container
 # ============================================================================
 
 # Create graphics runtime directories
@@ -363,7 +363,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     kconfig-frontends \
     && rm -rf /var/lib/apt/lists/*
 
-# FIXED: Install ARM GCC toolchain using multiple fallback methods
+# Install ARM GCC toolchain using multiple fallback methods
 RUN set -e && \
     echo "Installing ARM GCC toolchain..." && \
     # Method 1: Try the official ARM release 
@@ -496,10 +496,10 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 #     pkill ollama
 
 # ============================================================================
-# PHASE 15: CRITICAL FIX: Graphics Environment Verification
+# PHASE 15: Graphics Environment Verification
 # ============================================================================
 
-# CRITICAL FIX: Test and verify graphics environment
+# Test and verify graphics environment
 RUN echo "=== Graphics Environment Verification ===" && \
     echo "Testing OpenGL Mesa software rendering..." && \
     LIBGL_ALWAYS_SOFTWARE=1 glxinfo | head -20 || echo "Software rendering test completed" && \
@@ -584,7 +584,7 @@ RUN cd /home/user/ros2_ws/src && \
     git checkout release/1.15 && \
     echo "✅ px4_msgs cloned and checked out to release/1.15"
 
-# Fix gz_sim dependencies in Unitree packages 
+# gz_sim dependencies in Unitree packages 
 RUN if [ -d "/home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2" ]; then \
         find /home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz_sim<\/.*depend>/d' {} \; && \
         find /home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz-sim<\/.*depend>/d' {} \; ; \
@@ -620,8 +620,8 @@ RUN mkdir -p /home/user/shared_volume && \
 USER user
 WORKDIR /home/user
 
-# CRITICAL FIX: Setup user bashrc with proper Qt6 and graphics environment
-RUN echo "# ROS2 Jazzy + Gazebo Harmonic + Qt6 Environment (FIXED)" >> ~/.bashrc && \
+# Setup user bashrc with proper Qt6 and graphics environment
+RUN echo "# ROS2 Jazzy + Gazebo Harmonic + Qt6 Environment" >> ~/.bashrc && \
     echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc && \
     echo "export PATH=\$HOME/.local/bin:\$PATH" >> ~/.bashrc && \
     echo "export GZ_VERSION=harmonic" >> ~/.bashrc && \
@@ -631,7 +631,7 @@ RUN echo "# ROS2 Jazzy + Gazebo Harmonic + Qt6 Environment (FIXED)" >> ~/.bashrc
     echo "export ROS2_WS=\$DEV_DIR/ros2_ws" >> ~/.bashrc && \
     echo "export OSQP_SRC=\$DEV_DIR" >> ~/.bashrc && \
     echo "" >> ~/.bashrc && \
-    echo "# CRITICAL FIX: Qt6 and Graphics Environment" >> ~/.bashrc && \
+    echo "# Qt6 and Graphics Environment" >> ~/.bashrc && \
     echo "export QT_QPA_PLATFORM=xcb" >> ~/.bashrc && \
     echo "export QT_X11_NO_MITSHM=1" >> ~/.bashrc && \
     echo "export LIBGL_ALWAYS_INDIRECT=0" >> ~/.bashrc && \
@@ -658,8 +658,8 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/bin/bash"]
 
 # ============================================================================
-# Build Information (FIXED VERSION)
+# Build Information 
 # ============================================================================
-LABEL build.optimization="fixed-ubuntu24.04-packages"
-LABEL build.features="ros2-jazzy,gazebo-harmonic-fixed,px4,mavros,rosa,ai-ml"
+LABEL build.optimization="ubuntu24.04-packages"
+LABEL build.features="ros2-jazzy,gazebo-harmonic,px4,mavros,rosa"
 LABEL build.approach="ubuntu24.04-native-packages"
