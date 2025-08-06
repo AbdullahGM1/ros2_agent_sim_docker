@@ -507,3 +507,15 @@ if [ "${AUTO_TEST_GRAPHICS:-false}" = "true" ]; then
     echo "🔍 Auto-testing graphics environment..."
     test_graphics_stack >/dev/null 2>&1 && echo "✅ Graphics stack verified" || echo "⚠️ Graphics issues detected - run 'diagnose_graphics'"
 fi
+
+# ============================================================================
+# Auto-fix PX4 permissions on every shell startup
+# ============================================================================
+
+# Fix PX4 binary permissions silently every time a shell starts
+if [ -f "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" ] && [ ! -x "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" ]; then
+    chmod +x "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" 2>/dev/null
+fi
+
+# Also fix any shell scripts that lost permissions
+find /home/user/shared_volume -name "*.sh" ! -executable -exec chmod +x {} \; 2>/dev/null || true
