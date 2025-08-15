@@ -526,22 +526,22 @@ COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
 RUN mkdir -p /home/user/ros2_ws/src
 
 # Clone ros2_agent_sim with robust submodule handling
-RUN cd /home/user/ros2_ws/src && \
-    git clone https://github.com/AbdullahGM1/ros2_agent_sim.git && \
-    cd ros2_agent_sim && \
-    echo "=== Initializing submodules with error handling ===" && \
-    git submodule init && \
-    for submodule in $(git submodule status | awk '{print $2}'); do \
-        echo "Processing submodule: $submodule"; \
-        if git submodule update "$submodule"; then \
-            echo "✅ Successfully updated $submodule"; \
-        else \
-            echo "⚠️ Failed to update $submodule, trying to reset to HEAD"; \
-            cd "$submodule" 2>/dev/null && git fetch origin && git reset --hard origin/HEAD && cd .. || \
-            echo "❌ Submodule $submodule failed - continuing without it"; \
-        fi; \
-    done && \
-    echo "✅ Submodule initialization completed"
+# RUN cd /home/user/ros2_ws/src && \
+#     git clone https://github.com/AbdullahGM1/ros2_agent_sim.git && \
+# #     cd ros2_agent_sim && \
+# #     echo "=== Initializing submodules with error handling ===" && \
+# #     git submodule init && \
+# #     for submodule in $(git submodule status | awk '{print $2}'); do \
+# #         echo "Processing submodule: $submodule"; \
+# #         if git submodule update "$submodule"; then \
+# #             echo "✅ Successfully updated $submodule"; \
+# #         else \
+# #             echo "⚠️ Failed to update $submodule, trying to reset to HEAD"; \
+# #             cd "$submodule" 2>/dev/null && git fetch origin && git reset --hard origin/HEAD && cd .. || \
+# #             echo "❌ Submodule $submodule failed - continuing without it"; \
+# #         fi; \
+# #     done && \
+# #     echo "✅ Submodule initialization completed"
 
 # Clone, configure, and build the PX4-Autopilot firmware
 RUN set -e && \
@@ -585,9 +585,9 @@ RUN cd /home/user/ros2_ws/src && \
     echo "✅ px4_msgs cloned and checked out to release/1.15"
 
 # gz_sim dependencies in Unitree packages 
-RUN if [ -d "/home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2" ]; then \
-        find /home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz_sim<\/.*depend>/d' {} \; && \
-        find /home/user/ros2_ws/src/ros2_agent_sim/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz-sim<\/.*depend>/d' {} \; ; \
+RUN if [ -d "/home/user/ros2_ws/src/unitree_go2_ros2" ]; then \
+        find /home/user/ros2_ws/src/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz_sim<\/.*depend>/d' {} \; && \
+        find /home/user/ros2_ws/src/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz-sim<\/.*depend>/d' {} \; ; \
     fi
 
 # Set proper ownership
