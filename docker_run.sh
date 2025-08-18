@@ -362,7 +362,7 @@ start_persistent_container() {
         -e FASTRTPS_DEFAULT_PROFILES_FILE=/usr/local/share/middleware_profiles/rtps_udp_profile.xml \
         $GRAPHICS_VOLUMES \
         --volume="/etc/localtime:/etc/localtime:ro" \
-        --volume="$WORKSPACE_DIR:/home/user/shared_volume:rw" \
+        --mount="type=bind,source=$WORKSPACE_DIR,target=/home/user/shared_volume" \
         --volume="/dev:/dev:rw" \
         --workdir /home/user/shared_volume \
         --security-opt seccomp=unconfined \

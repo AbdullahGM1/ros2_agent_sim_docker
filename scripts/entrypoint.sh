@@ -484,8 +484,24 @@ else
     print_warning "Shared volume directory not found!"
 fi
 
-# Fix PX4 permissions on container startup
-[ -f "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" ] && chmod +x "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" 2>/dev/null || true
+# Fix executable permissions on container startup - run as root first
+if [ -d "/home/user/shared_volume" ]; then
+    # Fix PX4 binary specifically
+    [ -f "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" ] && chmod +x "/home/user/shared_volume/PX4-Autopilot/build/px4_sitl_default/bin/px4" 2>/dev/null || true
+    
+    # Fix ROS2 executables
+    find /home/user/shared_volume -type f -name "*_node" -exec chmod +x {} \; 2>/dev/null || true
+    find /home/user/shared_volume -type f -path "*/libexec/*" -exec chmod +x {} \; 2>/dev/null || true
+    find /home/user/shared_volume -type f -path "*/lib/*" -name "*_node" -exec chmod +x {} \; 2>/dev/null || true
+    
+    # Fix all shell scripts
+    find /home/user/shared_volume -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+    
+    # Fix all files in bin directories
+    find /home/user/shared_volume -type f -path "*/bin/*" -exec chmod +x {} \; 2>/dev/null || true
+    
+    print_info "Executable permissions fixed for shared volume"
+fi
 
 # ========================================================================
 # Service Setup with Better Ollama Management

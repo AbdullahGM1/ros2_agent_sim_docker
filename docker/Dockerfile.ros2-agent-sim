@@ -525,23 +525,32 @@ COPY scripts/bashrc_template.sh /opt/bashrc_templates/bashrc_template.sh
 # Create workspace structure in container  
 RUN mkdir -p /home/user/ros2_ws/src
 
-# Clone ros2_agent_sim with robust submodule handling
-# RUN cd /home/user/ros2_ws/src && \
-#     git clone https://github.com/AbdullahGM1/ros2_agent_sim.git && \
-# #     cd ros2_agent_sim && \
-# #     echo "=== Initializing submodules with error handling ===" && \
-# #     git submodule init && \
-# #     for submodule in $(git submodule status | awk '{print $2}'); do \
-# #         echo "Processing submodule: $submodule"; \
-# #         if git submodule update "$submodule"; then \
-# #             echo "✅ Successfully updated $submodule"; \
-# #         else \
-# #             echo "⚠️ Failed to update $submodule, trying to reset to HEAD"; \
-# #             cd "$submodule" 2>/dev/null && git fetch origin && git reset --hard origin/HEAD && cd .. || \
-# #             echo "❌ Submodule $submodule failed - continuing without it"; \
-# #         fi; \
-# #     done && \
-# #     echo "✅ Submodule initialization completed"
+# GitHub token for private repository access (optional)
+ARG GITHUB_TOKEN
+
+# Clone ros2_agent_sim with robust submodule handling (only if token provided)
+RUN cd /home/user/ros2_ws/src && \
+    if [ -n "$GITHUB_TOKEN" ]; then \
+        echo "=== GitHub token provided, cloning ros2_agent_sim ==="; \
+        git clone https://${GITHUB_TOKEN}@github.com/AbdullahGM1/ros2_agent_sim.git && \
+        cd ros2_agent_sim && \
+        echo "=== Initializing submodules with error handling ===" && \
+        git submodule init && \
+        for submodule in $(git submodule status | awk '{print $2}'); do \
+            echo "Processing submodule: $submodule"; \
+            if git submodule update "$submodule"; then \
+                echo "✅ Successfully updated $submodule"; \
+            else \
+                echo "⚠️ Failed to update $submodule, trying to reset to HEAD"; \
+                cd "$submodule" 2>/dev/null && git fetch origin && git reset --hard origin/HEAD && cd .. || \
+                echo "❌ Submodule $submodule failed - continuing without it"; \
+            fi; \
+        done && \
+        echo "✅ Submodule initialization completed"; \
+    else \
+        echo "⚠️ No GitHub token provided, skipping ros2_agent_sim clone"; \
+        echo "   To include ros2_agent_sim, build with: --build-arg GITHUB_TOKEN=your_token"; \
+    fi
 
 # Clone, configure, and build the PX4-Autopilot firmware
 RUN set -e && \
@@ -590,8 +599,12 @@ RUN if [ -d "/home/user/ros2_ws/src/unitree_go2_ros2" ]; then \
         find /home/user/ros2_ws/src/unitree_go2_ros2 -name "package.xml" -exec sed -i '/<.*depend>gz-sim<\/.*depend>/d' {} \; ; \
     fi
 
-# Set proper ownership
-RUN chown -R user:user /home/user/ros2_ws /home/user/PX4-Autopilot
+# Set proper ownership and executable permissions
+RUN chown -R user:user /home/user/ros2_ws /home/user/PX4-Autopilot && \
+    # Ensure PX4 binaries are executable
+    find /home/user/PX4-Autopilot -type f -name "px4*" -exec chmod +x {} \; 2>/dev/null || true && \
+    find /home/user/PX4-Autopilot -type f -path "*/bin/*" -exec chmod +x {} \; 2>/dev/null || true && \
+    find /home/user/PX4-Autopilot -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
 
 # ============================================================================
 # PHASE 18: Application Files and Scripts
@@ -611,10 +624,19 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # PHASE 19: Final User Environment Setup
 # ============================================================================
 
-# Set ownership for user directories 
+# Set ownership for user directories and create permission fix helper
 RUN mkdir -p /home/user/shared_volume && \
     chown -R user:user /home/user && \
-    chmod 755 /home/user/shared_volume
+    chmod 755 /home/user/shared_volume && \
+    # Create a helper script to fix permissions on container start
+    echo '#!/bin/bash' > /usr/local/bin/fix-shared-permissions && \
+    echo 'find /home/user/shared_volume -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true' >> /usr/local/bin/fix-shared-permissions && \
+    echo 'find /home/user/shared_volume -type f -name "*_node" -exec chmod +x {} \; 2>/dev/null || true' >> /usr/local/bin/fix-shared-permissions && \
+    echo 'find /home/user/shared_volume -type f -name "px4*" -exec chmod +x {} \; 2>/dev/null || true' >> /usr/local/bin/fix-shared-permissions && \
+    echo 'find /home/user/shared_volume -type f -path "*/bin/*" -exec chmod +x {} \; 2>/dev/null || true' >> /usr/local/bin/fix-shared-permissions && \
+    echo 'find /home/user/shared_volume -type f -path "*/lib/*" -executable -exec chmod +x {} \; 2>/dev/null || true' >> /usr/local/bin/fix-shared-permissions && \
+    echo 'find /home/user/shared_volume -type f -path "*/libexec/*" -exec chmod +x {} \; 2>/dev/null || true' >> /usr/local/bin/fix-shared-permissions && \
+    chmod +x /usr/local/bin/fix-shared-permissions
 
 # Switch to user and setup environment
 USER user
