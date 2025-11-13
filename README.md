@@ -46,6 +46,12 @@ A complete Docker-based development environment for autonomous robotics featurin
   <p><i>Rivz2 for the two robots</i></p>
 </div>
 
+## Gazebo Environment
+<div align="center">
+  <img src="/images/gazebo" alt="ROS2 Agent Simulation Demo" width="800"/>
+  <p><i>Gazebo for the two robots</i></p>
+</div>
+
 ## 🔮 Future Vision
 <div align="center">
   <img src="/images/multi_robot_flowchart.png" alt="Multi-Robot ROS2 Agent System Architecture" width="900"/>
