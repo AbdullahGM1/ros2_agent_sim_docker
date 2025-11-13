@@ -34,6 +34,12 @@ A complete Docker-based development environment for autonomous robotics featurin
   <p><i>Demo of drone simulation with ROS2 Agent and Ollama integration</i></p>
 </div>
 
+## Sim TF-Tree
+<div align="center">
+  <img src="/images/tf tree.png" alt="ROS2 Agent Simulation Demo" width="800"/>
+  <p><i>The TF Tree for the simulation for the Go2 and UAV robots</i></p>
+</div>
+
 ## 🔮 Future Vision
 <div align="center">
   <img src="/images/multi_robot_flowchart.png" alt="Multi-Robot ROS2 Agent System Architecture" width="900"/>
