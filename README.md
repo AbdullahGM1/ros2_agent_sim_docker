@@ -1,6 +1,6 @@
 # ROS2 Jazzy + Gazebo Harmonic + PX4 + ROSA + ChatOllama Docker Environment 
 
-A complete Docker-based development environment for autonomous robotics featuring ROS2 Jazzy, Gazebo Harmonic simulation, PX4 autopilot integration, NASA's ROSA task planning framework, and AI capabilities with Ollama/LangChain. 
+A complete Docker-based environment for autonomous robotics featuring ROS2 Jazzy, Gazebo Harmonic simulation, PX4 autopilot integration, NASA's ROSA task planning framework, and AI capabilities with Ollama/LangChain. 
 
 ![Docker Build](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
 ![ROS2](https://img.shields.io/badge/ros2-jazzy-blue.svg?style=for-the-badge&logo=ros&logoColor=white)
