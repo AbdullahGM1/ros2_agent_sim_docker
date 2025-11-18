@@ -206,9 +206,9 @@ colcon build
 source install/setup.bash
 ```
 
-### 4. Launch the Drone Simulation (Enhanced Graphics Support)
+### 4. Launch the SAR Simulation (Enhanced Graphics Support)
 ```bash
-ros2 launch drone_sim drone.launch.py
+ros2 launch sar_system sar_system.launch.py
 ```
 This will launch a drone simulation that is connected to PX4 autopilot with Qt6 and enhanced graphics support.
 
