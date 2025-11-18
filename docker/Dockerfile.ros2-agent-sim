@@ -483,7 +483,7 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 # ============================================================================
 
 #
-# Pull Qwen3:8b model using Ollama (only if it doesn't already exist)
+# Pull Qwen3:8b and Qwen2.5vl:7b models using Ollama (only if they don't already exist)
 #
 # RUN ollama serve & \
 #     sleep 15 && \
@@ -492,6 +492,12 @@ RUN curl -fsSL https://ollama.com/install.sh | sh
 #         echo "Successfully pulled qwen3:8b"; \
 #     else \
 #         echo "Model qwen3:8b not available or failed to pull, continuing..."; \
+#     fi && \
+#     echo "Checking if qwen2.5vl:7b is available..." && \
+#     if ollama pull qwen2.5vl:7b; then \
+#         echo "Successfully pulled qwen2.5vl:7b"; \
+#     else \
+#         echo "Model qwen2.5vl:7b not available or failed to pull, continuing..."; \
 #     fi && \
 #     pkill ollama
 
