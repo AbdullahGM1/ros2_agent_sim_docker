@@ -153,7 +153,13 @@ chmod +x docker_run.sh
 ./docker_run.sh
 ```
 
-> **Note:** The script will automatically check if the Docker image exists and build it if necessary. The building process may take 30-60 minutes depending on your system specifications and internet connection. This FIXED VERSION includes comprehensive Ubuntu 24.04 compatibility and graphics environment setup.
+> **Note(1):** The script will automatically check if the Docker image exists and build it if necessary. The building process may take 30-60 minutes depending on your system specifications and internet connection. This FIXED VERSION includes comprehensive Ubuntu 24.04 compatibility and graphics environment setup. 
+
+> **Note(2):** To install the LLM Model, you need to uncomment the section in ``Dockerfile.ros2-agent-sim`` file to pull the LLM ``PHASE 14.5``. Or, you can do it manually inside the container:
+```bash
+ollama pull qwen3:8b 
+ollama pull qwen2.5vl:7b 
+```
 
 The automated process includes:
 - Docker image building with Ubuntu 24.04 fixes (if not exists)
